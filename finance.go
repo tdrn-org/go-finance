@@ -20,7 +20,10 @@ package finance
 
 import "errors"
 
-var ErrRateLimitReached error = errors.New("rate limit reached")
+var (
+	ErrRateLimitReached error = errors.New("rate limit reached")
+	ErrNotAvailable     error = errors.New("not available")
+)
 
 type APIProvider interface {
 	ProviderName() string
