@@ -24,7 +24,6 @@ import (
 	"net/url"
 
 	"github.com/tdrn-org/go-finance"
-	"github.com/tdrn-org/go-finance/openfigi/api"
 	openfigiapi "github.com/tdrn-org/go-finance/openfigi/api"
 )
 
@@ -64,11 +63,11 @@ func NewAPI(config Config) (*API, error) {
 	if httpClient == nil {
 		httpClient = http.DefaultClient
 	}
-	httpClientOption := func(apiClient *api.Client) error {
+	httpClientOption := func(apiClient *openfigiapi.Client) error {
 		apiClient.Client = httpClient
 		return nil
 	}
-	apiClient, err := api.NewClientWithResponses(baseURL.String(), httpClientOption)
+	apiClient, err := openfigiapi.NewClientWithResponses(baseURL.String(), httpClientOption)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create API client (cause: %w)", err)
 	}
