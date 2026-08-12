@@ -85,6 +85,34 @@ func (api *API) QueryExchangeRate(ctx context.Context, base, quote finance.Curre
 	return exchangeRate, nil
 }
 
+var instrumentTypeMap map[string]string = map[string]string{
+	"Common Stock": string(finance.SecurityTypeEquity),
+}
+
+func (api *API) SearchSymbol(ctx context.Context, query string) ([]finance.Symbol, error) {
+	response, rsp, err := api.client.ReferenceDataAPI.
+		GetSymbolSearch(ctx).
+		Symbol(query).
+		Execute()
+	if err != nil {
+		return nil, fmt.Errorf("search symbol failure (cause: %w)", err)
+	}
+	err = api.checkHttpStatus(rsp)
+	if err != nil {
+		return nil, err
+	}
+	symbols := make([]finance.Symbol, 0, len(response.Data))
+	for _, responseItem := range response.Data {
+		symbols = append(symbols, finance.Symbol{
+			Ticker:   responseItem.Symbol,
+			Exchange: responseItem.MicCode,
+			Name:     responseItem.InstrumentName,
+			Type:     finance.MapSecurityType(responseItem.InstrumentType, instrumentTypeMap),
+		})
+	}
+	return symbols, nil
+}
+
 func (api *API) checkHttpStatus(rsp *http.Response) error {
 	switch rsp.StatusCode {
 	case http.StatusOK:

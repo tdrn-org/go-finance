@@ -23,6 +23,7 @@ import (
 	"github.com/stretchr/testify/require"
 	"github.com/tdrn-org/go-finance/alphavantage"
 	"github.com/tdrn-org/go-finance/frankfurter"
+	"github.com/tdrn-org/go-finance/openfigi"
 	"github.com/tdrn-org/go-finance/twelvedata"
 )
 
@@ -42,6 +43,22 @@ func newAlphaVantageAPI(t *testing.T) *alphavantage.API {
 		t.Skip("No Alpha Vange API key set; skipping tests")
 	}
 	api, err := alphavantage.NewAPI(config)
+	require.NoError(t, err)
+	return api
+}
+
+func TestOpenFIGIProvider(t *testing.T) {
+	api := newOpenFIGIAPI(t)
+
+	providerName := api.ProviderName()
+	require.Equal(t, "openfigi", providerName)
+}
+
+func newOpenFIGIAPI(t *testing.T) *openfigi.API {
+	config := &openfigi.StaticConfig{
+		BaseURL: openfigi.DefaultBaseURL,
+	}
+	api, err := openfigi.NewAPI(config)
 	require.NoError(t, err)
 	return api
 }

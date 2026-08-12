@@ -77,3 +77,39 @@ func (r *currencyExchangeRateResponse) ToExchangeRate() (*finance.ExchangeRate, 
 	}
 	return exchangeRate, nil
 }
+
+type bestMatchResponse struct {
+	Symbol      string `json:"1. symbol"`
+	Name        string `json:"2. name"`
+	Type        string `json:"3. type"`
+	Region      string `json:"4. region"`
+	MarketOpen  string `json:"5. marketOpen"`
+	MarketClose string `json:"6. marketClose"`
+	Timezone    string `json:"7. timezone"`
+	Currency    string `json:"8. currency"`
+	MatchScore  string `json:"9. matchScore"`
+}
+
+type symbolSearchResponse struct {
+	statusResponse
+	BestMatches []bestMatchResponse `json:"bestMatches"`
+}
+
+func (r *symbolSearchResponse) ToMatchingSymbols(minScore float64) ([]finance.Symbol, error) {
+	symbols := make([]finance.Symbol, 0, len(r.BestMatches))
+	for _, bestMatch := range r.BestMatches {
+		matchScore, err := strconv.ParseFloat(bestMatch.MatchScore, 64)
+		if err != nil {
+			return nil, fmt.Errorf("failed to parse match store '%s' (cause: %w)", bestMatch.MatchScore, err)
+		}
+		if matchScore < minScore {
+			continue
+		}
+		symbols = append(symbols, finance.Symbol{
+			Ticker: bestMatch.Symbol,
+			Name:   bestMatch.Name,
+			Type:   finance.MapSecurityType(bestMatch.Type, map[string]string{}),
+		})
+	}
+	return symbols, nil
+}

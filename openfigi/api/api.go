@@ -14,16 +14,6 @@
  * limitations under the License.
  */
 
-// Package finance provides financial services backed up by a plugable
-// provider system.
-package finance
+package api
 
-import "errors"
-
-var (
-	ErrRateLimitReached error = errors.New("rate limit reached")
-)
-
-type APIProvider interface {
-	ProviderName() string
-}
+//go:generate go run -tags=tools github.com/oapi-codegen/oapi-codegen/v2/cmd/oapi-codegen --config=oapi-codegen-openfigi.yaml openfigi-spec.json

@@ -101,6 +101,32 @@ func (api *API) QueryExchangeRate(ctx context.Context, base, quote finance.Curre
 	return response.ToExchangeRate()
 }
 
+const minMatchScore float64 = 0.5
+
+func (api *API) SearchSymbol(ctx context.Context, query string) ([]finance.Symbol, error) {
+	apiURL := api.url("function", "SYMBOL_SEARCH", "keywords", query)
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, apiURL.String(), nil)
+	if err != nil {
+		return nil, fmt.Errorf("failed create search symbol request (cause: %w)", err)
+	}
+	api.logger.Debug("searching symbol", slog.Any("url", req.URL))
+	rsp, err := api.httpClient.Do(req)
+	if err != nil {
+		return nil, fmt.Errorf("failed to send symbol search request (cause: %w)", err)
+	}
+	defer rsp.Body.Close()
+	err = api.checkHttpStatus(rsp)
+	if err != nil {
+		return nil, err
+	}
+	var response symbolSearchResponse
+	err = api.decodeResponse(rsp, &response)
+	if err != nil {
+		return nil, err
+	}
+	return response.ToMatchingSymbols(minMatchScore)
+}
+
 func (api *API) url(args ...string) *url.URL {
 	apiURL := *api.baseURL
 	query := apiURL.Query()

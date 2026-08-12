@@ -16,25 +16,39 @@
 
 package finance
 
-import "context"
+import (
+	"context"
+	"errors"
+	"strings"
+)
+
+var (
+	ErrNotSymbolAvailable error = errors.New("not available")
+)
 
 // SecurityType classifies a financial instrument.
 type SecurityType string
 
 const (
-	SecurityTypeEquity SecurityType = "equity"
-	SecurityTypeETF    SecurityType = "etf"
+	SecurityTypeUnknown SecurityType = ""
+	SecurityTypeEquity  SecurityType = "equity"
+	SecurityTypeETF     SecurityType = "etf"
 )
 
-// ISO 10383 Market Identifier Codes (MIC).
-// Not exhaustive — extend as needed.
-const (
-	MIC_XNAS = "XNAS" // NASDAQ
-	MIC_XNYS = "XNYS" // NYSE
-	MIC_XETR = "XETR" // Xetra
-	MIC_XSTU = "XSTU" // Stuttgart
-	MIC_XBER = "XBER" // Berlin
-)
+func MapSecurityType(s string, aliasMap map[string]string) SecurityType {
+	mappedS, mapped := aliasMap[s]
+	if !mapped {
+		mappedS = s
+	}
+	switch strings.ToLower(mappedS) {
+	case string(SecurityTypeEquity):
+		return SecurityTypeEquity
+	case string(SecurityTypeETF):
+		return SecurityTypeETF
+	default:
+		return SecurityTypeUnknown
+	}
+}
 
 // Symbol identifies a financial instrument.
 // It is a composite of identifiers from different naming systems.
@@ -48,8 +62,11 @@ type Symbol struct {
 	ISIN     string       // e.g. "US0378331005"
 	WKN      string       // e.g. "865985"
 	FIGI     string       // e.g. "BBG000B9Y6W2"
-	Currency Currency     // e.g. USD
 	Type     SecurityType // e.g. equity
+}
+
+func (s *Symbol) IsEmpty() bool {
+	return !s.HasTicker() && !s.HasExchange() && !s.HasISIN() && !s.HasWKN() && !s.HasFIGI()
 }
 
 func (s *Symbol) HasTicker() bool { return s.Ticker != "" }
@@ -75,9 +92,9 @@ func (s *Symbol) ExchangeTicker() string {
 type SymbolResolver interface {
 	APIProvider
 
-	// Search looks up symbols matching the given free-text query (name, ticker, ISIN, WKN, etc.).
-	Search(ctx context.Context, query string) ([]Symbol, error)
+	// SearchSymbol looks up symbols matching the given free-text query (name, ticker, ISIN, WKN, etc.).
+	SearchSymbol(ctx context.Context, query string) ([]Symbol, error)
 
 	// LookupByISIN returns the exact symbol for an ISIN, if known.
-	LookupByISIN(ctx context.Context, isin string) (*Symbol, error)
+	//LookupByISIN(ctx context.Context, isin string) (*Symbol, error)
 }

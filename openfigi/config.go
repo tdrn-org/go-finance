@@ -14,16 +14,33 @@
  * limitations under the License.
  */
 
-// Package finance provides financial services backed up by a plugable
-// provider system.
-package finance
+package openfigi
 
-import "errors"
-
-var (
-	ErrRateLimitReached error = errors.New("rate limit reached")
+import (
+	"net/http"
+	"net/url"
 )
 
-type APIProvider interface {
-	ProviderName() string
+type Config interface {
+	GetBaseURL() (*url.URL, error)
+	GetAPIKey() (string, error)
+	GetHttpClient() (*http.Client, error)
+}
+
+type StaticConfig struct {
+	BaseURL    *url.URL
+	APIKey     string
+	HttpClient *http.Client
+}
+
+func (c *StaticConfig) GetBaseURL() (*url.URL, error) {
+	return c.BaseURL, nil
+}
+
+func (c *StaticConfig) GetAPIKey() (string, error) {
+	return c.APIKey, nil
+}
+
+func (c *StaticConfig) GetHttpClient() (*http.Client, error) {
+	return c.HttpClient, nil
 }
