@@ -1,17 +1,17 @@
-## Go module for finance service provider access
+## Go module for unified finance service provider access
 
 [![GoDoc](https://godoc.org/github.com/tdrn-org/go-finance?status.svg)](https://godoc.org/github.com/tdrn-org/go-finance)
 [![Build](https://github.com/tdrn-org/go-finance/actions/workflows/build.yml/badge.svg)](https://github.com/tdrn-org/go-finance/actions/workflows/build.yml)
 [![Coverage](https://sonarcloud.io/api/project_badges/measure?project=tdrn-org_go-finance&metric=coverage)](https://sonarcloud.io/summary/new_code?id=tdrn-org_go-finance)
 
-### Supported services
+### Provided services
 
-The go-finance module wraps the following services:
+The go-finance module provides the following services via different providers:
 * FX service: Query currency exchange rates.
 * SymbolResolver service: Search Symbols
 * Equity service: Query Quotes
 
-The following providers are integrated:
+The following providers are available:
 | Provider | FX | SymbolResolver | Equity | Comment |
 |----------|----|----------------|--------|---------|
 |[Alpha Vantage](https://www.alphavantage.co)|&check;|&check;|&check;|API key required|
