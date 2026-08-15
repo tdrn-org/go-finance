@@ -95,7 +95,7 @@ func (api *API) SearchSymbol(ctx context.Context, query string) ([]finance.Symbo
 	if len(securityCodes) == 0 {
 		return nil, finance.ErrSymbolNotAvailable
 	}
-	symbols := make([]finance.Symbol, 0)
+	symbols := make([]finance.Symbol, 0, len(securityCodes))
 	for _, securityCode := range securityCodes {
 		reply, err := securityService.GetSecurityInfo(ctx, &proto.SecurityInfoRequest{
 			AccessToken:  session.AccessToken,
@@ -104,25 +104,70 @@ func (api *API) SearchSymbol(ctx context.Context, query string) ([]finance.Symbo
 		if err != nil {
 			return nil, fmt.Errorf("failed to query security info from Consorsbank TAPI (cause: %w)", err)
 		}
-		for _, resolvedSecurityCode := range reply.SecurityCodes {
-			symbol := &finance.Symbol{
-				Name: reply.Name,
-			}
-			switch resolvedSecurityCode.CodeType {
-			case proto.SecurityCodeType_ISIN:
-				symbol.ISIN = resolvedSecurityCode.Code
-			case proto.SecurityCodeType_WKN:
-				symbol.WKN = resolvedSecurityCode.Code
-			case proto.SecurityCodeType_MNEMONIC, proto.SecurityCodeType_MNEMONIC_US:
-				symbol.Ticker = resolvedSecurityCode.Code
-			}
-			symbols = append(symbols, *symbol)
+		if tapiError := reply.GetError(); tapiError != nil {
+			return nil, fmt.Errorf("Consorsbank TAPI returned an error for security info (code: %s, message: %s)",
+				tapiError.GetCode(), tapiError.GetMessage())
 		}
-		if len(symbols) > 0 {
-			break
+		symbol := securityInfoToSymbol(reply)
+		if !symbol.IsEmpty() {
+			symbols = append(symbols, symbol)
 		}
 	}
+	if len(symbols) == 0 {
+		return nil, finance.ErrSymbolNotAvailable
+	}
 	return symbols, nil
+}
+
+// securityInfoToSymbol assembles a composite finance.Symbol from a TAPI
+// SecurityInfoReply. The reply carries the individual identifiers of a single
+// security (ISIN, WKN, domestic and US mnemonics) as separate code entries.
+func securityInfoToSymbol(reply *proto.SecurityInfoReply) finance.Symbol {
+	symbol := finance.Symbol{
+		Name: reply.GetName(),
+		Type: mapSecurityClass(reply.GetSecurityClass()),
+	}
+	var mnemonic, mnemonicUS string
+	for _, securityCode := range reply.GetSecurityCodes() {
+		switch securityCode.GetCodeType() {
+		case proto.SecurityCodeType_ISIN:
+			symbol.ISIN = securityCode.GetCode()
+		case proto.SecurityCodeType_WKN:
+			symbol.WKN = securityCode.GetCode()
+		case proto.SecurityCodeType_MNEMONIC:
+			mnemonic = securityCode.GetCode()
+		case proto.SecurityCodeType_MNEMONIC_US:
+			mnemonicUS = securityCode.GetCode()
+		}
+	}
+	symbol.Ticker = pickTicker(symbol.ISIN, mnemonic, mnemonicUS)
+	return symbol
+}
+
+// pickTicker selects the canonical ticker for a symbol. US instruments (ISIN
+// starting with "US") prefer the US mnemonic, everything else the domestic
+// mnemonic; whichever is present is used as fallback.
+func pickTicker(isin, mnemonic, mnemonicUS string) string {
+	switch {
+	case mnemonicUS != "" && strings.HasPrefix(strings.ToUpper(isin), "US"):
+		return mnemonicUS
+	case mnemonic != "":
+		return mnemonic
+	default:
+		return mnemonicUS
+	}
+}
+
+// mapSecurityClass maps a TAPI SecurityClass onto a finance.SecurityType.
+func mapSecurityClass(securityClass proto.SecurityClass) finance.SecurityType {
+	switch securityClass {
+	case proto.SecurityClass_STOCK:
+		return finance.SecurityTypeEquity
+	case proto.SecurityClass_TRACKERS:
+		return finance.SecurityTypeETF
+	default:
+		return finance.SecurityTypeUnknown
+	}
 }
 
 func (api *API) resolveSecurityCodes(query string) []*proto.SecurityCode {
