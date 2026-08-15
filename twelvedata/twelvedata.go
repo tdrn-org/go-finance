@@ -89,7 +89,7 @@ var instrumentTypeMap map[string]string = map[string]string{
 	"Common Stock": string(finance.SecurityTypeEquity),
 }
 
-func (api *API) SearchSymbol(ctx context.Context, query string) ([]finance.Symbol, error) {
+func (api *API) SearchSymbol(ctx context.Context, query string) (finance.Symbols, error) {
 	response, rsp, err := api.client.ReferenceDataAPI.
 		GetSymbolSearch(ctx).
 		Symbol(query).
@@ -104,7 +104,7 @@ func (api *API) SearchSymbol(ctx context.Context, query string) ([]finance.Symbo
 	if len(response.Data) == 0 {
 		return nil, finance.ErrSymbolNotAvailable
 	}
-	symbols := make([]finance.Symbol, 0, len(response.Data))
+	symbols := make(finance.Symbols, 0, len(response.Data))
 	for _, responseItem := range response.Data {
 		symbols = append(symbols, finance.Symbol{
 			Ticker:   responseItem.Symbol,

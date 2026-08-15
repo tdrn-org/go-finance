@@ -103,7 +103,7 @@ func (api *API) QueryExchangeRate(ctx context.Context, base, quote finance.Curre
 
 const minMatchScore float64 = 0.5
 
-func (api *API) SearchSymbol(ctx context.Context, query string) ([]finance.Symbol, error) {
+func (api *API) SearchSymbol(ctx context.Context, query string) (finance.Symbols, error) {
 	apiURL := api.url("function", "SYMBOL_SEARCH", "keywords", query)
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, apiURL.String(), nil)
 	if err != nil {

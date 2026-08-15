@@ -84,7 +84,7 @@ func (api *API) ProviderName() string {
 	return Name
 }
 
-func (api *API) SearchSymbol(ctx context.Context, query string) ([]finance.Symbol, error) {
+func (api *API) SearchSymbol(ctx context.Context, query string) (finance.Symbols, error) {
 	request := openfigiapi.SearchRequest{
 		Query: &query,
 	}
@@ -100,7 +100,7 @@ func (api *API) SearchSymbol(ctx context.Context, query string) ([]finance.Symbo
 	if len(figiResults) == 0 {
 		return nil, finance.ErrSymbolNotAvailable
 	}
-	symbols := make([]finance.Symbol, 0, len(figiResults))
+	symbols := make(finance.Symbols, 0, len(figiResults))
 	for _, figiResult := range figiResults {
 		symbol := figiResultToSymbol(&figiResult)
 		if symbol == nil {

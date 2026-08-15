@@ -95,8 +95,8 @@ type symbolSearchResponse struct {
 	BestMatches []bestMatchResponse `json:"bestMatches"`
 }
 
-func (r *symbolSearchResponse) ToMatchingSymbols(minScore float64) ([]finance.Symbol, error) {
-	symbols := make([]finance.Symbol, 0, len(r.BestMatches))
+func (r *symbolSearchResponse) ToMatchingSymbols(minScore float64) (finance.Symbols, error) {
+	symbols := make(finance.Symbols, 0, len(r.BestMatches))
 	for _, bestMatch := range r.BestMatches {
 		matchScore, err := strconv.ParseFloat(bestMatch.MatchScore, 64)
 		if err != nil {

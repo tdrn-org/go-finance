@@ -80,6 +80,8 @@ func (s *Symbol) HasWKN() bool { return s.WKN != "" }
 
 func (s *Symbol) HasFIGI() bool { return s.FIGI != "" }
 
+type Symbols []Symbol
+
 var isinPattern regexp.Regexp = *regexp.MustCompile("^[A-Z]{2}[A-Z0-9]{9}[0-9]$")
 
 type isinValidator struct {
@@ -192,5 +194,5 @@ type SymbolResolver interface {
 	APIProvider
 
 	// SearchSymbol looks up symbols matching the given free-text query (name, ticker, ISIN, WKN, etc.).
-	SearchSymbol(ctx context.Context, query string) ([]Symbol, error)
+	SearchSymbol(ctx context.Context, query string) (Symbols, error)
 }
