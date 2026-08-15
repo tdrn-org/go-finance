@@ -101,6 +101,9 @@ func (api *API) SearchSymbol(ctx context.Context, query string) ([]finance.Symbo
 	if err != nil {
 		return nil, err
 	}
+	if len(response.Data) == 0 {
+		return nil, finance.ErrSymbolNotAvailable
+	}
 	symbols := make([]finance.Symbol, 0, len(response.Data))
 	for _, responseItem := range response.Data {
 		symbols = append(symbols, finance.Symbol{

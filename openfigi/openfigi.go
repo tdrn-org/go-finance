@@ -97,6 +97,9 @@ func (api *API) SearchSymbol(ctx context.Context, query string) ([]finance.Symbo
 		return nil, err
 	}
 	figiResults := *response.JSON200.Data
+	if len(figiResults) == 0 {
+		return nil, finance.ErrSymbolNotAvailable
+	}
 	symbols := make([]finance.Symbol, 0, len(figiResults))
 	for _, figiResult := range figiResults {
 		symbol := figiResultToSymbol(&figiResult)

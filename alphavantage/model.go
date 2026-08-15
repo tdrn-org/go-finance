@@ -111,5 +111,8 @@ func (r *symbolSearchResponse) ToMatchingSymbols(minScore float64) ([]finance.Sy
 			Type:   finance.MapSecurityType(bestMatch.Type, map[string]string{}),
 		})
 	}
+	if len(symbols) == 0 {
+		return nil, finance.ErrSymbolNotAvailable
+	}
 	return symbols, nil
 }
