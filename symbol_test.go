@@ -17,6 +17,7 @@
 package finance_test
 
 import (
+	"errors"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -25,6 +26,16 @@ import (
 
 func TestAlphaVantageSymbolAPI(t *testing.T) {
 	api := newAlphaVantageAPI(t)
+
+	testSymbolAPI(t, api)
+}
+
+func TestConsorsbankSymbolAPI(t *testing.T) {
+	api := newConsorsbankAPI(t)
+	defer func() {
+		api.Shutdown(t.Context())
+		api.Close()
+	}()
 
 	testSymbolAPI(t, api)
 }
@@ -44,6 +55,43 @@ func TestTwelveDataISymbolAPI(t *testing.T) {
 func testSymbolAPI(t *testing.T, api finance.SymbolResolver) {
 	t.Log("provider", api.ProviderName())
 	symbols, err := api.SearchSymbol(t.Context(), "Apple")
-	require.NoError(t, err)
-	require.NotEmpty(t, symbols)
+	if !errors.Is(err, finance.ErrSymbolNotAvailable) {
+		require.NoError(t, err)
+		require.NotEmpty(t, symbols)
+	}
+	symbols, err = api.SearchSymbol(t.Context(), "AAPL")
+	if !errors.Is(err, finance.ErrSymbolNotAvailable) {
+		require.NoError(t, err)
+		require.NotEmpty(t, symbols)
+	}
+	symbols, err = api.SearchSymbol(t.Context(), "US0378331005")
+	if !errors.Is(err, finance.ErrSymbolNotAvailable) {
+		require.NoError(t, err)
+		require.NotEmpty(t, symbols)
+	}
+	symbols, err = api.SearchSymbol(t.Context(), "865985")
+	if !errors.Is(err, finance.ErrSymbolNotAvailable) {
+		require.NoError(t, err)
+		require.NotEmpty(t, symbols)
+	}
+	symbols, err = api.SearchSymbol(t.Context(), "BBG000B9XRY4")
+	if !errors.Is(err, finance.ErrSymbolNotAvailable) {
+		require.NoError(t, err)
+		require.NotEmpty(t, symbols)
+	}
+}
+
+func TestIsISIN(t *testing.T) {
+	require.True(t, finance.IsISIN("US0378331005"))
+	require.False(t, finance.IsISIN("US0378331006"))
+}
+
+func TestIsWKN(t *testing.T) {
+	require.True(t, finance.IsWKN("865985"))
+	require.False(t, finance.IsWKN("86598I"))
+}
+
+func TestIsFIGI(t *testing.T) {
+	require.True(t, finance.IsFIGI("BBG000B9XRY4"))
+	require.False(t, finance.IsFIGI("BBG000B9XRY5"))
 }

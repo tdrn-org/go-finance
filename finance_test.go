@@ -22,6 +22,7 @@ import (
 
 	"github.com/stretchr/testify/require"
 	"github.com/tdrn-org/go-finance/alphavantage"
+	"github.com/tdrn-org/go-finance/consorsbank"
 	"github.com/tdrn-org/go-finance/frankfurter"
 	"github.com/tdrn-org/go-finance/openfigi"
 	"github.com/tdrn-org/go-finance/twelvedata"
@@ -43,6 +44,37 @@ func newAlphaVantageAPI(t *testing.T) *alphavantage.API {
 		t.Skip("No Alpha Vange API key set; skipping tests")
 	}
 	api, err := alphavantage.NewAPI(config)
+	require.NoError(t, err)
+	return api
+}
+
+func TestConsorsbankProvider(t *testing.T) {
+	api := newConsorsbankAPI(t)
+	defer func() {
+		api.Shutdown(t.Context())
+		api.Close()
+	}()
+
+	providerName := api.ProviderName()
+	require.Equal(t, "consorsbank", providerName)
+}
+
+func newConsorsbankAPI(t *testing.T) *consorsbank.API {
+	root := os.Getenv("CONSORSBANK_ROOT")
+	if root == "" {
+		t.Skip("No Consorsbank root cert set; skipping now")
+	}
+	tlsConfig, err := consorsbank.TLSRootFromFile(root)
+	require.NoError(t, err)
+	config := &consorsbank.StaticConfig{
+		Address:   "localhost:40443",
+		TLSConfig: tlsConfig,
+		Secret:    os.Getenv("CONSORSBANK_SECRET"),
+	}
+	if config.Secret == "" {
+		t.Skip("No Consorsbank secret set; skipping now")
+	}
+	api, err := consorsbank.NewAPI(config)
 	require.NoError(t, err)
 	return api
 }

@@ -1,0 +1,199 @@
+/*
+ * Copyright 2018, Trading-API, Consorsbank.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+syntax = "proto3";
+
+option java_multiple_files = true;
+option java_package = "com.consorsbank.module.tapi.grpc.trading";
+package com.consorsbank.module.tapi.grpc;
+
+/**
+ * Order model represents possible orders
+ */
+enum OrderModel {
+  /**
+   *Order model absent
+   */
+  NO_ORDER_MODEL = 0;
+  /**
+   * Market order
+   */
+  MARKET = 1;
+  /**
+   * Limit order
+   */
+  LIMIT = 2;
+  /**
+   * Stop market order. 
+   */
+  STOP_MARKET = 3;
+  /**
+   * Stop limit order
+   */
+  STOP_LIMIT = 4;
+  /**
+   * One cancels other market order 
+   */
+  ONE_CANCELS_OTHER_MARKET = 5;
+  /**
+   * One cancels other limit order
+   */
+  ONE_CANCELS_OTHER_LIMIT = 6;
+  /**
+   * Trailing stop market order
+   */
+  TRAILING_STOP_MARKET = 7;
+  /**
+   * Trailing stop limit order
+   */
+  TRAILING_STOP_LIMIT = 8;
+}
+
+/**
+ * Order type represents different buy / sell order possibilities
+ */
+enum OrderType {
+  /**
+   * Order type is not defined
+   */
+  NO_ORDER_TYPE = 0;
+  /**
+   * Buy order type
+   */
+  BUY = 1;
+  /**
+   * Sell order type
+   */
+  SELL = 2;
+  /**
+   * Short sell order type
+   */
+  SHORT_SELL = 3;
+  /**
+   * Short cover order type. This type is not allowed as input parameter
+   */
+  SHORT_COVER = 4;
+  /**
+   * Rorced cover order type. This type is not allowed as input parameter
+   */
+  FORCED_COVER = 5;
+}
+
+/**
+ * Order supplement is additional parameter by order definition
+ */ 
+enum OrderSupplement {
+  /**
+   * Normal order supplement
+   */
+  NORMAL = 0;
+  /**
+   * Immidiate or cancel order supplement
+   */
+  IMMIDIATE_OR_CANCEL = 1;
+  /**
+   * Fill or kill order supplement
+   */
+  FILL_OR_KILL = 2;
+  /**
+   * Icesberg order supplement. Allowes to delivery amount in portions. #pro# only
+   */
+  ICEBERG = 3;
+  /**
+   * Market place order supplement
+   */
+  MARKET_PRICE = 4;
+}
+
+/**
+ * Trailing notation represent notation type by trailing orders
+ */
+enum TrailingNotation {
+  /**
+   * Trailing notation is not defined
+   */
+  NO_TRAILING_NOTATION = 0;
+  /**
+   * Absolute order notation
+   */
+  ABSOLUTE = 1;
+  /**
+   * Relative order notation
+   */
+  RELATIVE = 2;
+}
+
+/**
+ * Cash quotation is additional parameter of the order 
+ */
+enum CashQuotation {
+  /**
+   * Quotation is not defined
+   */
+  NOTHING = 0;
+  /**
+   * Kassa quotation
+   */
+  KASSA = 1;
+  /**
+   * Auction quotation
+   */
+  AUCTION = 2;
+  /**
+   * Opening quotation
+   */
+  OPENING = 3;
+  /**
+   * Intraday quotation
+   */
+  INTRADAY = 4;
+  /**
+   * Close quotation
+   */
+  CLOSING = 5;
+}
+
+
+/**
+ * Trading possibility represents allowed variants to trade on specific stock exchange.
+ * Each trading possibility is a combination of the parameters. The list of the order possibilites
+ * is all possible combinations:
+ *
+ *     MARKET;NORMAL;ABSOLUTE;{KASSA;AUCTION}
+ *     LIMIT;NORMAL;ABSOLUTE;{KASSA;AUCTION}
+ *     MARKET;NORMAL;RELATIVE;{KASSA;AUCTION}
+ *     LIMIT;NORMAL;RELATIVE;{KASSA;AUCTION}
+ *     ...
+ *
+ */
+message TradingPossibility {
+  /**
+   * Order model
+   */
+  OrderModel order_model = 1;
+  /**
+   * Order supplement
+   */
+  OrderSupplement order_supplement = 2;
+  /**
+   * Trailing notation
+   */ 
+  TrailingNotation trailing_notation = 3;
+  /**
+   * List of allowed cash_quatations
+   */
+  repeated CashQuotation cash_quotations = 4;  
+}
+

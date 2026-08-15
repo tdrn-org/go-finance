@@ -4,38 +4,41 @@ GOBIN ?= $(shell go env GOPATH)/bin
 
 .DEFAULT_GOAL := check
 
-.PHONY: deps
+.PHONE: deps
 deps:
 	go mod download -x
 
-.PHONY: testdeps
+.PHONE: testdeps
 testdeps: deps
 	go install honnef.co/go/tools/cmd/staticcheck@latest
 
-.PHONY: tidy
+.PHONE: generate
+generate: deps
+	go generate ./...
+
+.PHONE: tidy
 tidy:
 	go mod verify
 	go mod tidy
 
-.PHONY: test
-test: testdeps
-	go test -v -coverpkg=./... -covermode=atomic -coverprofile=coverage.out ./...
-
-.PHONY: fmt
-fmt:
-	go fmt ./...
-
-.PHONY: vet
-vet:
+.PHONE: vet
+vet: testdeps
 	go vet ./...
 
-.PHONY: staticcheck
+.PHONE: staticcheck
 staticcheck: testdeps
 	$(GOBIN)/staticcheck ./...
 
-.PHONY: check
-check: test vet staticcheck
+.PHONE: lint
+lint: vet staticcheck
 
-.PHONY: clean
+.PHONE: test
+test:
+	go test -v -covermode=atomic -coverpkg=./... -coverprofile=coverage.out ./...
+
+.PHONE: check
+check: generate test lint
+
+.PHONE: clean
 clean:
 	go clean ./...

@@ -1,0 +1,579 @@
+/*
+ * Copyright 2018, Trading-API, Consorsbank.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+syntax = "proto3";
+
+option java_multiple_files = true;
+option java_package = "com.consorsbank.module.tapi.grpc.security";
+package com.consorsbank.module.tapi.grpc;
+
+import "Common.proto";
+import "StockExchangeService.proto";
+import "TradingTypes.proto";
+
+/**
+ * Requests security information for security code
+ */
+message SecurityInfoRequest {
+  /**
+   * Access token
+   */
+  string access_token = 1;
+
+  /**
+   * Security code with security type (WKN, ISIN) 
+   */
+  SecurityCode security_code = 2;
+}
+
+/**
+ * Returns security information
+ */
+message SecurityInfoReply {
+  /** Security name */ 
+  string name = 1;
+   /** Security class */ 
+  SecurityClass security_class = 2;
+   /** Security codes with security type (WKN, ISIN, etc) */ 
+  repeated SecurityCode security_codes = 3;
+  /**  Stockexchange info (stock exchange, name)*/ 
+  repeated SecurityStockExchangeInfo stock_exchange_infos = 4;
+  /** Unit note */ 
+  UnitNote unit_note = 5;
+  
+  /**
+   * Error information if occuirs
+   */
+  Error error = 1000;
+}
+
+ /** Requests history data for one security on one stockexchange in intraday or historical format */
+ 
+message SecurityPriceHistoryRequest {
+  /**
+   * Access token
+   */
+  string access_token = 1;
+  
+  /** 
+   * Security with stockExchange object (security code, stock exchange) 
+   */
+  SecurityWithStockExchange security_with_stockexchange = 2;
+  /**
+   * Amount of the day in the past. This value should be positive.
+   * Maximal value for the intraday resolution is 15.  
+   */
+  int32 days = 3;  
+	
+  /** 
+   * Time resolution for the data 
+   */
+  TimeResolution time_resolution = 4;
+}
+
+/** Returns history data for defined security */
+message SecurityPriceHistoryReply {
+  /** Security with stockExchange object (security code, stock exchange) */
+  SecurityWithStockExchange security_with_stockexchange = 1;
+  
+  /** Currency */
+  string currency = 2;
+  
+  /** List of the price entries */
+  repeated PriceEntry price_entries = 3;
+
+  /**
+   * Error information if occuirs
+   */
+  Error error = 1000;
+}
+
+message PriceEntry {
+  /** Open price */
+  double open_price = 1;
+  /** Close price */
+  double close_price = 2;
+  /** High price */
+  double high_price = 3;
+  /** Low price */
+  double low_price = 4;
+  /** Volume, can not be filled*/
+  double volume = 5;
+   /** Open time */
+  Timestamp open_time = 6;
+    /** Close time */
+  Timestamp close_time = 7;
+  
+}
+/**
+ * Time resolution represents information about price aggregation  
+ */ 
+enum TimeResolution {
+  /** Undefined resolution*/
+  NO_RESOLUTION = 0; 
+  /** 
+    * Tick resolution. *intraday*.
+    * 
+    * Be careful, in same cases there is a lot of data.  
+    */
+  TICK = 1;
+  /** Second resolution *intraday* */  
+  SECOND = 2;
+  /** Minute resolution *intraday* */
+  MINUTE = 3;
+  /** Hour resolution *intraday* */
+  HOUR = 4;
+  /** Day resolution *historic* */  
+  DAY = 5;
+}
+
+/**
+ * Security stock exchange info represents trading information
+ * about one security on the one market
+ */
+message SecurityStockExchangeInfo {
+  /**  Stockexchange (id und issuer)  */
+  StockExchange stock_exchange = 1;
+  /** Possible limit token for buy orders */
+  LimitToken buy_limit_token = 2;
+  /** Possible limit token for sell orders */
+  LimitToken sell_limit_token = 3;
+  /** Buy trading data (order models, order supplements, trailing notations)  */
+  repeated TradingPossibility buy_trading_types = 4;
+   /** Sell trading data (order models, order supplements, trailing notations)  */
+  repeated TradingPossibility sell_trading_types = 5;
+  /** Maximal order validity date */
+  Date maximal_order_date = 6;
+  /** Short selling mode */
+  ShortMode short_mode = 7; 
+ 
+  /**
+   * Short mode gives information amout security shortability 
+   * on the selected market.
+   */
+  enum ShortMode {
+    /** Undefined short selling */
+    NO_SHORT_MODE = 0;
+    /** Short selling is possible*/
+    YES = 1;
+    /** No short selling */
+    NO = 2;
+    /** Temporary no short selling */
+    TEMPORARY_NO = 3;
+    /** Intraday short selling */
+    INTRADAY = 4;
+    /** Overnight short selling */
+    OVERNIGHT = 5;
+    /** Intraday and Overnight short selling */
+    INTRADAY_AND_OVERNIGHT = 6;
+  }
+  
+  /** 
+   * Limit token represents a possibility to trade on the 
+   * short term markets (AcceptQuote) and long term markets (AddOrder)
+   */
+  enum LimitToken {
+    /** AcceptQuote and AddOrder possible */
+    LIMIT_AND_QUOTE = 0;
+    /** AcceptQuote only possible */
+    QUOTE_ONLY = 1;
+    /** AddOrder only possible */
+    LIMIT_ONLY = 2;
+  }
+}
+
+message SecurityCode {
+  /** Security code  */
+  string code = 1;
+  /** Security code type (WKN, ISIN, etc) */
+  SecurityCodeType code_type = 2;
+}
+
+message SecurityWithStockExchange {
+  /** Security code object */
+  SecurityCode security_code = 1;
+  /** Stock exchange object */
+  StockExchange stock_exchange = 2;
+}
+
+/**
+ * Requests market data values for defined security with stockexchange
+ */
+message SecurityMarketDataRequest {
+  /**
+   * Access token
+   */
+  string access_token = 1;
+  /** 
+   * Security with stockExchange object (security code, stock exchange) 
+   */
+   
+  SecurityWithStockExchange security_with_stockexchange = 2;
+  /** Currency */
+  string currency = 3;
+}
+
+/**
+ * Returns market data information
+ */
+message SecurityMarketDataReply {
+  /** Security with stockExchange object (security code, stock exchange) */
+  SecurityWithStockExchange security_with_stockexchange = 1;
+  /** Security fields, which were changed */
+  repeated SecurityChangedField changed_fields = 2;
+  /** Currency */
+  string currency = 3;
+  
+  // Fields
+  /** Price of the last trade  */
+  double last_price = 4;
+  /** Volume last trade  */ 
+  double last_volume = 5;
+  /** Last quote date and time */ 
+  Timestamp last_date_time = 6;
+  /** Today number of tradings  */
+  int32 today_num_trades = 7;
+  /** Today volume */
+  double today_volume = 8;
+  /** Last ask price */
+  double ask_price = 9;
+  /** Volume last ask */ 
+  double ask_volume = 10;
+  /** Time of the last ask */
+  Timestamp ask_time = 11;
+  /** Last bid price */
+  double bid_price = 12;
+  /** Volume last bid */ 
+  double bid_volume = 13;
+  /** Time of the last bid */ 
+  Timestamp bid_time = 14;
+  /** Quote of the previous trading day  */
+  double previous_price = 15;
+  /** Date of the previous trading day  */
+  Date previous_date = 16;
+  /** Relative difference to the previous day  */
+  double relative_diff = 17;
+  /** Absolute difference to the previous day */
+  double abs_diff = 18;
+  /** Highest price */
+  double high_price = 19;
+  /** Lowest price */
+  double low_price = 20;
+  /** Price at opening */
+  double open_price = 21;
+  /** Highest price of the previous week  */
+  double week_high_price = 22;
+  /** Date of highest price of the previous week  */
+  Date date_week_high = 23;
+  /** Lowest price of the previous week  */
+  double week_low_price = 24;
+  /** Date of lowest price of the previous week  */
+  Date date_week_low = 25;
+  /** Highest price of the previous month  */
+  double month_high_price = 26;
+  /** Date of highest price of the previous month  */
+  Date date_month_high = 27;
+  /** Lowest price of the previous month */
+  double month_low_price = 28;
+  /** Date of lowest price of the previous month  */
+  Date date_month_low = 29;
+  /** Highest price of the current year  */
+  double year_high_price = 30;
+  /** Date of the highest price of the current year */
+  Date date_year_high = 31;
+  /** Lowest price of the current year */
+  double year_low_price = 32;
+  /** Date of the lowest price of the current year  */
+  Date date_year_low = 33;
+  /** Addendum of the last price. */
+  string last_addendum = 34;
+  /** Trading phase  */
+  TradingPhase trading_phase = 35;
+  /** Indicative price */
+  double indicative_price = 36;
+  /** Trading volume corresponding to the last price */
+  double prevalence_volume = 37;
+
+  /**
+   * SecurityChangedField represents information about changed fields during marked data event.
+   * Not all field can be initialized. There are only changed fields. Some fields can be changed, but have undefined state
+   * for example NaN.   
+   */  
+  enum SecurityChangedField {
+    /** No data*/
+    NONE = 0;
+    /** Price of the last trade  */
+    LAST_PRICE = 4; 
+    /** Volume last trade  */
+    LAST_VOLUME = 5; 
+    /** Last quote date and time */ 
+    LAST_DATE_TIME = 6;
+    /** Today number of tradings  */
+    TODAY_NUM_TRADES = 7;
+    /** Today volume */
+    TODAY_VOLUME = 8;
+    /** Last ask price */
+    ASK_PRICE = 9; 
+    /** Volume last ask */
+    ASK_VOLUME = 10;
+    /** Time of the last ask */
+    ASK_TIME = 11;
+    /** Last bid price */
+    BID_PRICE = 12; 
+    /** Volume last bid */
+    BID_VOLUME = 13; 
+    /** Time of the last bid */
+    BID_TIME = 14;
+    /** Quote of the previous trading day  */
+    PREVIOUS_PRICE = 15;
+    /** Date of the previous trading day  */
+    PREVIOUS_DATE = 16;
+    /** Relative difference to the previous day  */
+    RELATIVE_DIFF = 17;
+    /** Absolute difference to the previous day */
+    ABS_DIFF = 18;
+    /** Highest price */
+    HIGH_PRICE = 19;
+    /** Lowest price */
+    LOW_PRICE = 20;
+    /** Price at opening */
+    OPEN_PRICE = 21;
+    /** Highest price of the previous week  */
+    WEEK_HIGH_PRICE = 22;
+    /** Date of highest price of the previous week  */
+    DATE_WEEK_HIGH = 23;
+    /** Lowest price of the previous week  */
+    WEEK_LOW_PRICE = 24;
+    /** Date of lowest price of the previous week  */
+    DATE_WEEK_LOW = 25;
+    /** Highest price of the previous month  */
+    MONTH_HIGH_PRICE = 26;
+    /** Date of highest price of the previous month  */
+    DATE_MONTH_HIGH = 27;
+    /** Lowest price of the previous month */
+    MONTH_LOW_PRICE = 28;
+    /** Date of lowest price of the previous month  */
+    DATE_MONTH_LOW = 29;
+    /** Highest price of the current year  */
+    YEAR_HIGH_PRICE = 30;
+    /** Date of the highest price of the current year */
+    DATE_YEAR_HIGH = 31;
+    /** Lowest price of the current year */
+    YEAR_LOW_PRICE = 32;
+    /** Date of the lowest price of the current year  */
+    DATE_YEAR_LOW = 33;
+    /** Addendum of the last price. */
+    LAST_ADDENDUM = 34;
+     /** Trading phase  */
+    TRADING_PHASE = 35;
+    /** Indicative price */
+    INDICATIVE_PRICE = 36;
+    /** Trading volume corresponding to the last price */
+    PREVALENCE_VOLUME = 37;
+  }
+  
+  /**
+   * Error information if occuirs
+   */
+  Error error = 1000;
+}
+
+/**
+ * Requests orderbook data for security with stockexchange
+ */
+message SecurityOrderBookRequest {
+  /**
+   * Access token
+   */
+  string access_token = 1;
+  
+  /** 
+   * Security with stockExchange object (security code, stock exchange) 
+   */
+  SecurityWithStockExchange security_with_stockexchange = 2;
+
+  /** 
+   * Requested currency. If not filled used default currency. 
+   * Otherwise values will be converted to requested currency. 
+   */
+  string currency = 3;
+}
+
+/**
+ * SecurityOrderBookReply represents information with orderbook market data.
+ * Currently this information is avialable for the Xetra stock exchange for the accepted 
+ * for the second level market data instruments 
+ */
+message SecurityOrderBookReply {
+  /** Security with stock exchange object (security code, stock exchange) */
+  SecurityWithStockExchange security_with_stockexchange = 1;
+  /** Currency of the order book entries */
+  string currency = 2;
+  /** List of the order book entries */
+  repeated OrderBookEntry order_book_entries = 3;
+  /** Orderbook entry contains data about one level of the order book.
+   * This is bid price, ask price, bid volume, ask volume. Entries with lower index have lower ask and higer bid prices.   
+   */
+  message OrderBookEntry {
+    /** Bid price */
+    double bid_price = 1;
+    /** Ask price */ 
+    double ask_price = 2;
+    /** Bid volume */ 
+    double bid_volume = 3;
+    /** Ask volume */ 
+    double ask_volume = 4; 
+  }
+  
+  /**
+   * Error information if occuirs
+   */
+  Error error = 1000;
+}
+
+/**
+ * CurrencyRateRequest used for the determination of the currency rate from one currency rate to second  currency.
+ * Results depends from user market data aboniment and can be realtime or delayed. 
+ */
+message CurrencyRateRequest {
+  /**
+   * Access token
+   */
+  string access_token = 1;
+
+  /** 
+   * Source currency 
+   */
+  string currency_from = 2;
+  
+  /** 
+   * Target currency
+   */
+  string currency_to = 3;
+}
+
+/**
+ * Returns currency rate
+ */
+message CurrencyRateReply {
+  /** Source currency */
+  string currency_from = 1;
+  /** Target currency*/
+  string currency_to = 2;
+  /** Currency rate*/
+  double currency_rate = 3;
+  /** Error information if occuirs */
+  Error error = 1000;
+}
+
+/**
+ * Represents information about security code type
+ * Some of the types are refer to the market data provider (FactSet)
+ */
+enum SecurityCodeType {
+  /** Unknown code type */
+  NO_CODE_TYPE = 0;
+  /**  WKN code type */
+  WKN = 1;
+  /**  ISIN code type */
+  ISIN = 2;
+  /**  Factset id notation */
+  ID_NOTATION = 3;
+  /**  Factset id osi */
+  ID_OSI = 4;
+  /**  Factset id instrument */
+  ID_INSTRUMENT = 5;
+  /**  Mnemonic or symbol */
+  MNEMONIC = 6;
+  /**  US Mnemonic or symbol */
+  MNEMONIC_US = 7;
+}
+
+/**
+ * Represents information about security class
+ */ 
+enum SecurityClass {
+  /** Security class is undefined on unknown */
+  NO_SECURITY_CLASS = 0;
+   /** Stock security class */ 
+  STOCK = 1;
+   /** Bond security class */
+  BOND = 2;
+   /** Certificate security class */ 
+  CERTIFICATE = 3;
+   /** Precious metal security class */ 
+  PRECIOUS_METAL = 4;
+   /** Participation certificate security class */ 
+  PARTICIPATION_CERTIFICATE = 5;
+   /** Funds security class */ 
+  FUNDS = 6;
+   /**  Mutual funds security class */ 
+  MUTUAL_FUNDS = 7;
+   /** Warrants security class */ 
+  WARRANT = 8;		
+   /** Futures security class */ 
+  FUTURE = 9;
+   /** Indexies security class */ 
+  INDEX = 10;
+   /** Other securities security class */ 
+  OTHERS = 11;
+   /** Future c1 security class */ 
+  FUTURE_C1 = 12;
+   /** Future c2 security class */ 
+  FUTURE_C2 = 13;
+   /** Future c3 security class */ 
+  FUTURE_C3 = 14;
+   /** Trackers security class */ 
+  TRACKERS = 15;
+   /** Currency security class */ 
+  CURRENCY = 16;
+   /** Commodity security class */ 
+  COMMODITY = 17;
+}
+
+/**
+ * Represents stock exchange trading phase. 
+ * Some values are refer to the Xetra stock exchange 
+ */ 
+enum TradingPhase {
+  /** Unknown trading phase */
+  NONE = 0;
+  /**  Pretrade trading phase */
+  PRETRADE = 1;
+  /**  Posttrade trading phase */
+  POSTTRADE = 2;
+  /**  Start trading phase */
+  START = 3;
+  /**  End trading phase */
+  END = 4;
+  /**  Vola trading phase */
+  VOLA = 5;
+  /**  OCall trading phase */
+  OCALL = 6;
+  /**  ICall trading phase */
+  ICALL = 7;
+  /**  CCall trading phase */
+  CCALL = 8;
+  /**  Trade trading phase */
+  TRADE = 9;
+  /**  Trade indicative trading phase */
+  TRADE_INDICATIVE = 10;
+  /**  Trade best bid / ask trading phase */
+  TRADE_BEST_BID_ASK = 11;
+  /**  Trade auction, but not indicative trading phase */
+  TRADE_AUCTION_NO_INDICATIVE = 12;
+}
+
+

@@ -1,0 +1,141 @@
+/*
+ * Copyright 2018, Trading-API, Consorsbank.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+syntax = "proto3";
+
+option java_multiple_files = true;
+option java_package = "com.consorsbank.module.tapi.grpc.depot";
+package com.consorsbank.module.tapi.grpc;
+
+import "Common.proto";
+import "SecurityService.proto";
+import "AccountService.proto";
+
+
+/**
+ * Depot posiotion contains information about 
+ * one position in the depot
+ */
+message DepotPosition {
+  /**
+   * Ammount of the securities
+   */
+  double amount = 1;
+
+  /**
+   * Position identification
+   */
+  string position_id = 2;
+  /**
+   * True if sell of the position is possible or false otherwise
+   */    
+  bool sell_possible = 3;
+  /**
+   * Unit note
+   */
+  UnitNote unit_note = 4;
+  /**
+   * True if entry is blocked or false otherwise
+   */
+  bool blocked = 5;
+  /**
+   * Purchase quotation or NaN if not defined.
+   * Currently this field ALWAYS undefined, reserved for future use
+   */
+  double purchase_quotation = 6;
+  /**
+   * Purchase currency or empty value if not defined
+   */
+  string purchase_currency = 7;
+  /**
+   * Purchase currency rate or NaN if not defined
+   */
+  double purchase_currency_rate = 8;
+  
+}
+
+/**
+ * Depot entry contains information about one security in the depot.
+ * This entry combines data from one or more depot positions
+ */
+message DepotEntry {
+  /**
+   * Security code
+   */
+  SecurityCode security_code = 1;
+  /**
+   * List of linked depot positions. This list contains at least one element
+   */
+  repeated DepotPosition positions = 2;
+  /**
+   * Effective amount
+   */
+  double effective_amount = 3;
+  /**
+   * Scheduled amount
+   */
+  double scheduled_amount = 4;
+  /**
+   * Total amount of the securities
+   */
+  double total_amount = 5;
+  /**
+   * True if sell possible for this entry or false otherwise. This value 
+   * can be true only if all child positions have sell_possible = true
+   */ 
+  bool sell_possible = 6;
+  /**
+   * Unit note
+   */
+  UnitNote unit_note = 7;
+  /**
+   * True if entry is blocked or false otherwise
+   */
+  bool blocked = 10;
+  /**
+   * Purchase quotation or NaN if not defined
+   */
+  double purchase_quotation = 11;
+  /**
+   * Purchase currency or empty value if not defined 
+   */
+  string purchase_currency = 12;
+  /**
+   * Purchase currency rate or NaN if not defined
+   */
+  double purchase_currency_rate = 13;
+  /**
+   * Open sales
+   */
+  double open_sales = 14;
+}
+
+
+message DepotEntries {
+  /**
+   * Trading account
+   */
+  TradingAccount account = 1;
+  /**
+   * Depot entries list
+   */
+  repeated DepotEntry entries = 2;
+  
+  /**
+   * Error information if occuirs
+   */
+  Error error = 1000;
+}
+

@@ -19,11 +19,12 @@ package finance
 import (
 	"context"
 	"errors"
+	"regexp"
 	"strings"
 )
 
 var (
-	ErrNotSymbolAvailable error = errors.New("not available")
+	ErrSymbolNotAvailable error = errors.New("not available")
 )
 
 // SecurityType classifies a financial instrument.
@@ -56,22 +57,22 @@ func MapSecurityType(s string, aliasMap map[string]string) SecurityType {
 // whichever identifiers it supports. Callers should check with
 // the Has* methods before relying on a specific field.
 type Symbol struct {
-	Ticker   string       // e.g. "AAPL"
 	Exchange string       // MIC-Code, e.g. "XNAS"
-	Name     string       // e.g. "Apple Inc."
+	Ticker   string       // e.g. "AAPL"
 	ISIN     string       // e.g. "US0378331005"
 	WKN      string       // e.g. "865985"
 	FIGI     string       // e.g. "BBG000B9Y6W2"
+	Name     string       // e.g. "Apple Inc."
 	Type     SecurityType // e.g. equity
 }
 
 func (s *Symbol) IsEmpty() bool {
-	return !s.HasTicker() && !s.HasExchange() && !s.HasISIN() && !s.HasWKN() && !s.HasFIGI()
+	return !s.HasExchange() && !s.HasTicker() && !s.HasISIN() && !s.HasWKN() && !s.HasFIGI()
 }
 
-func (s *Symbol) HasTicker() bool { return s.Ticker != "" }
-
 func (s *Symbol) HasExchange() bool { return s.Exchange != "" }
+
+func (s *Symbol) HasTicker() bool { return s.Ticker != "" }
 
 func (s *Symbol) HasISIN() bool { return s.ISIN != "" }
 
@@ -79,13 +80,110 @@ func (s *Symbol) HasWKN() bool { return s.WKN != "" }
 
 func (s *Symbol) HasFIGI() bool { return s.FIGI != "" }
 
-// ExchangeTicker returns a stable composite key for cache and map lookups,
-// e.g. "XNAS:AAPL". Returns just the ticker if no exchange is set.
-func (s *Symbol) ExchangeTicker() string {
-	if s.Exchange != "" {
-		return s.Exchange + ":" + s.Ticker
+var isinPattern regexp.Regexp = *regexp.MustCompile("^[A-Z]{2}[A-Z0-9]{9}[0-9]$")
+
+type isinValidator struct {
+	sum    int
+	double bool
+}
+
+func (v *isinValidator) Validate(s string) bool {
+	v.sum = 0
+	v.double = false
+	if !isinPattern.MatchString(s) {
+		return false
 	}
-	return s.Ticker
+	expected := int(s[11] - '0')
+	for i := 10; i >= 0; i-- {
+		c := s[i]
+		if '0' <= c && c <= '9' {
+			cValue := int(c - '0')
+			v.shift(cValue)
+		} else {
+			cValue := int(c - 'A' + 10)
+			remainder := cValue % 10
+			quotient := cValue / 10
+			v.shift(remainder)
+			v.shift(quotient)
+		}
+	}
+	actual := (10 - (v.sum % 10)) % 10
+	return actual == expected
+}
+
+func (v *isinValidator) shift(i int) {
+	v.double = !v.double
+	summand := i
+	if v.double {
+		summand *= 2
+		if summand > 9 {
+			summand = (summand % 10) + 1
+		}
+	}
+	v.sum += summand
+}
+
+func IsISIN(s string) bool {
+	return (&isinValidator{}).Validate(strings.ToUpper(s))
+}
+
+func IsWKN(s string) bool {
+	if len(s) != 6 {
+		return false
+	}
+	for _, c := range s {
+		if (c < '0' && '9' < c && c < 'A' && 'Z' < c) || c == 'I' || c == 'O' {
+			return false
+		}
+	}
+	return true
+}
+
+var figiPattern regexp.Regexp = *regexp.MustCompile("^[BCDFGHJKLMNPQRSTVWXYZ]{2}G[0-9BCDFGHJKLMNPQRSTVWXYZ]{8}[0-9]$")
+
+type figiValidator struct {
+	sum    int
+	double bool
+}
+
+func (v *figiValidator) Validate(s string) bool {
+	v.sum = 0
+	v.double = false
+	if !figiPattern.MatchString(s) {
+		return false
+	}
+	expected := int(s[11] - '0')
+	for i := 10; i >= 0; i-- {
+		c := s[i]
+		if '0' <= c && c <= '9' {
+			cValue := int(c - '0')
+			v.shift(cValue)
+		} else {
+			cValue := int(c - 'A' + 10)
+			quotient := cValue / 10
+			remainder := cValue % 10
+			v.shift(quotient)
+			v.shift(remainder)
+		}
+	}
+	actual := (10 - (v.sum % 10)) % 10
+	return actual == expected
+}
+
+func (v *figiValidator) shift(i int) {
+	v.double = !v.double
+	summand := i
+	if v.double {
+		summand *= 2
+		if summand > 9 {
+			summand = (summand / 10) + (summand % 10)
+		}
+	}
+	v.sum += summand
+}
+
+func IsFIGI(s string) bool {
+	return (&figiValidator{}).Validate(strings.ToUpper(s))
 }
 
 // SymbolResolver searches for financial instruments.
@@ -94,7 +192,4 @@ type SymbolResolver interface {
 
 	// SearchSymbol looks up symbols matching the given free-text query (name, ticker, ISIN, WKN, etc.).
 	SearchSymbol(ctx context.Context, query string) ([]Symbol, error)
-
-	// LookupByISIN returns the exact symbol for an ISIN, if known.
-	//LookupByISIN(ctx context.Context, isin string) (*Symbol, error)
 }

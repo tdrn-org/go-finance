@@ -1,0 +1,244 @@
+/*
+ * Copyright 2018, Trading-API, Consorsbank.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+syntax = "proto3";
+
+option java_multiple_files = true;
+option java_package = "com.consorsbank.module.tapi.grpc";
+package com.consorsbank.module.tapi.grpc;
+
+
+import "Common.proto";
+import "StockExchangeService.proto";
+import "SecurityService.proto";
+import "AccountService.proto";
+import "OrderService.proto";
+import "DepotService.proto";
+import "AccessService.proto";
+
+/**
+ * Access service provides functions for the client validation / invalidation
+ */
+service AccessService {
+	/**
+	 * Validates client by the TAPI and gets access data
+	 */
+    rpc Login(LoginRequest) returns (LoginReply);
+
+	/**
+	 * Invalidates client by the TAPI and gets logout result
+	 */
+    rpc Logout(LogoutRequest) returns (LogoutReply);
+}
+
+
+/**
+ * Security service provides access
+ * to the 
+ */
+service SecurityService {
+    /**
+     * Gets security information about security
+     * @param SecurityInfoRequest
+     *   Request object with interested security 
+     * @return SecurityInfoReply
+     *   Complete information about security      
+     */
+    rpc GetSecurityInfo(SecurityInfoRequest) returns (SecurityInfoReply);
+
+     /**
+     * Subscribes security with stock exchange for market data updates
+	 * @param SecurityMarketDataRequest 
+	 *      Market data request with interested security and stock exchange
+	 * @stream SecurityMarketDataReply
+	 *      Reply with all market data values 
+     */
+    rpc StreamMarketData(SecurityMarketDataRequest) returns (stream SecurityMarketDataReply);
+     /**
+     * Subscribes security with stock exchange for orderbook updates
+	 * @param SecurityOrderBookRequest 
+	 *      Orderbook data request with interested security and stock exchange
+	 * @stream SecurityOrderBookReply
+	 *      Reply with all orderbook values 
+     */
+    rpc StreamOrderBook(SecurityOrderBookRequest) returns (stream SecurityOrderBookReply);   
+     /**
+     * Subscribes for currency rate from one currency to another currency. 
+	 * @param SecurityOrderBookRequest 
+	 *      currency rate request with interested currencies from/to
+	 * @stream CurrencyRateReply
+	 *      reply with currency rate 
+     */
+    rpc StreamCurrencyRate(CurrencyRateRequest) returns (stream CurrencyRateReply);
+    
+    /**
+     * Requests history data for one security on one stockexchange in intraday or historical format
+     * @param SecurityPriceHistoryRequest
+     *    Data with security, stockexchange, how many days and resolution
+     * @return SecurityPriceHistoryReply
+     *    List of the historical quotes or an error
+     */
+    rpc GetSecurityPriceHistory(SecurityPriceHistoryRequest) returns (SecurityPriceHistoryReply);
+       
+}
+
+/** 
+ * StockExchangeService provide information about stockexchanges and
+ * issuers
+ */
+service StockExchangeService {
+    /**
+     * Gets predefined stockexchages 
+     * @return StockExchangeDescriptions
+     *    list of stock exchange informations 
+     */
+    rpc GetStockExchanges(AccessTokenRequest) returns (StockExchangeDescriptions);
+    /**
+     * Gets specific stock exchange 
+     * @param StockExchange
+     *    Requested stock exchange
+     * @return StockExchangeDescription
+     *    Stock exchange information 
+     */
+    rpc GetStockExchange(StockExchangeRequest) returns (StockExchangeDescription);
+}
+
+/**
+ * Order service provide functionality to control orders. 
+ */
+service OrderService {
+    /**
+     * Subscribes one trading account for orders updates
+	 * @param TradingAccount 
+	 *      Trading account for push
+	 * @stream Orders
+	 *      Orders list for seleted account 
+     */
+    rpc StreamOrders(TradingAccountRequest) returns (stream Orders);
+    
+    /**
+     * Initiates orders update action. All changes come by the 
+     * StreamOrders subscription. This function doesn't wait for the action result.
+	 * @param TradingAccount 
+	 *      Trading account for update
+     */    
+    rpc UpdateOrders(TradingAccountRequest) returns (Empty);
+    /**
+     * Request market quote for the selected security on the selected stock exchanges.
+     * @param QuoteRequest
+     *    quote request with interested security and stock exchanges
+     * @return QuoteReply
+     *    quote reply with quotes
+     */
+    rpc GetQuote(QuoteRequest) returns (QuoteReply);
+    /**
+     * Sends accept quote order request to the short term market
+     * @param AcceptQuoteRequest 
+     *     accept quote request with order parameters
+     * @return OrderReply
+     *     result order or error
+     */
+    rpc AcceptQuote(AcceptQuoteRequest) returns (OrderReply);
+    /**
+     * Sends long term order to the market
+     * @param AddOrderRequest
+     *     order request with order parameters
+     * @return OrderReply
+     *     result order or error
+     */
+    rpc AddOrder(AddOrderRequest) returns (OrderReply);
+    /**
+     * Sends order change request to the market
+     * @param ChangeOrderRequest
+     *     changed order request with order parameters
+     * @return OrderReply
+     *     result order or error
+     */
+    rpc ChangeOrder(ChangeOrderRequest) returns (OrderReply);
+    /**
+     * Sends order cancel request to the market
+     * @param CancelOrderRequest
+     *     cancel order request with order reference
+     * @return OrderReply
+     *     result order or error
+     */
+    rpc CancelOrder(CancelOrderRequest) returns (OrderReply);
+    /**
+     * Sends order activate request to the market. #pro# only
+     * @param ActivateOrderRequest
+     *     activate order request with order parameters
+     * @return OrderReply
+     *     result order or error
+     */
+    rpc ActivateOrder(ActivateOrderRequest) returns (OrderReply);
+     /**
+     * Sends order deactivate request to the market. #pro# only
+     * @param DeactivateOrderRequest
+     *     deactivate order request with order parameters
+     * @return OrderReply
+     *     result order or error
+     */
+    rpc DeactivateOrder(DeactivateOrderRequest) returns (OrderReply);
+}
+
+/**
+ * AccountService provide functionality with access
+ * to the trading accounts  
+ */
+service AccountService {
+	/**
+	 * Gets trading accounts
+	 * @return TradingAccounts
+	 *       List of trading accounts
+	 */
+	rpc GetTradingAccounts(AccessTokenRequest) returns (TradingAccounts);
+	/**
+	 * Subscribes one trading account for updates
+	 * @param TradingAccount 
+	 *      Trading account for push
+	 * @stream TradingAccountInformation
+	 *      Specific information for subscribed account (balance, kredit line, etc.)
+	 */
+	rpc StreamTradingAccount(TradingAccountRequest) returns (stream TradingAccountInformation);
+	/**
+	 * Subscribes one trading account for the transactions updates
+	 * @param TradingAccount 
+	 *      Trading account for push
+	 * @stream TradingAccountInformation
+	 *      Transactions list for subscribed account 
+	 */
+	rpc StreamTradingAccountTransactions(TradingAccountRequest) returns (stream TradingAccountTransactions);
+}
+
+/**
+ * Depot service provides access to the depot linked to the account
+ */
+service DepotService {
+    /**
+     * Subscribes one trading account for the depot data updates
+     * @param TradingAccount
+     *      Trading account for push
+     * @stream DepotEntries depot entries linked to the account
+     */ 
+	rpc StreamDepot(TradingAccountRequest) returns (stream DepotEntries);
+	
+	/**
+     * Initiates depot update action. All changes come by the 
+     * StreamDepot subscription. This function doesn't wait for the action result.
+	 * @param TradingAccount 
+	 *      Trading account for update
+     */    
+    rpc UpdateDepot(TradingAccountRequest) returns (Empty);   
+}

@@ -1,0 +1,166 @@
+/*
+ * Copyright 2018, Trading-API, Consorsbank.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+syntax = "proto3";
+
+option java_multiple_files = true;
+option java_package = "com.consorsbank.module.tapi.grpc.account";
+package com.consorsbank.module.tapi.grpc;
+
+import "Common.proto";
+
+/**
+ * TradingAccount is trading account connected to the 
+ * depot 
+ */
+message TradingAccount {
+  /**
+   * Account number
+   **/
+  string account_number = 1;
+  /**
+   * Depot number
+   */
+  string depot_number = 2;
+  /**
+   * Name of the account owners
+   */
+  string name = 3;
+  /**
+   *  If account is tradable then true or false otherwise
+   */
+  bool tradable = 4;
+}
+
+/**
+ * Trading account request contains trading account related data
+ */
+message TradingAccountRequest {
+  /**
+   * Access token
+   */
+  string access_token = 1;
+  
+  /**
+   * Trading account
+   */
+  TradingAccount trading_account = 2;
+}
+
+
+/**
+ * TradingAccounts contains account information 
+ * from current session
+ */ 
+message TradingAccounts {
+  /**
+   * List of trading accounts
+   */
+  repeated TradingAccount accounts = 1; 
+
+  /**
+   * Error information if occuirs
+   */
+  Error error = 1000;
+}
+
+
+
+/**
+ * TradingAccountTransactions contains account transactions
+ */
+message TradingAccountTransactions {
+  /**
+   * Trading account
+   */
+  TradingAccount account = 1; 
+
+
+  /**
+   * List of transactions
+   */ 
+  repeated Transaction transactions = 2;
+  
+  /**
+   * Error information if happened
+   */
+  Error error = 1000;
+  
+   /**
+  * Transaction contains onformation about one transaction
+  */
+  message Transaction {
+    /**
+     * Transaction date
+     */
+    Date transaction_date = 1;
+    
+    /**
+     * Amount value
+     */
+    double amount = 2;
+    
+    /**
+     * Transaction opponent
+     */
+    string opponent = 3;
+    
+    /**
+     * Information about transaction   
+     */
+    string information = 4;
+    
+    /**
+     * Value date 
+     */    
+    Date value_date = 5;
+  }
+}
+
+/**
+ * TradingAccountInformation contains specific for this account information
+ */
+message TradingAccountInformation {
+  /**
+   * Trading account
+   */
+  TradingAccount account = 1;
+  /**
+   * Account balance
+   */
+  double balance = 2;
+  /**
+   * Credit limit information
+   */
+  double credit_limit = 3;
+  /**
+   * Buying power
+   */
+  double buying_power = 4;
+
+  /**
+   * Credit limit intraday information, #pro# only
+   */
+  double credit_limit_intraday = 9;
+  /**
+   * Buyng power intraday, #pro# only
+   */
+  double buying_power_intraday = 10;
+
+  /**
+   * Error information if occuirs
+   */
+  Error error = 1000;
+}

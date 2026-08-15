@@ -1,0 +1,804 @@
+/*
+ * Copyright 2018, Trading-API, Consorsbank.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+syntax = "proto3";
+
+
+option java_multiple_files = true;
+option java_package = "com.consorsbank.module.tapi.grpc.order";
+package com.consorsbank.module.tapi.grpc;
+
+
+import "Common.proto";
+import "SecurityService.proto";
+import "StockExchangeService.proto";
+import "AccountService.proto";
+import "TradingTypes.proto";
+
+
+/**
+ * Order represent one order object
+ */ 
+message Order {
+  /** Security with stock echange */
+  SecurityWithStockExchange security_with_stockexchange = 1;
+  /** Order type */
+  OrderType order_type = 2;
+  /** Order number */
+  string order_number = 3;
+  /** Amount of the securities */
+  double amount = 4;	
+  /** Order model */
+  OrderModel order_model = 5;
+  /** Order supplement */
+  OrderSupplement order_supplement = 6;
+  /** Cache quotation */
+  CashQuotation cash_quotation = 7;
+
+
+  /** Executed amount*/ 
+  double executed_amount = 8;
+  /** Order status */
+  OrderStatus order_status = 9;
+  /** Date and time of the order status */
+  Timestamp status_timestamp = 10;
+  /** Validity date of the order*/
+  Date validity_date = 11;
+  /** 
+   * Limit value. Used as the order limit for all Limit order model with exception of the 
+   * StopLimit order model. For this order model please use stop limit field. 
+   */
+  double limit = 12;
+  /** 
+   * Stop value. This value can be used only together with StopMarket, StopLimit and OneCancelOter order models. 
+   */
+  double stop = 13;
+  /** 
+    * Stop limit value
+    * Can be used only tigether with the StopLimit order model.
+    * The meaning of the value is limit of the order after stop.
+    *  
+    */
+  double stop_limit = 14;
+  /** Traling distance in traling notation units or empty value */
+  double trailing_distance = 15;
+  /** Trailing notation for the trailing orders */
+  TrailingNotation trailing_notation = 16;
+  /** Trailing limit tolerance for the trailing orders */
+  double trailing_limit_tolerance = 17;
+  /** Dripping quantity #pro# only */
+  double dripping_quantity = 18;
+  /** Trading partner name */
+  string trading_partner_name = 19;
+  /** Execution quote for the executed amount */
+  double execution_quote = 20;
+  
+  /**
+   * Unique id of the order. Used for the order matching.
+   * In the #pro# version of the ActiveTrader order_number can be changed after activation / deactivation.
+   * All order activities need actual or delivered form the system order_number. 
+   * Typical scenario is to map and update unique id to the order number delivered from the API.    
+   */
+  string unique_id = 21;
+
+}
+
+/**
+ * Order status represents status of the order 
+ */ 
+enum OrderStatus {
+  /** Status is not defined */
+  NO_ORDER_STATUS = 0;
+  /** New order */
+  NEW = 1;
+  /** Open order */
+  OPEN = 2;
+  /** Fully executed order */
+  EXECUTED = 3;
+  /** Partially executed order */
+  PARTIALLY_EXECUTED = 4;
+  /** Canceled order */ 
+  CANCELED = 5;
+  /** Canceled forced order */
+  CANCELED_FORCED = 6;
+  /** Canceling noted order */
+  CANCELED_NOTED = 7;
+  /** Canceling timeout order */
+  CANCELED_TIMEOUT = 8;
+  /** Changed order */
+  CHANGED = 9;
+  /** Changing noted order */
+  CHANGED_NOTED = 10;
+  /** Inactive order #pro# only */
+  INACTIVE = 11;
+  /** Inactivation noted order #pro# only */
+  INACTIVE_NOTED = 12;
+  /** Storno order */
+  STORNO = 13;
+}
+
+
+/**
+ * Add order request represents order data for the long term markets 
+ */
+message AddOrderRequest {
+  /**
+   * Access token
+   */
+  string access_token = 1;
+  
+  /**
+   * Trading account number which used for the execution 
+   */  
+  string account_number = 2;
+  /**
+   * Security code with stock exchange 
+   */ 
+  SecurityWithStockExchange security_with_stockexchange = 3;
+  /**
+   * Order type 
+   */
+  OrderType order_type = 4;
+  /**
+   * Amount of the securities 
+   */
+  double amount = 5;	
+  /**
+   * Order model 
+   */
+  OrderModel order_model = 6; 
+  /**
+   * Order supplement 
+   */
+  OrderSupplement order_supplement = 7;
+  /**
+   * Cach quotation 
+   */
+  CashQuotation cash_quotation = 8;
+  /**
+   * Order validity date 
+   */ 
+  Date validity_date = 9;
+  /**
+   * Limit value 
+   */
+  double limit = 10;
+  /**
+   * Stop value. This value can be used only together with StopMarket, StopLimit and OneCancelOter order models.
+   */ 
+  double stop = 11;
+  /**
+   * Stop limit used in the StopLimit and OneCancelOther order models
+   */
+  double stop_limit = 12;
+  /**
+   * Traling distance in traling notation units or empty value 
+   */
+  double trailing_distance = 13;
+  /**
+   * Trailing notation for the trailing orders 
+   */
+  TrailingNotation trailing_notation = 14;
+  /**
+   * Trailing limit tolerance for the trailing orders 
+   */
+  double trailing_limit_tolerance = 15;
+  /**
+   * Dripping quantity #pro# only 
+   */
+  double dripping_quantity = 16;
+  
+  /**
+   * Position id of the depot position. 
+   * It used only for sale certainly securities from depot
+   */
+  string position_id = 17;
+
+  /**
+   * Validation flag. 
+   * If value is WITHOUT_VALIDATION then backend system sends order actions directly to the market. + 
+   * If value is VALIDATE_ONLY then backend system doesn't send order actions to the market, but validate order parameters. +
+   * If value is VALIDATE_WITH_TOTAL_COSTS then order will validated by backend system and request total costs for the order. +
+   * If value is VALIDATE_WITH_DETAIL_COSTS then order will validated by backend system and request detail costs for the order. +
+   */
+  Validation validation = 18;
+  /**
+   * Risk class override flag. If true then allowes override user risk class 
+   */ 
+  bool risk_class_override = 19;
+  /**
+   * Target market override flag. If true then allowes override target market 
+   */
+  bool target_market_override = 20;
+  /**
+   * Tax non trasparent override flag. If true then allowes override tax intransparesity 
+   */
+  bool tax_nontransparent_override = 21;
+  /**
+   * Accept additinal fees flag. If true then allowes accept non transparent fees 
+   */
+  bool accept_additional_fees = 22;
+  /**
+   * Closed realestate fond override. If true then allowes sell fonds over fds 
+   */
+  bool closed_realestate_fond_override = 23;
+  /**
+   * Inactive order flag, #pro# only. If true then order market as inactive and don't routed to the marker.
+   * To activate order please use ActivateOrder function */ 
+  bool inactive = 24;
+}
+
+/**
+ * Order reply represents result of the add order or accept quote requests
+ */  
+message OrderReply {
+  /** Trading account */
+  TradingAccount account = 1;
+  /** Result order */ 
+  Order order = 2;
+  
+  /**
+   * Order costs. This field contains data if order costs are requested
+   */
+  OrderCosts order_costs = 3;
+  
+  /**
+   * Error information if occuirs
+   */
+  Error error = 1000;
+}
+
+
+/**
+ * Validation type for the order actions
+ */
+enum Validation {
+  /**
+   * Order action will routed directly to the market. 
+   */ 
+  WITHOUT_VALIDATION = 0;
+  
+  /** 
+   * Order will checked by the backend system, but not will be routed to market
+   */ 
+  VALIDATE_ONLY = 1;
+
+  /** 
+   * Order will checked by the backend system, but not will be routed to market. 
+   * Additionally will be requested estimated order action total costs.
+   */ 
+  VALIDATE_WITH_TOTAL_COSTS = 2;
+
+  /** 
+   * Order will checked by the backend system, but not will be routed to market. 
+   * Additionally will be requested estimated order action detail costs.
+   */ 
+  VALIDATE_WITH_DETAIL_COSTS = 3;
+  
+  /**
+   * For the order will be requested estimated order action total costs.
+   * No backend system validation is processed.  
+   */
+  TOTAL_COSTS_ONLY = 4;
+}
+
+
+/**
+ * Order costs represents information about order action estimated costs.
+ * This information is only *estimated values* and is depended from real execution quotes, time, etc.
+ */ 
+message OrderCosts {
+  /**
+   * Estimated total cost for order action
+   */ 
+  double estimated_total_costs = 1;
+
+  /**
+   * Reference backend cost id
+   */
+  string cost_id = 2;
+  
+  /** 
+   * List of the cost categories.  Filled only by validation request with detailed information.
+   */
+  repeated CategoryCost categorie_costs = 3;
+
+
+  /**
+   * Aggregated costs for the order.  Filled only by validation request with validation information.
+   */
+  AggregatedCosts aggregated_costs = 4;
+
+   
+  /**
+   * Represents one category cost.
+   */  
+  message CategoryCost {
+    /**
+     * Category id
+     */
+    string category_id = 1;
+    /**
+     * Human redable category label
+     */
+    string category_label = 2;
+    
+    /** 
+     * Total absolute sum of the children values
+     */  
+    double total_sum_absolute = 3;
+    /** 
+     * Total relative sum of the children values
+     */  
+    double total_sum_relative = 4;
+    /**
+     * Currency for absolute sum
+     */ 
+    string currency = 5;
+    
+    /**
+     * List of child values or detailed information.
+     */
+    repeated DetailCost detail_costs = 6;
+    
+    
+  }
+  
+
+  /**
+   * Aggregated costs contain an information about estimated costs for the selected order  
+   */
+  message AggregatedCosts {
+    /**
+     * In costs for the order
+     */ 
+    double in_costs_absolute = 1;
+    /**
+     * Percentage part of the in costs
+     */ 
+    double in_costs_relative = 2;
+    /**
+     * Currency for the in costs
+     */ 
+    string in_costs_currency = 3;
+  
+    /**
+     * Out costs for the order
+     */ 
+    double out_costs_absolute = 4;
+    /**
+     * Percentage part of the out costs
+     */ 
+    double out_costs_relative = 5;
+    /**
+     * Currency for the out costs
+     */ 
+    string out_costs_currency = 6;
+    
+    /**
+     * Instrument costs for the order
+     */ 
+    double instrument_costs_absolute = 7;
+    /**
+     * Percentage part of the instrument costs
+     */ 
+    double instrument_costs_relative = 8;
+    /**
+     * Currency for the instrument costs
+     */ 
+    string instrument_costs_currency = 9;
+
+    /**
+     * Service costs for the order
+     */ 
+    double service_costs_absolute = 10;
+    /**
+     * Percentage part of the service costs
+     */ 
+    double service_costs_relative = 11;
+    /**
+     * Currency for the servcie costs
+     */ 
+    string service_costs_currency = 12;
+    
+
+    /**
+     * Subsidy costs for the order
+     */ 
+    double subsidy_costs_absolute = 13;
+    /**
+     * Percentage part of the subsidy costs
+     */ 
+    double subsidy_costs_relative = 14;
+    /**
+     * Currency for the subsidy costs
+     */ 
+    string subsidy_costs_currency = 15;
+
+
+    /**
+     * Foreign currency costs for the order
+     */ 
+    double foreign_currency_costs_absolute = 16;
+    /**
+     * Percentage part of the foreign currency costs
+     */ 
+    double foreign_currency_costs_relative = 17;
+    /**
+     * Currency for the foreign currency costs
+     */ 
+    string foreign_currency_costs_currency = 18;
+    
+    /**
+     * Performance impact for the order
+     */ 
+    double performance_impact_absolute = 19;
+    /**
+     * Percentage part of the performance impact
+     */ 
+    double performance_impact_relative = 20;
+    /**
+     * Currency for the performance impact
+     */ 
+    string performance_impact_currency = 21;
+  
+    /**
+     * Expected amount estimated for the order
+     */ 
+    double expected_amount = 22;
+    /**
+     * Currency for the expected amount
+     */ 
+    string expected_amount_currency = 23;
+  }
+  
+  /**
+   * Detail cost contains one entry for the selected  
+   * category 
+   */
+  message DetailCost {
+    /**
+     * Detail id 
+     */
+    string detail_id = 1;
+    
+    /**
+     * Human redable detail label
+     */
+    string detail_label = 2;
+    
+    /**
+     * Absolute value for this entry
+     */
+    double value_absolute = 3;
+
+    /**
+     * Relative value for this entry
+     */
+    double value_relative = 4;
+    
+    /**
+     * Currency for this entry
+     */
+    string currency = 5;
+    
+    /**
+     * Specific entry type
+     */
+    string detail_type = 6;
+  }
+
+}
+
+
+
+/**
+ * Change order request contains parameters for the order change. 
+ * Be careful: not all combinations are possible. 
+ */
+message ChangeOrderRequest {
+  /**
+   * Access token
+   */
+  string access_token = 1;
+  
+  /**
+   * Trading account number 
+   */ 
+  string account_number = 2;
+  /**
+   * Order number for that this changes should be accepted 
+   */
+  string order_number = 3;
+  /**
+   * New limit, shouldn't filled for market order 
+   */
+  double limit = 4;
+  /** 
+   *New stop value 
+   */ 
+  double stop = 5;
+  /**
+   * New stop limit value 
+   */
+  double stop_limit = 6;
+  /**
+   * New amount 
+   */
+  double amount = 7;
+  /**
+   * New validity date 
+   */	
+  Date validity_date = 8;
+  /**
+   * New order model 
+   */
+  OrderModel order_model = 9;
+  /**
+   * New order supplement 
+   */
+  OrderSupplement order_supplement = 10;
+  /**
+   * Dripping quantity #pro# only 
+   */
+  double dripping_quantity = 11;
+  /**
+   * Validation flag. This request allowes only *WITHOUT_VALIDATION* 
+   * and *VALIDATE_ONLY* values. +
+   * If value is WITHOUT_VALIDATION then backend system sends order actions directly to the market. + 
+   * If value is VALIDATE_ONLY then backend system doesn't send order actions to the market, but validate order parameters.
+   */
+  Validation validation = 12;
+  /**
+   * New trailing distance 
+   */
+  double trailing_distance = 13;
+  /**
+   * New traling limit tolerance 
+   */
+  double trailing_limit_tolerance = 14;
+}
+
+
+/** 
+ * Cancel order request represents canceling information for one order on the market or one inactive order
+ */ 
+message CancelOrderRequest {
+  /**
+   * Access token
+   */
+  string access_token = 1;
+  /**
+   * Trading account number 
+   */ 
+  string account_number = 2;
+  /**
+   * Order number for that this changes should be accepted 
+   */
+  string order_number = 3;
+  /**
+   * Validation flag. This request allowes only *WITHOUT_VALIDATION* value. + 
+   * If value is WITHOUT_VALIDATION then backend system sends order actions directly to the market. + 
+   * Otherwise request will fail.
+   */
+   Validation validation = 4;
+}
+
+/** 
+ * Activate order request represents information for activation of one inactive order #pro# only
+ */ 
+message ActivateOrderRequest {
+  /**
+   * Access token
+   */
+  string access_token = 1;
+  /**
+   * Trading account number 
+   */ 
+  string account_number = 2;
+  /**
+   * Order number for that this changes should be accepted 
+   */
+  string order_number = 3;
+  /**
+   * Validation flag. This request allowes only *WITHOUT_VALIDATION* 
+   * and *VALIDATE_ONLY* values. +
+   * If value is WITHOUT_VALIDATION then backend system sends order actions directly to the market. +
+   * If value is VALIDATE_ONLY then backend system doesn't send order actions to the market, but validate order parameters.
+   */  
+  Validation validation = 4;
+}
+
+/** 
+ * Deactivate order request represents information for deactivation of one active order #pro# only
+ */ 
+message DeactivateOrderRequest {
+  /**
+   * Access token
+   */
+  string access_token = 1;
+  /**
+   * Trading account number 
+   */ 
+  string account_number = 2;
+  /**
+   * Order number for that this changes should be accepted 
+   */
+  string order_number = 3;
+  /**
+   * Validation flag. This request allowes only *WITHOUT_VALIDATION* 
+   * and *VALIDATE_ONLY* values. 
+   * If value is WITHOUT_VALIDATION then backend system sends order actions directly to the market. 
+   * If value is VALIDATE_ONLY then backend system doesn't send order actions to the market, but validate order parameters
+   */
+  Validation validation = 4;
+}
+
+/** 
+ * Accept quote request represents information about one order that should be placed on the short term market
+ */ 
+message AcceptQuoteRequest {
+  /**
+   * Access token
+   */
+  string access_token = 1;
+
+  /** 
+   * Trading account number 
+   */
+  string account_number = 2;
+  /** 
+   * Security code with stock exchange 
+   */ 
+  SecurityWithStockExchange security_with_stockexchange = 3;
+  /**
+   * Order type. It should be relevant to the requested GetQuoteRequest 
+   */
+  OrderType order_type = 4;
+  /**
+   * Amount, It should be relevant to the requested GetQuoteRequest 
+   */ 
+  double amount = 5;
+  /**
+   * Limit 
+   */
+  double limit = 6;
+  /**
+   * Quote reference from GetQuoteRequest 
+   */
+  string quote_reference = 7;
+  
+  /**
+   * Validation flag. 
+   * If value is WITHOUT_VALIDATION then backend system sends order actions directly to the market. + 
+   * If value is VALIDATE_ONLY then backend system doesn't send order actions to the market, but validate order parameters. +
+   * If value is VALIDATE_WITH_TOTAL_COSTS then order will validated by backend system and request total costs for the order. +
+   * If value is VALIDATE_WITH_DETAIL_COSTS then order will validated by backend system and request detail costs for the order. +
+   */
+  Validation validation = 8;
+  /**
+   * Risk class override flag. If true then allowes override user risk class 
+   */ 
+  bool risk_class_override = 9;
+  /**
+   * Target market override flag. If true then allowes override target market 
+   */
+  bool target_market_override = 10;
+  /**
+   * Tax non trasparent override flag. If true then allowes override tax intransparesity 
+   */
+  bool tax_nontransparent_override = 11;
+  /**
+   * Accept additinal fees flag. If true then allowes accept non transparent fees 
+   */
+  bool accept_additional_fees = 12;
+}
+
+
+/**
+ * Quote request represents data to get information about actual quotes on the selected makets*/
+message QuoteRequest {
+  /**
+   * Access token
+   */
+  string access_token = 1;
+  
+  /**
+   * Security code 
+   */ 
+  SecurityCode security_code = 2;
+  /**
+   * Order type. Only BUY or SELL are allowed 
+   */
+  OrderType order_type = 3;
+  /**
+   * Amount of securities. Relevant to the short term markets 
+   */
+  double amount = 4;
+  /**
+   * List of stock exchanges 
+   */
+  repeated StockExchange stock_exchanges = 5;
+} 
+
+/**
+ * Quote reply represents data with quote answers from requested markets */ 
+message QuoteReply {
+  /** Security code */
+  SecurityCode security_code = 1;
+  /** Order type */
+  OrderType order_type = 2;
+  /** List of the quites */
+  repeated QuoteEntry price_entries = 3;
+
+  /**
+   * Error information if occuirs
+   */ 
+  Error error = 1000;
+} 
+
+/**
+ * Quote entry represents one answer with quote information from one stock exchange 
+ * This reply contains both buy and sell price. The quote reference can be used only with requested order type.
+ *  Second value is present only for information goals.
+ *
+ *       order type: BUY ->  quote reference for buy price and reference,
+ *                           sell price and reference are informative only 
+ *       order type: SELL -> quote reference for sell price and reference,
+ *                           buy price and reference are informative only
+ *
+ */  
+message QuoteEntry {
+  /** Stock exchange where infomation was requested */ 
+  StockExchange stock_exchange = 1;
+  /** Buy price */
+  double buy_price = 2;
+  /** Buy volume */
+  double buy_volume = 3;
+  /** Sell price */
+  double sell_price = 4;
+  /** Sell volume */
+  double sell_volume = 5;
+  /** Last price */
+  double last_price = 6;
+  /** Last volume */
+  double last_volume = 7;
+  /** Date and time of the last price */
+  Timestamp last_time = 8; 
+  /** Currency */
+  string currency = 9;
+  /** Quote reference. Used for the accept quite request. Can be empty if accept quote is not possible. */
+  string quote_reference = 10;  
+  /** Used by call order type */
+  OrderType order_type = 11;
+  
+  /**
+   * Error information if occuirs
+   */ 
+  Error error = 1000;
+}
+
+/**
+ * Orders represent pushed information about orders from one trading accounts */
+message Orders {
+  /** Trading account */
+  TradingAccount account = 1;
+  /** List of the orders */ 
+  repeated Order orders = 2;
+  /**
+   * Error information if occuirs
+   */   
+  Error error = 9000;
+}
