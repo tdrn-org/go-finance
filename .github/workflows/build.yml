@@ -29,8 +29,8 @@ jobs:
           check-latest: true
       - name: Install protoc-gen-go
         run: |
-          go get github.com/golang/protobuf/protoc-gen-go
-          go get google.golang.org/grpc/cmd/protoc-gen-go-grpc  
+          go install github.com/golang/protobuf/protoc-gen-go@latest
+          go install google.golang.org/grpc/cmd/protoc-gen-go-grpc@latest
       - name: Run Build
         run: make check
       - name: Run SonarQube
