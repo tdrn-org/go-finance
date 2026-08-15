@@ -77,10 +77,12 @@ func (api *API) QueryExchangeRate(ctx context.Context, base, quote finance.Curre
 		return nil, err
 	}
 	exchangeRate := &finance.ExchangeRate{
-		Date:  time.Unix(response.Timestamp, 0),
-		Base:  base,
-		Quote: quote,
-		Rate:  response.Rate,
+		Timestamp:       time.Unix(response.Timestamp, 0),
+		Base:            base,
+		Quote:           quote,
+		Rate:            response.Rate,
+		Source:          Name,
+		SourceTimestamp: time.Now(),
 	}
 	return exchangeRate, nil
 }

@@ -220,10 +220,12 @@ const (
 )
 
 type ExchangeRate struct {
-	Date  time.Time
-	Base  Currency
-	Quote Currency
-	Rate  float64
+	Timestamp       time.Time
+	Base            Currency
+	Quote           Currency
+	Rate            float64
+	Source          string
+	SourceTimestamp time.Time
 }
 
 type FX interface {

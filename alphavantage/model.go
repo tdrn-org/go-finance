@@ -61,7 +61,7 @@ type currencyExchangeRateResponse struct {
 }
 
 func (r *currencyExchangeRateResponse) ToExchangeRate() (*finance.ExchangeRate, error) {
-	date, err := time.Parse(time.DateTime, r.RealtimeRate.LastRefreshed)
+	timestamp, err := time.Parse(time.DateTime, r.RealtimeRate.LastRefreshed)
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse exchange rate date '%s' (cause: %w)", r.RealtimeRate.LastRefreshed, err)
 	}
@@ -70,10 +70,12 @@ func (r *currencyExchangeRateResponse) ToExchangeRate() (*finance.ExchangeRate, 
 		return nil, fmt.Errorf("failed to parse exchange rate '%s' (cause: %w)", r.RealtimeRate.ExchangeRate, err)
 	}
 	exchangeRate := &finance.ExchangeRate{
-		Date:  date,
-		Base:  finance.Currency(r.RealtimeRate.FromCurrencyCode),
-		Quote: finance.Currency(r.RealtimeRate.ToCurrencyCode),
-		Rate:  rate,
+		Timestamp:       timestamp,
+		Base:            finance.Currency(r.RealtimeRate.FromCurrencyCode),
+		Quote:           finance.Currency(r.RealtimeRate.ToCurrencyCode),
+		Rate:            rate,
+		Source:          Name,
+		SourceTimestamp: time.Now(),
 	}
 	return exchangeRate, nil
 }
