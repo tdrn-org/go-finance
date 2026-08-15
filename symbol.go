@@ -132,7 +132,8 @@ func IsWKN(s string) bool {
 		return false
 	}
 	for _, c := range s {
-		if (c < '0' && '9' < c && c < 'A' && 'Z' < c) || c == 'I' || c == 'O' {
+		isAlphanumeric := ('0' <= c && c <= '9') || ('A' <= c && c <= 'Z')
+		if !isAlphanumeric || c == 'I' || c == 'O' {
 			return false
 		}
 	}

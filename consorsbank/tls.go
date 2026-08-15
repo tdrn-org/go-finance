@@ -24,22 +24,25 @@ import (
 	"os"
 )
 
-const skipVerify bool = true
-
-func TLSSkipVerifiy() *tls.Config {
+// TLSSkipVerify returns a TLS configuration that disables certificate
+// verification entirely. It is intended only for endpoints whose identity
+// cannot be pinned (e.g. an ephemeral self-signed certificate).
+func TLSSkipVerify() *tls.Config {
 	return &tls.Config{
-		InsecureSkipVerify: skipVerify,
+		InsecureSkipVerify: true, // #nosec G402 -- intentionally insecure, see doc comment
 	}
 }
 
-func TLSVerifyRoot(file string) (*tls.Config, error) {
-	return nil, nil
-}
-
+// TLSRootFromPEM returns a TLS configuration that pins the connection to the
+// single certificate provided in PEM format.
+//
+// InsecureSkipVerify is enabled so that the self-signed peer certificate is
+// validated by VerifyPeerCertificate instead of the standard PKI chain (which
+// would reject it as an unknown authority before the callback ever runs).
 func TLSRootFromPEM(data []byte) (*tls.Config, error) {
 	block, rest := pem.Decode(data)
 	if block == nil || block.Type != "CERTIFICATE" || len(rest) > 0 {
-		return nil, fmt.Errorf("invald certificate data")
+		return nil, fmt.Errorf("invalid certificate data")
 	}
 	root, err := x509.ParseCertificate(block.Bytes)
 	if err != nil {
@@ -47,12 +50,11 @@ func TLSRootFromPEM(data []byte) (*tls.Config, error) {
 	}
 	roots := x509.NewCertPool()
 	roots.AddCert(root)
-	tlsConfig := &tls.Config{
-		InsecureSkipVerify: skipVerify,
+	return &tls.Config{
+		InsecureSkipVerify: true, // #nosec G402 -- self-signed cert is pinned via VerifyPeerCertificate below
 		VerifyPeerCertificate: func(rawCerts [][]byte, verifiedChains [][]*x509.Certificate) error {
-			rawCertsLen := len(rawCerts)
-			if rawCertsLen != 1 {
-				return fmt.Errorf("unexpected raw certificate count %d", rawCertsLen)
+			if len(rawCerts) != 1 {
+				return fmt.Errorf("unexpected raw certificate count %d", len(rawCerts))
 			}
 			peerCert, err := x509.ParseCertificate(rawCerts[0])
 			if err != nil {
@@ -61,14 +63,12 @@ func TLSRootFromPEM(data []byte) (*tls.Config, error) {
 			verifyOpts := &x509.VerifyOptions{
 				Roots: roots,
 			}
-			_, err = peerCert.Verify(*verifyOpts)
-			if err != nil {
-				return fmt.Errorf("failed to verifiy peer certificate (cause: %w)", err)
+			if _, err := peerCert.Verify(*verifyOpts); err != nil {
+				return fmt.Errorf("failed to verify peer certificate (cause: %w)", err)
 			}
 			return nil
 		},
-	}
-	return tlsConfig, nil
+	}, nil
 }
 
 func TLSRootFromFile(file string) (*tls.Config, error) {

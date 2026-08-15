@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-// Package finance provides financial services backed up by a plugable
+// Package finance provides financial services backed up by a pluggable
 // provider system.
 package finance
 
