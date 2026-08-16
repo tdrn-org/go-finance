@@ -24,7 +24,8 @@ import (
 )
 
 var (
-	ErrSymbolNotAvailable error = errors.New("symbol not available")
+	ErrSymbolNotAvailable     error = errors.New("symbol not available")
+	ErrSymbolSearchRestricted error = errors.New("symbol search restricted")
 )
 
 // SecurityType classifies a financial instrument.
@@ -194,5 +195,7 @@ type SymbolResolver interface {
 	APIProvider
 
 	// SearchSymbol looks up symbols matching the given free-text query (name, ticker, ISIN, WKN, etc.).
+	// Providers may restrict search to specific code types (e.g. ISIN/WKN only); such providers return
+	// ErrSymbolSearchRestricted when the query contains no code they can resolve.
 	SearchSymbol(ctx context.Context, query string) (Symbols, error)
 }

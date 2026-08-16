@@ -126,18 +126,19 @@ func (api *API) startExchangeRateSubscriptionLocked(ctx context.Context, base, q
 	if err != nil {
 		return err
 	}
+	subscriptionKey := fmt.Sprintf("%s/%s", base, quote)
+	subscriptionCtx, subscriptionCancel := context.WithCancel(context.Background())
 	securityService := session.SecurityService()
-	client, err := securityService.StreamCurrencyRate(ctx, &proto.CurrencyRateRequest{
+	client, err := securityService.StreamCurrencyRate(subscriptionCtx, &proto.CurrencyRateRequest{
 		AccessToken:  session.AccessToken,
 		CurrencyFrom: string(base),
 		CurrencyTo:   string(quote),
 	})
 	if err != nil {
+		subscriptionCancel()
 		api.invalidateSessionLocked()
 		return fmt.Errorf("failed to create exchange rate subscription (cause: %w)", err)
 	}
-	subscriptionKey := fmt.Sprintf("%s/%s", base, quote)
-	subscriptionCtx, subscriptionCancel := context.WithCancel(context.Background())
 	subscription := &exchangeRateSubscription{
 		client: client,
 		ctx:    subscriptionCtx,
@@ -160,7 +161,7 @@ func (api *API) SearchSymbol(ctx context.Context, query string) (finance.Symbols
 	securityService := session.SecurityService()
 	securityCodes := api.resolveSecurityCodes(query)
 	if len(securityCodes) == 0 {
-		return nil, finance.ErrSymbolNotAvailable
+		return nil, finance.ErrSymbolSearchRestricted
 	}
 	symbols := make(finance.Symbols, 0, len(securityCodes))
 	for _, securityCode := range securityCodes {
@@ -246,6 +247,7 @@ func (api *API) shutdownSessionLocked(ctx context.Context) error {
 	for _, exchangeRateSubscription := range api.exchangeRateSubscriptions {
 		exchangeRateSubscription.cancel()
 	}
+	api.stoppedWG.Wait()
 	accessService := proto.NewAccessServiceClient(api.session.grpcClient)
 	_, err := accessService.Logout(ctx, &proto.LogoutRequest{AccessToken: api.session.AccessToken})
 	if err != nil {
