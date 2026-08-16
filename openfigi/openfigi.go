@@ -115,6 +115,8 @@ func (api *API) checkHttpStatus(rsp *http.Response) error {
 	switch rsp.StatusCode {
 	case http.StatusOK:
 		return nil
+	case http.StatusTooManyRequests:
+		return finance.ErrRateLimitReached
 	default:
 		return fmt.Errorf("service failure (status: %d - %s)", rsp.StatusCode, rsp.Status)
 	}
