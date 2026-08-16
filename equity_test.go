@@ -33,6 +33,10 @@ func TestAlphaVantageEquityAPI(t *testing.T) {
 
 func TestConsorsbankEquityAPI(t *testing.T) {
 	api := newConsorsbankAPI(t)
+	defer func() {
+		api.Shutdown(t.Context())
+		api.Close()
+	}()
 
 	testEquityAP(t, api)
 }
