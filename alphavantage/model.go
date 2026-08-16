@@ -157,6 +157,10 @@ func (r *globalQuoteResponse) ToQuote(symbol *finance.Symbol, currency string) (
 	if err != nil {
 		return nil, err
 	}
+	previousClose, err := stringToFloat64(r.GlobalQuote.PreviousClose, "previous close")
+	if err != nil {
+		return nil, err
+	}
 	volume, err := stringToInt64(r.GlobalQuote.Volume, "volume")
 	if err != nil {
 		return nil, err
@@ -167,7 +171,7 @@ func (r *globalQuoteResponse) ToQuote(symbol *finance.Symbol, currency string) (
 		Open:            open,
 		High:            high,
 		Low:             low,
-		Close:           price,
+		Close:           previousClose,
 		Price:           price,
 		Volume:          volume,
 		Currency:        finance.Currency(currency),

@@ -99,7 +99,7 @@ func securityMarketDataReplyToQuote(symbol *finance.Symbol, reply *proto.Securit
 		Open:            reply.OpenPrice,
 		High:            reply.HighPrice,
 		Low:             reply.LowPrice,
-		Close:           reply.LastPrice,
+		Close:           reply.PreviousPrice,
 		Price:           reply.LastPrice,
 		Volume:          int64(reply.TodayVolume),
 		Currency:        finance.Currency(reply.Currency),
