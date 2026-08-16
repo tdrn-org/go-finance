@@ -41,7 +41,7 @@ func (rate *rateResponse) ToExchangeRate() (*finance.ExchangeRate, error) {
 		Quote:           rate.Quote,
 		Rate:            rate.Rate,
 		Source:          Name,
-		SourceTimestamp: time.Now(),
+		SourceTimestamp: time.Now().UTC(),
 	}
 	return exchangeRate, nil
 }

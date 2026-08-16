@@ -28,7 +28,7 @@ func currencyRateReplyToExchangeRate(reply *proto.CurrencyRateReply) *finance.Ex
 	if reply == nil {
 		return nil
 	}
-	now := time.Now()
+	now := time.Now().UTC()
 	return &finance.ExchangeRate{
 		Timestamp:       now,
 		Base:            finance.Currency(reply.CurrencyFrom),
@@ -88,10 +88,10 @@ func securityMarketDataReplyToQuote(symbol *finance.Symbol, reply *proto.Securit
 	if reply == nil {
 		return nil
 	}
-	now := time.Now()
-	timestamp := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, now.Location())
+	now := time.Now().UTC()
+	timestamp := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, time.UTC)
 	if reply.LastDateTime != nil {
-		timestamp = time.Unix(reply.LastDateTime.Seconds, int64(reply.LastDateTime.Nanos))
+		timestamp = time.Unix(reply.LastDateTime.Seconds, int64(reply.LastDateTime.Nanos)).UTC()
 	}
 	return &finance.Quote{
 		Symbol:          *symbol,

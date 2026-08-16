@@ -35,12 +35,12 @@ func exchangeRateResponseToExchangeRate(response *twelvedata.GetExchangeRate200R
 		return nil, fmt.Errorf("unexepcted exchange rate symbol '%s'", response.Symbol)
 	}
 	exchangeRate := &finance.ExchangeRate{
-		Timestamp:       time.Unix(response.Timestamp, 0),
+		Timestamp:       time.Unix(response.Timestamp, 0).UTC(),
 		Base:            finance.Currency(baseAndQuote[0]),
 		Quote:           finance.Currency(baseAndQuote[1]),
 		Rate:            response.Rate,
 		Source:          Name,
-		SourceTimestamp: time.Now(),
+		SourceTimestamp: time.Now().UTC(),
 	}
 	return exchangeRate, nil
 }
@@ -68,9 +68,9 @@ func quoteResponseToQuote(symbol *finance.Symbol, response *twelvedata.GetQuote2
 	if response == nil {
 		return nil, nil
 	}
-	timestamp := time.Unix(response.Timestamp, 0)
+	timestamp := time.Unix(response.Timestamp, 0).UTC()
 	if response.LastQuoteAt != nil {
-		timestamp = time.Unix(*response.LastQuoteAt, 0)
+		timestamp = time.Unix(*response.LastQuoteAt, 0).UTC()
 	}
 	open, err := stringToFloat64(response.Open, "open")
 	if err != nil {
@@ -109,7 +109,7 @@ func quoteResponseToQuote(symbol *finance.Symbol, response *twelvedata.GetQuote2
 		Volume:          volume,
 		Currency:        finance.Currency(*response.Currency),
 		Source:          Name,
-		SourceTimestamp: time.Now(),
+		SourceTimestamp: time.Now().UTC(),
 	}
 	return quote, nil
 }

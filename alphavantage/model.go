@@ -74,7 +74,7 @@ func (r *currencyExchangeRateResponse) ToExchangeRate() (*finance.ExchangeRate, 
 		Quote:           finance.Currency(r.RealtimeRate.ToCurrencyCode),
 		Rate:            rate,
 		Source:          Name,
-		SourceTimestamp: time.Now(),
+		SourceTimestamp: time.Now().UTC(),
 	}
 	return exchangeRate, nil
 }
@@ -172,7 +172,7 @@ func (r *globalQuoteResponse) ToQuote(symbol *finance.Symbol, currency string) (
 		Volume:          volume,
 		Currency:        finance.Currency(currency),
 		Source:          Name,
-		SourceTimestamp: time.Now(),
+		SourceTimestamp: time.Now().UTC(),
 	}
 	return quote, nil
 }
