@@ -24,7 +24,7 @@ import (
 )
 
 var (
-	ErrSymbolNotAvailable error = errors.New("not available")
+	ErrSymbolNotAvailable error = errors.New("symbol not available")
 )
 
 // SecurityType classifies a financial instrument.

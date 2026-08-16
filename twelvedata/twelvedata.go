@@ -21,7 +21,6 @@ import (
 	"fmt"
 	"log/slog"
 	"net/http"
-	"time"
 
 	"github.com/tdrn-org/go-finance"
 	"github.com/twelvedata/twelvedata-go/twelvedata"
@@ -76,15 +75,7 @@ func (api *API) QueryExchangeRate(ctx context.Context, base, quote finance.Curre
 	if err != nil {
 		return nil, err
 	}
-	exchangeRate := &finance.ExchangeRate{
-		Timestamp:       time.Unix(response.Timestamp, 0),
-		Base:            base,
-		Quote:           quote,
-		Rate:            response.Rate,
-		Source:          Name,
-		SourceTimestamp: time.Now(),
-	}
-	return exchangeRate, nil
+	return exchangeRateResponseToExchangeRate(response)
 }
 
 var instrumentTypeMap map[string]string = map[string]string{
@@ -103,19 +94,26 @@ func (api *API) SearchSymbol(ctx context.Context, query string) (finance.Symbols
 	if err != nil {
 		return nil, err
 	}
-	if len(response.Data) == 0 {
-		return nil, finance.ErrSymbolNotAvailable
+	return symbolSearchResponseToSymbols(response)
+}
+
+func (api *API) QueryQuote(ctx context.Context, symbol finance.Symbol) (*finance.Quote, error) {
+	if !symbol.HasTicker() {
+		return nil, finance.ErrQuoteNotAvailable
 	}
-	symbols := make(finance.Symbols, 0, len(response.Data))
-	for _, responseItem := range response.Data {
-		symbols = append(symbols, finance.Symbol{
-			Ticker:   responseItem.Symbol,
-			Exchange: responseItem.MicCode,
-			Name:     responseItem.InstrumentName,
-			Type:     finance.MapSecurityType(responseItem.InstrumentType, instrumentTypeMap),
-		})
+	response, rsp, err := api.client.MarketDataAPI.
+		GetQuote(ctx).
+		Symbol(symbol.Ticker).
+		MicCode(symbol.Exchange).
+		Execute()
+	if err != nil {
+		return nil, fmt.Errorf("query quote failure (cause: %w)", err)
 	}
-	return symbols, nil
+	err = api.checkHttpStatus(rsp)
+	if err != nil {
+		return nil, err
+	}
+	return quoteResponseToQuote(&symbol, response)
 }
 
 func (api *API) checkHttpStatus(rsp *http.Response) error {

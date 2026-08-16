@@ -18,19 +18,27 @@ package finance
 
 import (
 	"context"
+	"errors"
 	"time"
+)
+
+var (
+	ErrQuoteNotAvailable error = errors.New("quote not available")
 )
 
 // Quote represents a single price data point for a financial instrument.
 type Quote struct {
-	Symbol   Symbol
-	Date     time.Time
-	Open     float64
-	High     float64
-	Low      float64
-	Close    float64
-	Volume   int64
-	Currency Currency
+	Symbol          Symbol
+	Timestamp       time.Time
+	Open            float64
+	High            float64
+	Low             float64
+	Close           float64
+	Price           float64
+	Volume          int64
+	Currency        Currency
+	Source          string
+	SourceTimestamp time.Time
 }
 
 // Equity provides quote data for equities, ETFs, and similar instruments.
@@ -38,10 +46,7 @@ type Equity interface {
 	APIProvider
 
 	// QueryQuote returns the latest quote for a symbol.
-	// Returns ErrNotAvailable if the provider cannot handle the given symbol
+	// Returns ErrQuoteNotAvailable if the provider cannot handle the given symbol
 	// (e.g. because it requires a ticker but none was provided).
 	QueryQuote(ctx context.Context, symbol Symbol) (*Quote, error)
-
-	// QueryHistory returns historical quotes in the given date range.
-	QueryHistory(ctx context.Context, symbol Symbol, from, to time.Time) ([]Quote, error)
 }

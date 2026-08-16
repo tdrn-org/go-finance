@@ -18,7 +18,6 @@ package alphavantage
 
 import (
 	"fmt"
-	"strconv"
 	"time"
 
 	"github.com/tdrn-org/go-finance"
@@ -61,13 +60,13 @@ type currencyExchangeRateResponse struct {
 }
 
 func (r *currencyExchangeRateResponse) ToExchangeRate() (*finance.ExchangeRate, error) {
-	timestamp, err := time.Parse(time.DateTime, r.RealtimeRate.LastRefreshed)
+	timestamp, err := stringToTimestamp(r.RealtimeRate.LastRefreshed, "exchange rate data")
 	if err != nil {
-		return nil, fmt.Errorf("failed to parse exchange rate date '%s' (cause: %w)", r.RealtimeRate.LastRefreshed, err)
+		return nil, err
 	}
-	rate, err := strconv.ParseFloat(r.RealtimeRate.ExchangeRate, 64)
+	rate, err := stringToFloat64(r.RealtimeRate.ExchangeRate, "exchange rate")
 	if err != nil {
-		return nil, fmt.Errorf("failed to parse exchange rate '%s' (cause: %w)", r.RealtimeRate.ExchangeRate, err)
+		return nil, err
 	}
 	exchangeRate := &finance.ExchangeRate{
 		Timestamp:       timestamp,
@@ -100,9 +99,9 @@ type symbolSearchResponse struct {
 func (r *symbolSearchResponse) ToMatchingSymbols(minScore float64) (finance.Symbols, error) {
 	symbols := make(finance.Symbols, 0, len(r.BestMatches))
 	for _, bestMatch := range r.BestMatches {
-		matchScore, err := strconv.ParseFloat(bestMatch.MatchScore, 64)
+		matchScore, err := stringToFloat64(bestMatch.MatchScore, "match score")
 		if err != nil {
-			return nil, fmt.Errorf("failed to parse match store '%s' (cause: %w)", bestMatch.MatchScore, err)
+			return nil, err
 		}
 		if matchScore < minScore {
 			continue
@@ -117,4 +116,121 @@ func (r *symbolSearchResponse) ToMatchingSymbols(minScore float64) (finance.Symb
 		return nil, finance.ErrSymbolNotAvailable
 	}
 	return symbols, nil
+}
+
+type quoteResponse struct {
+	Symbol           string `json:"01. symbol"`
+	Open             string `json:"02. open"`
+	High             string `json:"03. high"`
+	Low              string `json:"04. low"`
+	Price            string `json:"05. price"`
+	Volume           string `json:"06. volume"`
+	LatestTradingDay string `json:"07. latest trading day"`
+	PreviousClose    string `json:"08. previous close"`
+	Change           string `json:"09. change"`
+	ChangePercent    string `json:"10. change percent"`
+}
+
+type globalQuoteResponse struct {
+	statusResponse
+	GlobalQuote quoteResponse `json:"Global Quote"`
+}
+
+func (r *globalQuoteResponse) ToQuote(symbol *finance.Symbol, currency string) (*finance.Quote, error) {
+	timestamp, err := stringToTimestamp(r.GlobalQuote.LatestTradingDay, "latest trading day")
+	if err != nil {
+		return nil, err
+	}
+	open, err := stringToFloat64(r.GlobalQuote.Open, "open")
+	if err != nil {
+		return nil, err
+	}
+	high, err := stringToFloat64(r.GlobalQuote.High, "high")
+	if err != nil {
+		return nil, err
+	}
+	low, err := stringToFloat64(r.GlobalQuote.Low, "low")
+	if err != nil {
+		return nil, err
+	}
+	price, err := stringToFloat64(r.GlobalQuote.Price, "price")
+	if err != nil {
+		return nil, err
+	}
+	volume, err := stringToInt64(r.GlobalQuote.Volume, "volume")
+	if err != nil {
+		return nil, err
+	}
+	quote := &finance.Quote{
+		Symbol:          *symbol,
+		Timestamp:       timestamp,
+		Open:            open,
+		High:            high,
+		Low:             low,
+		Close:           price,
+		Price:           price,
+		Volume:          volume,
+		Currency:        finance.Currency(currency),
+		Source:          Name,
+		SourceTimestamp: time.Now(),
+	}
+	return quote, nil
+}
+
+type overviewResponse struct {
+	Symbol                     string `json:"Symbol"`
+	AssetType                  string `json:"AssetType"`
+	Name                       string `json:"Name"`
+	Description                string `json:"Description"`
+	CIK                        string `json:"CIK"`
+	Exchange                   string `json:"Exchange"`
+	Currency                   string `json:"Currency"`
+	Country                    string `json:"Country"`
+	Sector                     string `json:"Sector"`
+	Industry                   string `json:"Industry"`
+	Address                    string `json:"Address"`
+	OfficialSite               string `json:"OfficialSite"`
+	FiscalYearEnd              string `json:"FiscalYearEnd"`
+	LatestQuarter              string `json:"LatestQuarter"`
+	MarketCapitalization       string `json:"MarketCapitalization"`
+	EBITDA                     string `json:"EBITDA"`
+	PERatio                    string `json:"PERatio"`
+	PEGRatio                   string `json:"PEGRatio"`
+	BookValue                  string `json:"BookValue"`
+	DividendPerShare           string `json:"DividendPerShare"`
+	DividendYield              string `json:"DividendYield"`
+	EPS                        string `json:"EPS"`
+	RevenuePerShareTTM         string `json:"RevenuePerShareTTM"`
+	ProfitMargin               string `json:"ProfitMargin"`
+	OperatingMarginTTM         string `json:"OperatingMarginTTM"`
+	ReturnOnAssetsTTM          string `json:"ReturnOnAssetsTTM"`
+	ReturnOnEquityTTM          string `json:"ReturnOnEquityTTM"`
+	RevenueTTM                 string `json:"RevenueTTM"`
+	GrossProfitTTM             string `json:"GrossProfitTTM"`
+	DilutedEPSTTM              string `json:"DilutedEPSTTM"`
+	QuarterlyEarningsGrowthYOY string `json:"QuarterlyEarningsGrowthYOY"`
+	QuarterlyRevenueGrowthYOY  string `json:"QuarterlyRevenueGrowthYOY"`
+	AnalystTargetPrice         string `json:"AnalystTargetPrice"`
+	AnalystRatingStrongBuy     string `json:"AnalystRatingStrongBuy"`
+	AnalystRatingBuy           string `json:"AnalystRatingBuy"`
+	AnalystRatingHold          string `json:"AnalystRatingHold"`
+	AnalystRatingSell          string `json:"AnalystRatingSell"`
+	AnalystRatingStrongSell    string `json:"AnalystRatingStrongSell"`
+	TrailingPE                 string `json:"TrailingPE"`
+	ForwardPE                  string `json:"ForwardPE"`
+	PriceToSalesRatioTTM       string `json:"PriceToSalesRatioTTM"`
+	PriceToBookRatio           string `json:"PriceToBookRatio"`
+	EVToRevenue                string `json:"EVToRevenue"`
+	EVToEBITDA                 string `json:"EVToEBITDA"`
+	Beta                       string `json:"Beta"`
+	Week52High                 string `json:"52WeekHigh"`
+	Week52Low                  string `json:"52WeekLow"`
+	Day50MovingAverage         string `json:"50DayMovingAverage"`
+	Day200MovingAverage        string `json:"200DayMovingAverage"`
+	SharesOutstanding          string `json:"SharesOutstanding"`
+	SharesFloat                string `json:"SharesFloat"`
+	PercentInsiders            string `json:"PercentInsiders"`
+	PercentInstitutions        string `json:"PercentInstitutions"`
+	DividendDate               string `json:"DividendDate"`
+	ExDividendDate             string `json:"ExDividendDate"`
 }
