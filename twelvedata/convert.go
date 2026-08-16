@@ -88,6 +88,10 @@ func quoteResponseToQuote(symbol *finance.Symbol, response *twelvedata.GetQuote2
 	if err != nil {
 		return nil, err
 	}
+	previousClose, err := stringToFloat64(response.PreviousClose, "previous close")
+	if err != nil {
+		return nil, err
+	}
 	var volume int64
 	if response.Volume != nil {
 		volume, err = stringToInt64(*response.Volume, "volume")
@@ -104,7 +108,7 @@ func quoteResponseToQuote(symbol *finance.Symbol, response *twelvedata.GetQuote2
 		Open:            open,
 		High:            high,
 		Low:             low,
-		Close:           close,
+		Close:           previousClose,
 		Price:           close,
 		Volume:          volume,
 		Currency:        finance.Currency(*response.Currency),
