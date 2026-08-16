@@ -2,6 +2,8 @@ MAKEFLAGS += --no-print-directory
 
 GOBIN ?= $(shell go env GOPATH)/bin
 
+export PATH := $(GOBIN):$(PATH)
+
 .DEFAULT_GOAL := check
 
 .PHONE: deps
