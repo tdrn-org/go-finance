@@ -18,16 +18,36 @@ package consorsbank
 
 import (
 	"strings"
+	"time"
 
 	"github.com/tdrn-org/go-finance"
 	"github.com/tdrn-org/go-finance/consorsbank/proto"
 )
 
+func currencyRateReplyToExchangeRate(reply *proto.CurrencyRateReply) *finance.ExchangeRate {
+	if reply == nil {
+		return nil
+	}
+	now := time.Now()
+	return &finance.ExchangeRate{
+		Timestamp:       now,
+		Base:            finance.Currency(reply.CurrencyFrom),
+		Quote:           finance.Currency(reply.CurrencyTo),
+		Rate:            reply.CurrencyRate,
+		Source:          Name,
+		SourceTimestamp: now,
+	}
+
+}
+
 // securityInfoToSymbol assembles a composite finance.Symbol from a TAPI
 // SecurityInfoReply. The reply carries the individual identifiers of a single
 // security (ISIN, WKN, domestic and US mnemonics) as separate code entries.
-func securityInfoToSymbol(reply *proto.SecurityInfoReply) finance.Symbol {
-	symbol := finance.Symbol{
+func securityInfoToSymbol(reply *proto.SecurityInfoReply) *finance.Symbol {
+	if reply == nil {
+		return nil
+	}
+	symbol := &finance.Symbol{
 		Name: reply.GetName(),
 		Type: securityClassToSecurityType(reply.GetSecurityClass()),
 	}

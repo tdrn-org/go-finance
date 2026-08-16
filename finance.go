@@ -22,6 +22,7 @@ import "errors"
 
 var (
 	ErrRateLimitReached error = errors.New("rate limit reached")
+	ErrRequestPending   error = errors.New("request pending")
 )
 
 type APIProvider interface {

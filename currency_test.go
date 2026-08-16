@@ -17,7 +17,9 @@
 package finance_test
 
 import (
+	"errors"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/require"
 	"github.com/tdrn-org/go-finance"
@@ -25,6 +27,12 @@ import (
 
 func TestAlphaVantageCurrencyAPI(t *testing.T) {
 	api := newAlphaVantageAPI(t)
+
+	testCurrencyAPI(t, api)
+}
+
+func TestConsorsbankCurrencyAPI(t *testing.T) {
+	api := newConsorsbankAPI(t)
 
 	testCurrencyAPI(t, api)
 }
@@ -43,9 +51,21 @@ func TestTwelveDataCurrencyAPI(t *testing.T) {
 
 func testCurrencyAPI(t *testing.T, api finance.FX) {
 	t.Log("provider", api.ProviderName())
-	exchangeRate, err := api.QueryExchangeRate(t.Context(), finance.CurrencyUSD, finance.CurrencyEUR)
-	require.NoError(t, err)
-	require.Equal(t, finance.CurrencyUSD, exchangeRate.Base)
-	require.Equal(t, finance.CurrencyEUR, exchangeRate.Quote)
-	require.NotZero(t, exchangeRate.Rate)
+	retries := 3
+	retrySleep := 500 * time.Millisecond
+	for {
+		exchangeRate, err := api.QueryExchangeRate(t.Context(), finance.CurrencyUSD, finance.CurrencyEUR)
+		if errors.Is(err, finance.ErrRequestPending) {
+			retries--
+			if retries > 0 {
+				time.Sleep(retrySleep)
+				continue
+			}
+		}
+		require.NoError(t, err)
+		require.Equal(t, finance.CurrencyUSD, exchangeRate.Base)
+		require.Equal(t, finance.CurrencyEUR, exchangeRate.Quote)
+		require.NotZero(t, exchangeRate.Rate)
+		return
+	}
 }
