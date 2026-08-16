@@ -17,7 +17,9 @@
 package finance_test
 
 import (
+	"errors"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/require"
 	"github.com/tdrn-org/go-finance"
@@ -29,6 +31,12 @@ func TestAlphaVantageEquityAPI(t *testing.T) {
 	testEquityAP(t, api)
 }
 
+func TestConsorsbankEquityAPI(t *testing.T) {
+	api := newConsorsbankAPI(t)
+
+	testEquityAP(t, api)
+}
+
 func TestTwelveDataEquityAPI(t *testing.T) {
 	api := newTwelveDataAPI(t)
 
@@ -36,13 +44,26 @@ func TestTwelveDataEquityAPI(t *testing.T) {
 }
 
 func testEquityAP(t *testing.T, api finance.Equity) {
+	t.Log("provider", api.ProviderName())
 	symbol := finance.Symbol{
 		Ticker: "AAPL",
 		ISIN:   "US0378331005",
 		WKN:    "865985",
 		FIGI:   "BBG000B9XRY4",
 	}
-	quote, err := api.QueryQuote(t.Context(), symbol)
-	require.NoError(t, err)
-	require.NotNil(t, quote)
+	retries := 3
+	retrySleep := 500 * time.Millisecond
+	for {
+		quote, err := api.QueryQuote(t.Context(), symbol)
+		if errors.Is(err, finance.ErrRequestPending) {
+			retries--
+			if retries > 0 {
+				time.Sleep(retrySleep)
+				continue
+			}
+		}
+		require.NoError(t, err)
+		require.NotNil(t, quote)
+		return
+	}
 }

@@ -40,7 +40,8 @@ type API struct {
 	tlsConfig                 *tls.Config
 	secret                    string
 	session                   *apiSession
-	exchangeRateSubscriptions map[string]*exchangeRateSubscription
+	exchangeRateSubscriptions map[string]*streamSubscription[proto.CurrencyRateReply, finance.ExchangeRate]
+	quoteSubscriptions        map[string]*streamSubscription[proto.SecurityMarketDataReply, finance.Quote]
 	logger                    *slog.Logger
 	mutex                     sync.Mutex
 	stoppedWG                 sync.WaitGroup
@@ -73,7 +74,8 @@ func NewAPI(config Config) (*API, error) {
 		address:                   address,
 		tlsConfig:                 tlsConfig,
 		secret:                    secret,
-		exchangeRateSubscriptions: make(map[string]*exchangeRateSubscription),
+		exchangeRateSubscriptions: make(map[string]*streamSubscription[proto.CurrencyRateReply, finance.ExchangeRate]),
+		quoteSubscriptions:        make(map[string]*streamSubscription[proto.SecurityMarketDataReply, finance.Quote]),
 		logger:                    logger,
 	}
 	return api, nil
@@ -83,7 +85,7 @@ func (api *API) Shutdown(ctx context.Context) error {
 	api.mutex.Lock()
 	defer api.mutex.Unlock()
 
-	return api.shutdownSessionLocked(ctx)
+	return errors.Join(api.shutdownSessionLocked(ctx), api.closeSessionLocked())
 }
 
 func (api *API) Close() error {
@@ -103,16 +105,16 @@ func (api *API) QueryExchangeRate(ctx context.Context, base, quote finance.Curre
 
 	subscription := api.getExchangeRateSubscriptionLocked(base, quote)
 	if subscription == nil {
-		err := api.startExchangeRateSubscriptionLocked(ctx, base, quote)
+		var err error
+		subscription, err = api.startExchangeRateSubscriptionLocked(ctx, base, quote)
 		if err != nil {
 			return nil, err
 		}
-		return nil, finance.ErrRequestPending
 	}
 	return subscription.LastReply()
 }
 
-func (api *API) getExchangeRateSubscriptionLocked(base, quote finance.Currency) *exchangeRateSubscription {
+func (api *API) getExchangeRateSubscriptionLocked(base, quote finance.Currency) *streamSubscription[proto.CurrencyRateReply, finance.ExchangeRate] {
 	subscriptionKey := fmt.Sprintf("%s/%s", base, quote)
 	subscription := api.exchangeRateSubscriptions[subscriptionKey]
 	if subscription.IsClosed() {
@@ -121,14 +123,14 @@ func (api *API) getExchangeRateSubscriptionLocked(base, quote finance.Currency) 
 	return subscription
 }
 
-func (api *API) startExchangeRateSubscriptionLocked(ctx context.Context, base, quote finance.Currency) error {
+func (api *API) startExchangeRateSubscriptionLocked(ctx context.Context, base, quote finance.Currency) (*streamSubscription[proto.CurrencyRateReply, finance.ExchangeRate], error) {
 	session, err := api.getSessionLocked(ctx)
 	if err != nil {
-		return err
+		return nil, err
 	}
+	securityService := session.SecurityService()
 	subscriptionKey := fmt.Sprintf("%s/%s", base, quote)
 	subscriptionCtx, subscriptionCancel := context.WithCancel(context.Background())
-	securityService := session.SecurityService()
 	client, err := securityService.StreamCurrencyRate(subscriptionCtx, &proto.CurrencyRateRequest{
 		AccessToken:  session.AccessToken,
 		CurrencyFrom: string(base),
@@ -137,17 +139,18 @@ func (api *API) startExchangeRateSubscriptionLocked(ctx context.Context, base, q
 	if err != nil {
 		subscriptionCancel()
 		api.invalidateSessionLocked()
-		return fmt.Errorf("failed to create exchange rate subscription (cause: %w)", err)
+		return nil, fmt.Errorf("failed to create exchange rate subscription (cause: %w)", err)
 	}
-	subscription := &exchangeRateSubscription{
-		client: client,
-		ctx:    subscriptionCtx,
-		cancel: subscriptionCancel,
-		logger: api.logger.With(slog.String("exchangeRateSubscription", subscriptionKey)),
+	subscription := &streamSubscription[proto.CurrencyRateReply, finance.ExchangeRate]{
+		client:      client,
+		recordReply: recordCurrencyRateReply,
+		ctx:         subscriptionCtx,
+		cancel:      subscriptionCancel,
+		logger:      api.logger.With(slog.String("currencyRateSubscription", subscriptionKey)),
 	}
 	api.exchangeRateSubscriptions[subscriptionKey] = subscription
 	api.stoppedWG.Go(subscription.Run)
-	return nil
+	return subscription, nil
 }
 
 func (api *API) SearchSymbol(ctx context.Context, query string) (finance.Symbols, error) {
@@ -159,23 +162,15 @@ func (api *API) SearchSymbol(ctx context.Context, query string) (finance.Symbols
 		return nil, err
 	}
 	securityService := session.SecurityService()
-	securityCodes := api.resolveSecurityCodes(query)
-	if len(securityCodes) == 0 {
+	querySecurityCodes := api.resolveQuerySecurityCodes(query)
+	if len(querySecurityCodes) == 0 {
 		return nil, finance.ErrSymbolSearchRestricted
 	}
-	symbols := make(finance.Symbols, 0, len(securityCodes))
-	for _, securityCode := range securityCodes {
-		reply, err := securityService.GetSecurityInfo(ctx, &proto.SecurityInfoRequest{
-			AccessToken:  session.AccessToken,
-			SecurityCode: securityCode,
-		})
+	symbols := make(finance.Symbols, 0, len(querySecurityCodes))
+	for _, querySecurityCode := range querySecurityCodes {
+		reply, err := api.getSecurityInfo(ctx, session, securityService, querySecurityCode)
 		if err != nil {
-			api.invalidateSessionLocked()
-			return nil, fmt.Errorf("failed to query security info from Consorsbank TAPI (cause: %w)", err)
-		}
-		if tapiError := reply.GetError(); tapiError != nil {
-			return nil, fmt.Errorf("query security info error in Consorsbank TAPI call (code: %s, message: %s)",
-				tapiError.GetCode(), tapiError.GetMessage())
+			return nil, err
 		}
 		symbol := securityInfoToSymbol(reply)
 		if !symbol.IsEmpty() {
@@ -188,11 +183,7 @@ func (api *API) SearchSymbol(ctx context.Context, query string) (finance.Symbols
 	return symbols, nil
 }
 
-func (api *API) QueryQuote(ctx context.Context, symbol finance.Symbol) (*finance.Quote, error) {
-	return nil, nil
-}
-
-func (api *API) resolveSecurityCodes(query string) []*proto.SecurityCode {
+func (api *API) resolveQuerySecurityCodes(query string) []*proto.SecurityCode {
 	securityCodes := make([]*proto.SecurityCode, 0)
 	queryFields := strings.Fields(query)
 	for _, queryField := range queryFields {
@@ -209,6 +200,95 @@ func (api *API) resolveSecurityCodes(query string) []*proto.SecurityCode {
 		}
 	}
 	return securityCodes
+}
+
+func (api *API) getSecurityInfo(ctx context.Context, session *apiSession, securityService proto.SecurityServiceClient, securityCode *proto.SecurityCode) (*proto.SecurityInfoReply, error) {
+	reply, err := securityService.GetSecurityInfo(ctx, &proto.SecurityInfoRequest{
+		AccessToken:  session.AccessToken,
+		SecurityCode: securityCode,
+	})
+	if err != nil {
+		api.invalidateSessionLocked()
+		return nil, fmt.Errorf("failed to query security info from Consorsbank TAPI (cause: %w)", err)
+	}
+	if tapiError := reply.GetError(); tapiError != nil {
+		return nil, fmt.Errorf("query security info error in Consorsbank TAPI call (code: %s, message: %s)",
+			tapiError.GetCode(), tapiError.GetMessage())
+	}
+	return reply, nil
+}
+
+func (api *API) QueryQuote(ctx context.Context, symbol finance.Symbol) (*finance.Quote, error) {
+	if !symbol.HasISIN() {
+		return nil, finance.ErrQuoteNotAvailable
+	}
+
+	api.mutex.Lock()
+	defer api.mutex.Unlock()
+
+	subscription := api.getSecurityMarketDataSubscriptionLocked(&symbol)
+	if subscription == nil {
+		var err error
+		subscription, err = api.startSecurityMarketDataSubscriptionLocked(ctx, &symbol)
+		if err != nil {
+			return nil, err
+		}
+	}
+	return subscription.LastReply()
+}
+
+func (api *API) getSecurityMarketDataSubscriptionLocked(symbol *finance.Symbol) *streamSubscription[proto.SecurityMarketDataReply, finance.Quote] {
+	subscriptionKey := symbol.ISIN
+	subscription := api.quoteSubscriptions[subscriptionKey]
+	if subscription.IsClosed() {
+		return nil
+	}
+	return subscription
+}
+
+func (api *API) startSecurityMarketDataSubscriptionLocked(ctx context.Context, symbol *finance.Symbol) (*streamSubscription[proto.SecurityMarketDataReply, finance.Quote], error) {
+	session, err := api.getSessionLocked(ctx)
+	if err != nil {
+		return nil, err
+	}
+	securityService := session.SecurityService()
+	securityCode := &proto.SecurityCode{
+		Code:     symbol.ISIN,
+		CodeType: proto.SecurityCodeType_ISIN,
+	}
+	securityInfoReply, err := api.getSecurityInfo(ctx, session, securityService, securityCode)
+	if err != nil {
+		return nil, err
+	}
+	if len(securityInfoReply.StockExchangeInfos) == 0 {
+		return nil, fmt.Errorf("unable to determine stock exchange for quote query (symbol: %s)", securityCode.Code)
+	}
+	subscriptionKey := symbol.ISIN
+	subscriptionCtx, subscriptionCancel := context.WithCancel(context.Background())
+	client, err := securityService.StreamMarketData(subscriptionCtx, &proto.SecurityMarketDataRequest{
+		AccessToken: session.AccessToken,
+		SecurityWithStockexchange: &proto.SecurityWithStockExchange{
+			SecurityCode:  securityCode,
+			StockExchange: securityInfoReply.StockExchangeInfos[0].StockExchange,
+		},
+	})
+	if err != nil {
+		subscriptionCancel()
+		api.invalidateSessionLocked()
+		return nil, fmt.Errorf("failed to create security market data subscription (cause: %w)", err)
+	}
+	subscription := &streamSubscription[proto.SecurityMarketDataReply, finance.Quote]{
+		client: client,
+		recordReply: func(s *streamSubscription[proto.SecurityMarketDataReply, finance.Quote], reply *proto.SecurityMarketDataReply) {
+			recordSecurityMarketDataReply(s, symbol, reply)
+		},
+		ctx:    subscriptionCtx,
+		cancel: subscriptionCancel,
+		logger: api.logger.With(slog.String("securityMarketDataSubscription", subscriptionKey)),
+	}
+	api.quoteSubscriptions[subscriptionKey] = subscription
+	api.stoppedWG.Go(subscription.Run)
+	return subscription, nil
 }
 
 func (api *API) getSessionLocked(ctx context.Context) (*apiSession, error) {
@@ -244,8 +324,8 @@ func (api *API) shutdownSessionLocked(ctx context.Context) error {
 	if api.session == nil {
 		return nil
 	}
-	for _, exchangeRateSubscription := range api.exchangeRateSubscriptions {
-		exchangeRateSubscription.cancel()
+	for _, streamSubscription := range api.exchangeRateSubscriptions {
+		streamSubscription.cancel()
 	}
 	api.stoppedWG.Wait()
 	accessService := proto.NewAccessServiceClient(api.session.grpcClient)
@@ -268,17 +348,18 @@ func (api *API) closeSessionLocked() error {
 	return nil
 }
 
-type exchangeRateSubscription struct {
-	client    grpc.ServerStreamingClient[proto.CurrencyRateReply]
-	lastReply *finance.ExchangeRate
-	ctx       context.Context
-	cancel    context.CancelFunc
-	closed    bool
-	logger    *slog.Logger
-	mutex     sync.RWMutex
+type streamSubscription[R, T any] struct {
+	client      grpc.ServerStreamingClient[R]
+	lastReply   *T
+	recordReply func(*streamSubscription[R, T], *R)
+	ctx         context.Context
+	cancel      context.CancelFunc
+	closed      bool
+	logger      *slog.Logger
+	mutex       sync.RWMutex
 }
 
-func (s *exchangeRateSubscription) IsClosed() bool {
+func (s *streamSubscription[R, T]) IsClosed() bool {
 	if s == nil {
 		return true
 	}
@@ -289,14 +370,14 @@ func (s *exchangeRateSubscription) IsClosed() bool {
 	return s.closed
 }
 
-func (s *exchangeRateSubscription) markClosed() {
+func (s *streamSubscription[R, T]) markClosed() {
 	s.mutex.Lock()
 	defer s.mutex.Unlock()
 
 	s.closed = true
 }
 
-func (s *exchangeRateSubscription) Run() {
+func (s *streamSubscription[R, T]) Run() {
 	s.logger.Info("subscription running...")
 	for {
 		reply, err := s.client.Recv()
@@ -311,20 +392,11 @@ func (s *exchangeRateSubscription) Run() {
 			}
 			return
 		}
-		if reply.Error != nil {
-			s.logger.Debug("ignoring errornous reply", slog.Any("err", reply.Error))
-			continue
-		}
-		if reply.CurrencyFrom == "" || reply.CurrencyTo == "" || math.IsNaN(reply.CurrencyRate) {
-			s.logger.Debug("ignoring empty reply")
-			continue
-		}
-		s.logger.Info("recording reply")
-		s.recordReply(reply)
+		s.recordReply(s, reply)
 	}
 }
 
-func (s *exchangeRateSubscription) LastReply() (*finance.ExchangeRate, error) {
+func (s *streamSubscription[R, T]) LastReply() (*T, error) {
 	s.mutex.RLock()
 	defer s.mutex.RUnlock()
 
@@ -334,9 +406,32 @@ func (s *exchangeRateSubscription) LastReply() (*finance.ExchangeRate, error) {
 	return s.lastReply, nil
 }
 
-func (s *exchangeRateSubscription) recordReply(reply *proto.CurrencyRateReply) {
+func recordCurrencyRateReply(s *streamSubscription[proto.CurrencyRateReply, finance.ExchangeRate], reply *proto.CurrencyRateReply) {
+	if reply.Error != nil {
+		s.logger.Debug("ignoring errornous currency rate reply", slog.Any("err", reply.Error))
+		return
+	}
+	if reply.CurrencyFrom == "" || reply.CurrencyTo == "" || math.IsNaN(reply.CurrencyRate) {
+		s.logger.Debug("ignoring empty currency rate reply")
+		return
+	}
+
 	s.mutex.Lock()
 	defer s.mutex.Unlock()
 
+	s.logger.Info("recording currency rate reply")
 	s.lastReply = currencyRateReplyToExchangeRate(reply)
+}
+
+func recordSecurityMarketDataReply(s *streamSubscription[proto.SecurityMarketDataReply, finance.Quote], symbol *finance.Symbol, reply *proto.SecurityMarketDataReply) {
+	if reply.Error != nil {
+		s.logger.Debug("ignoring errornous market data reply", slog.Any("err", reply.Error))
+		return
+	}
+
+	s.mutex.Lock()
+	defer s.mutex.Unlock()
+
+	s.logger.Info("recording security market data reply")
+	s.lastReply = securityMarketDataReplyToQuote(symbol, reply)
 }

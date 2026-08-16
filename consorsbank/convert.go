@@ -37,7 +37,6 @@ func currencyRateReplyToExchangeRate(reply *proto.CurrencyRateReply) *finance.Ex
 		Source:          Name,
 		SourceTimestamp: now,
 	}
-
 }
 
 // securityInfoToSymbol assembles a composite finance.Symbol from a TAPI
@@ -82,5 +81,29 @@ func securityClassToSecurityType(securityClass proto.SecurityClass) finance.Secu
 		return finance.SecurityTypeETF
 	default:
 		return finance.SecurityTypeUnknown
+	}
+}
+
+func securityMarketDataReplyToQuote(symbol *finance.Symbol, reply *proto.SecurityMarketDataReply) *finance.Quote {
+	if reply == nil {
+		return nil
+	}
+	now := time.Now()
+	timestamp := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, now.Location())
+	if reply.LastDateTime != nil {
+		timestamp = time.Unix(reply.LastDateTime.Seconds, int64(reply.LastDateTime.Nanos))
+	}
+	return &finance.Quote{
+		Symbol:          *symbol,
+		Timestamp:       timestamp,
+		Open:            reply.OpenPrice,
+		High:            reply.HighPrice,
+		Low:             reply.LowPrice,
+		Close:           reply.LastPrice,
+		Price:           reply.LastPrice,
+		Volume:          int64(reply.TodayVolume),
+		Currency:        finance.Currency(reply.Currency),
+		Source:          Name,
+		SourceTimestamp: now,
 	}
 }
