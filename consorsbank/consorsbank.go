@@ -321,13 +321,16 @@ func (api *API) invalidateSessionLocked() {
 }
 
 func (api *API) shutdownSessionLocked(ctx context.Context) error {
+	for _, exchangeRateSubscription := range api.exchangeRateSubscriptions {
+		exchangeRateSubscription.cancel()
+	}
+	for _, quoteSubscription := range api.quoteSubscriptions {
+		quoteSubscription.cancel()
+	}
+	api.stoppedWG.Wait()
 	if api.session == nil {
 		return nil
 	}
-	for _, streamSubscription := range api.exchangeRateSubscriptions {
-		streamSubscription.cancel()
-	}
-	api.stoppedWG.Wait()
 	accessService := proto.NewAccessServiceClient(api.session.grpcClient)
 	_, err := accessService.Logout(ctx, &proto.LogoutRequest{AccessToken: api.session.AccessToken})
 	if err != nil {
