@@ -89,6 +89,10 @@ func TestOpenFIGIProvider(t *testing.T) {
 func newOpenFIGIAPI(t *testing.T) *openfigi.API {
 	config := &openfigi.StaticConfig{
 		BaseURL: openfigi.DefaultBaseURL,
+		APIKey:  os.Getenv("OPENFIGI_API_KEY"),
+	}
+	if config.APIKey == "" {
+		t.Skip("No OpenFIGI API key set; skipping tests")
 	}
 	api, err := openfigi.NewAPI(config)
 	require.NoError(t, err)
