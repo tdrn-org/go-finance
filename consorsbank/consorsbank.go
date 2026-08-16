@@ -39,6 +39,7 @@ type API struct {
 	address                   string
 	tlsConfig                 *tls.Config
 	secret                    string
+	preferredExchanges        []string
 	session                   *apiSession
 	exchangeRateSubscriptions map[string]*streamSubscription[proto.CurrencyRateReply, finance.ExchangeRate]
 	quoteSubscriptions        map[string]*streamSubscription[proto.SecurityMarketDataReply, finance.Quote]
@@ -70,10 +71,18 @@ func NewAPI(config Config) (*API, error) {
 	if err != nil {
 		return nil, err
 	}
+	preferredExchanges, err := config.GetPreferredExchanges()
+	if err != nil {
+		return nil, err
+	}
+	if len(preferredExchanges) == 0 {
+		preferredExchanges = []string{DefaultExchange}
+	}
 	api := &API{
 		address:                   address,
 		tlsConfig:                 tlsConfig,
 		secret:                    secret,
+		preferredExchanges:        preferredExchanges,
 		exchangeRateSubscriptions: make(map[string]*streamSubscription[proto.CurrencyRateReply, finance.ExchangeRate]),
 		quoteSubscriptions:        make(map[string]*streamSubscription[proto.SecurityMarketDataReply, finance.Quote]),
 		logger:                    logger,
@@ -263,13 +272,17 @@ func (api *API) startSecurityMarketDataSubscriptionLocked(ctx context.Context, s
 	if len(securityInfoReply.StockExchangeInfos) == 0 {
 		return nil, fmt.Errorf("unable to determine stock exchange for quote query (symbol: %s)", securityCode.Code)
 	}
+	preferredExchange, err := api.getPreferredExchange(symbol.ISIN, securityInfoReply.StockExchangeInfos)
+	if err != nil {
+		return nil, err
+	}
 	subscriptionKey := symbol.ISIN
 	subscriptionCtx, subscriptionCancel := context.WithCancel(context.Background())
 	client, err := securityService.StreamMarketData(subscriptionCtx, &proto.SecurityMarketDataRequest{
 		AccessToken: session.AccessToken,
 		SecurityWithStockexchange: &proto.SecurityWithStockExchange{
 			SecurityCode:  securityCode,
-			StockExchange: securityInfoReply.StockExchangeInfos[0].StockExchange,
+			StockExchange: preferredExchange.StockExchange,
 		},
 	})
 	if err != nil {
@@ -289,6 +302,17 @@ func (api *API) startSecurityMarketDataSubscriptionLocked(ctx context.Context, s
 	api.quoteSubscriptions[subscriptionKey] = subscription
 	api.stoppedWG.Go(subscription.Run)
 	return subscription, nil
+}
+
+func (api *API) getPreferredExchange(isin string, exchangeInfos []*proto.SecurityStockExchangeInfo) (*proto.SecurityStockExchangeInfo, error) {
+	for _, preferredExchange := range api.preferredExchanges {
+		for _, exchangeInfo := range exchangeInfos {
+			if exchangeInfo.StockExchange.Id == preferredExchange {
+				return exchangeInfo, nil
+			}
+		}
+	}
+	return nil, fmt.Errorf("unable to determine preferred exchange for ISIN: %s", isin)
 }
 
 func (api *API) getSessionLocked(ctx context.Context) (*apiSession, error) {
@@ -386,10 +410,10 @@ func (s *streamSubscription[R, T]) Run() {
 		reply, err := s.client.Recv()
 		if err != nil {
 			s.markClosed()
-			if s.ctx.Err() != nil || s.client.Context().Err() != nil {
-				s.logger.Info("closing subscription; client shutting down")
-			} else if errors.Is(err, io.EOF) {
+			if errors.Is(err, io.EOF) {
 				s.logger.Info("closing subscription; server closed connection")
+			} else if s.ctx.Err() != nil || s.client.Context().Err() != nil {
+				s.logger.Info("closing subscription; client shutting down")
 			} else {
 				s.logger.Info("closing subscription; recv failure", slog.Any("err", err))
 			}

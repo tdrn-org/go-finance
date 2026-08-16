@@ -18,16 +18,20 @@ package consorsbank
 
 import "crypto/tls"
 
+const DefaultExchange string = "TRG"
+
 type Config interface {
 	GetAddress() (string, error)
 	GetTLSConfig() (*tls.Config, error)
 	GetSecret() (string, error)
+	GetPreferredExchanges() ([]string, error)
 }
 
 type StaticConfig struct {
-	Address   string
-	TLSConfig *tls.Config
-	Secret    string
+	Address            string
+	TLSConfig          *tls.Config
+	Secret             string
+	PreferredExchanges []string
 }
 
 func (c *StaticConfig) GetAddress() (string, error) {
@@ -40,4 +44,8 @@ func (c *StaticConfig) GetTLSConfig() (*tls.Config, error) {
 
 func (c *StaticConfig) GetSecret() (string, error) {
 	return c.Secret, nil
+}
+
+func (c *StaticConfig) GetPreferredExchanges() ([]string, error) {
+	return c.PreferredExchanges, nil
 }
