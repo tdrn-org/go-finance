@@ -34,10 +34,10 @@ func (r *statusResponse) Validate() error {
 		return fmt.Errorf("API call failure: '%s'", r.ErrorMessage)
 	}
 	if r.Note != "" {
-		return fmt.Errorf("%w: rate limit (req/minut) reached: '%s'", finance.ErrRateLimitReached, r.Note)
+		return fmt.Errorf("%w: %s", finance.ErrRateLimitReached, r.Note)
 	}
 	if r.Information != "" {
-		return fmt.Errorf("%w: rate limit (req/day) reached: '%s'", finance.ErrRateLimitReached, r.Information)
+		return fmt.Errorf("%w: %s", finance.ErrRateLimitReached, r.Information)
 	}
 	return nil
 }
@@ -182,6 +182,7 @@ func (r *globalQuoteResponse) ToQuote(symbol *finance.Symbol, currency string) (
 }
 
 type overviewResponse struct {
+	statusResponse
 	Symbol                     string `json:"Symbol"`
 	AssetType                  string `json:"AssetType"`
 	Name                       string `json:"Name"`

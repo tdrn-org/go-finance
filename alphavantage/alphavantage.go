@@ -109,6 +109,10 @@ func (api *API) queryExchangeRate(ctx context.Context, base, quote finance.Curre
 	if err != nil {
 		return nil, err
 	}
+	err = response.Validate()
+	if err != nil {
+		return nil, err
+	}
 	api.logger.Debug("found exchange rate", slog.String("date", response.RealtimeRate.LastRefreshed), slog.String("base", response.RealtimeRate.FromCurrencyCode), slog.String("quote", response.RealtimeRate.ToCurrencyCode), slog.String("rate", response.RealtimeRate.ExchangeRate))
 	return response, nil
 }
@@ -146,6 +150,10 @@ func (api *API) searchSymbol(ctx context.Context, query string) (*symbolSearchRe
 	}
 	response := &symbolSearchResponse{}
 	err = api.decodeResponse(rsp, response)
+	if err != nil {
+		return nil, err
+	}
+	err = response.Validate()
 	if err != nil {
 		return nil, err
 	}
@@ -196,6 +204,10 @@ func (api *API) queryQuote(ctx context.Context, symbol *finance.Symbol) (*global
 	if err != nil {
 		return nil, err
 	}
+	err = response.Validate()
+	if err != nil {
+		return nil, err
+	}
 	return response, nil
 }
 
@@ -217,6 +229,10 @@ func (api *API) getOverview(ctx context.Context, symbol string) (*overviewRespon
 	}
 	response := &overviewResponse{}
 	err = api.decodeResponse(rsp, response)
+	if err != nil {
+		return nil, err
+	}
+	err = response.Validate()
 	if err != nil {
 		return nil, err
 	}
