@@ -33,6 +33,10 @@ func TestAlphaVantageCurrencyAPI(t *testing.T) {
 
 func TestConsorsbankCurrencyAPI(t *testing.T) {
 	api := newConsorsbankAPI(t)
+	defer func() {
+		api.Shutdown(t.Context())
+		api.Close()
+	}()
 
 	testCurrencyAPI(t, api)
 }
