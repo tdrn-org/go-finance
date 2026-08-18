@@ -23,21 +23,38 @@ import (
 )
 
 var (
+	// ErrQuoteNotAvailable indicates a provider is not able to
+	// provide a quote for the given [Symbol]. This is a permanent
+	// error due to missing Symbol ids required by the provider.
 	ErrQuoteNotAvailable error = errors.New("quote not available")
 )
 
 // Quote represents a single price data point for a financial instrument.
 type Quote struct {
-	Symbol          Symbol
-	Timestamp       time.Time
-	Open            float64
-	High            float64
-	Low             float64
-	Close           float64
-	Price           float64
-	Volume          int64
-	Currency        Currency
-	Source          string
+	// Symbol identifies the financial instrument by various ids.
+	Symbol Symbol
+	// Timestamp gives the point in time this quote was current
+	// according to the sourcing provider.
+	Timestamp time.Time
+	// Open gives the open price at the trading day identified by Timestamp.
+	Open float64
+	// High gives the high price at the trading day identified by Timestamp.
+	High float64
+	// Low gives the low price at the trading day identified by Timestamp.
+	Low float64
+	// Close gives the close price of the day before the trading day identified by Timestamp.
+	Close float64
+	// Price gives the current price at the trading day identified by Timestamp.
+	Price float64
+	// Volume gives the order volume at the trading day identified by Timestamp.
+	Volume int64
+	// Currency gives the currency the given values.
+	Currency Currency
+	// Sources defines the provider this quote has been
+	// queried from.
+	Source string
+	// SourceTimestamp defines the time this quote has
+	// been queried.
 	SourceTimestamp time.Time
 }
 

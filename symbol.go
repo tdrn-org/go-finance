@@ -24,7 +24,10 @@ import (
 )
 
 var (
-	ErrSymbolNotAvailable     error = errors.New("symbol not available")
+	// ErrSymbolNotAvailable indicates a [Symbol] is not known by a provider.
+	ErrSymbolNotAvailable error = errors.New("symbol not available")
+	// ErrSymbolSearchRestricted indicates a provider is not able to provide
+	// a free-text search, but only for defined identifiers (e.g. ISINs).
 	ErrSymbolSearchRestricted error = errors.New("symbol search restricted")
 )
 
@@ -32,11 +35,17 @@ var (
 type SecurityType string
 
 const (
+	// SecurityTypeUnknown indicates an unknown financial instrument.
 	SecurityTypeUnknown SecurityType = ""
-	SecurityTypeEquity  SecurityType = "equity"
-	SecurityTypeETF     SecurityType = "etf"
+	// SecurityTypeEquity indicates an equity (e.g. Common Stock).
+	SecurityTypeEquity SecurityType = "equity"
+	// SecurityTypeETF indicates an ETF.
+	SecurityTypeETF SecurityType = "etf"
 )
 
+// MapSecurityType maps a string to an existing [SecurityType] using the given
+// alias map (if avaialable). [SecurityTypeUnknown] is returned in case no
+// specific [SecurityType] could be identified.
 func MapSecurityType(s string, aliasMap map[string]string) SecurityType {
 	mappedS, mapped := aliasMap[s]
 	if !mapped {
@@ -58,29 +67,43 @@ func MapSecurityType(s string, aliasMap map[string]string) SecurityType {
 // whichever identifiers it supports. Callers should check with
 // the Has* methods before relying on a specific field.
 type Symbol struct {
-	Exchange string       // MIC-Code, e.g. "XNAS"
-	Ticker   string       // e.g. "AAPL"
-	ISIN     string       // e.g. "US0378331005"
-	WKN      string       // e.g. "865985"
-	FIGI     string       // e.g. "BBG000B9Y6W2"
-	Name     string       // e.g. "Apple Inc."
-	Type     SecurityType // e.g. equity
+	// Exchange gives the MIC-Code of the exchange this Symbols refers to.
+	Exchange string // MIC-Code, e.g. "XNAS"
+	// Ticker gives the ticker symbol this Symbol refers to.
+	Ticker string // e.g. "AAPL"
+	// ISIN gives the ISIN id this Symbol refers to.
+	ISIN string // e.g. "US0378331005"
+	// WKN gives the ISIN id this Symbol refers to.
+	WKN string // e.g. "865985"
+	// FIGI gives the ISIN id this Symbol refers to.
+	FIGI string // e.g. "BBG000B9Y6W2"
+	// Name gives the human-readable name of this financial instrument.
+	Name string // e.g. "Apple Inc."
+	// Type gives the type of the financial instrument this Symbol refers to.
+	Type SecurityType // e.g. equity
 }
 
+// IsEmpty determines if a [Symbol] has any ids set.
 func (s *Symbol) IsEmpty() bool {
-	return !s.HasExchange() && !s.HasTicker() && !s.HasISIN() && !s.HasWKN() && !s.HasFIGI()
+	return !s.HasTicker() && !s.HasISIN() && !s.HasWKN() && !s.HasFIGI()
 }
 
+// HasExchange indicates whether the [Symbols] Exchange attribute is set.
 func (s *Symbol) HasExchange() bool { return s.Exchange != "" }
 
+// HasTicker indicates whether the [Symbols] Ticker attribute is set.
 func (s *Symbol) HasTicker() bool { return s.Ticker != "" }
 
+// HasISIN indicates whether the [Symbols] ISIN attribute is set.
 func (s *Symbol) HasISIN() bool { return s.ISIN != "" }
 
+// HasWKN indicates whether the [Symbols] WKN attribute is set.
 func (s *Symbol) HasWKN() bool { return s.WKN != "" }
 
+// HasFIGI indicates whether the [Symbols] FIGI attribute is set.
 func (s *Symbol) HasFIGI() bool { return s.FIGI != "" }
 
+// Symbols defines an array of [Symbol]s.
 type Symbols []Symbol
 
 var isinPattern regexp.Regexp = *regexp.MustCompile("^[A-Z]{2}[A-Z0-9]{9}[0-9]$")
@@ -126,10 +149,16 @@ func (v *isinValidator) shift(i int) {
 	v.sum += summand
 }
 
+// IsISIN checks whether the given string represents an ISIN.
+// This only verfies whether this a syntactically correct ISIN,
+// but not whether this ISIN really exists.
 func IsISIN(s string) bool {
 	return (&isinValidator{}).Validate(strings.ToUpper(s))
 }
 
+// IsWKN checks whether the given string represents a WKN.
+// This only verfies whether this a syntactically correct WKN,
+// but not whether this WKN really exists.
 func IsWKN(s string) bool {
 	if len(s) != 6 {
 		return false
@@ -186,6 +215,9 @@ func (v *figiValidator) shift(i int) {
 	v.sum += summand
 }
 
+// IsFIGI checks whether the given string represents a FIGI.
+// This only verfies whether this a syntactically correct FIGI,
+// but not whether this FIGI really exists.
 func IsFIGI(s string) bool {
 	return (&figiValidator{}).Validate(strings.ToUpper(s))
 }

@@ -21,10 +21,17 @@ package finance
 import "errors"
 
 var (
+	// ErrRateLimitReached indicates a provider will not respond
+	// to further queries after a cool-down period.
 	ErrRateLimitReached error = errors.New("rate limit reached")
-	ErrRequestPending   error = errors.New("request pending")
+	// ErrRequestPending indicates a request will be served
+	// asynchronously and future calls may return the requested
+	// data.
+	ErrRequestPending error = errors.New("request pending")
 )
 
+// APIProvider is the interface common to all providers.
 type APIProvider interface {
+	// ProviderName gets the provider name.
 	ProviderName() string
 }

@@ -22,8 +22,12 @@ import (
 	"time"
 )
 
-var ErrNoExchangeRate error = errors.New("no exchange rate")
+var (
+	// ErrNoExchangeRate indicates an exchange rate is not available.
+	ErrNoExchangeRate error = errors.New("no exchange rate")
+)
 
+// Currency type.
 type Currency string
 
 const (
@@ -219,16 +223,30 @@ const (
 	CurrencyZWG Currency = "ZWG"
 )
 
+// ExchangeRate defines a currency exchange rate at a current
+// point in time and sourced from a specific provider.
 type ExchangeRate struct {
-	Timestamp       time.Time
-	Base            Currency
-	Quote           Currency
-	Rate            float64
-	Source          string
+	// Timestamp defines the point in time this exchange rate
+	// was current according to the provider.
+	Timestamp time.Time
+	// Base defines the base currency for this exchange rate.
+	Base Currency
+	// Quote defines the quoted currency for this exchange rate.
+	Quote Currency
+	// Rate defines the rate for base to quoted currency.
+	Rate float64
+	// Sources defines the provider this exchange rate has been
+	// queried from.
+	Source string
+	// SourceTimestamp defines the time this exchange rate has
+	// been queried.
 	SourceTimestamp time.Time
 }
 
+// FX interface provides functions for querying exchange rates.
 type FX interface {
 	APIProvider
+	// QueryExchangeRate queries the exchange rate for the given base and quote
+	// currency.
 	QueryExchangeRate(ctx context.Context, base, quote Currency) (*ExchangeRate, error)
 }

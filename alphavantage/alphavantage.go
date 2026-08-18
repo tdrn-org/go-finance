@@ -14,6 +14,8 @@
  * limitations under the License.
  */
 
+// Package alphavantage uses the Alpha Vantage API (https://www.alphavantage.co/documentation/)
+// to implement providers for FX, SymbolSearch, Equity.
 package alphavantage
 
 import (
@@ -28,10 +30,12 @@ import (
 	"github.com/tdrn-org/go-finance"
 )
 
+// Name defines the Alpha Vantage provider name.
 const Name string = "alphavantage"
 
 const defaultBaseURLString string = "https://www.alphavantage.co/query/"
 
+// DefaultBaseURL defines the default API url for the Alpha Vantage REST service.
 var DefaultBaseURL *url.URL = func() *url.URL {
 	defaultBaseURL, err := url.Parse(defaultBaseURLString)
 	if err != nil {
@@ -40,6 +44,7 @@ var DefaultBaseURL *url.URL = func() *url.URL {
 	return defaultBaseURL
 }()
 
+// API represents the Alpha Vantage provider.
 type API struct {
 	baseURL             *url.URL
 	apiKey              string
@@ -49,6 +54,7 @@ type API struct {
 	mutex               sync.RWMutex
 }
 
+// NewAPI creates a new Alpha Vantage provider instance using the given [Config].
 func NewAPI(config Config) (*API, error) {
 	logger := slog.With(slog.String("provider", Name))
 	baseURL, err := config.GetBaseURL()
@@ -76,10 +82,12 @@ func NewAPI(config Config) (*API, error) {
 	return api, nil
 }
 
+// See [finance.APIProvider]
 func (api *API) ProviderName() string {
 	return Name
 }
 
+// See [finance.FX]
 func (api *API) QueryExchangeRate(ctx context.Context, base, quote finance.Currency) (*finance.ExchangeRate, error) {
 	response, err := api.queryExchangeRate(ctx, base, quote)
 	if err != nil {
@@ -119,6 +127,7 @@ func (api *API) queryExchangeRate(ctx context.Context, base, quote finance.Curre
 
 const minMatchScore float64 = 0.5
 
+// See [finance.SymbolResolver]
 func (api *API) SearchSymbol(ctx context.Context, query string) (finance.Symbols, error) {
 	response, err := api.searchSymbol(ctx, query)
 	if err != nil {
@@ -160,6 +169,7 @@ func (api *API) searchSymbol(ctx context.Context, query string) (*symbolSearchRe
 	return response, nil
 }
 
+// See [finance.Equity]
 func (api *API) QueryQuote(ctx context.Context, symbol finance.Symbol) (*finance.Quote, error) {
 	quoteResponse, err := api.queryQuote(ctx, &symbol)
 	if err != nil {

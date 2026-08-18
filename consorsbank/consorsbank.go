@@ -39,6 +39,7 @@ type API struct {
 	address                   string
 	tlsConfig                 *tls.Config
 	secret                    string
+	preferredCurrency         finance.Currency
 	preferredExchanges        []string
 	session                   *apiSession
 	exchangeRateSubscriptions map[string]*streamSubscription[proto.CurrencyRateReply, finance.ExchangeRate]
@@ -71,6 +72,10 @@ func NewAPI(config Config) (*API, error) {
 	if err != nil {
 		return nil, err
 	}
+	preferredCurrency, err := config.GetPreferredCurrency()
+	if err != nil {
+		return nil, err
+	}
 	preferredExchanges, err := config.GetPreferredExchanges()
 	if err != nil {
 		return nil, err
@@ -82,6 +87,7 @@ func NewAPI(config Config) (*API, error) {
 		address:                   address,
 		tlsConfig:                 tlsConfig,
 		secret:                    secret,
+		preferredCurrency:         preferredCurrency,
 		preferredExchanges:        preferredExchanges,
 		exchangeRateSubscriptions: make(map[string]*streamSubscription[proto.CurrencyRateReply, finance.ExchangeRate]),
 		quoteSubscriptions:        make(map[string]*streamSubscription[proto.SecurityMarketDataReply, finance.Quote]),
@@ -284,6 +290,7 @@ func (api *API) startSecurityMarketDataSubscriptionLocked(ctx context.Context, s
 			SecurityCode:  securityCode,
 			StockExchange: preferredExchange.StockExchange,
 		},
+		Currency: string(api.preferredCurrency),
 	})
 	if err != nil {
 		subscriptionCancel()

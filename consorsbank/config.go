@@ -16,7 +16,11 @@
 
 package consorsbank
 
-import "crypto/tls"
+import (
+	"crypto/tls"
+
+	"github.com/tdrn-org/go-finance"
+)
 
 const DefaultExchange string = "TRG"
 
@@ -24,6 +28,7 @@ type Config interface {
 	GetAddress() (string, error)
 	GetTLSConfig() (*tls.Config, error)
 	GetSecret() (string, error)
+	GetPreferredCurrency() (finance.Currency, error)
 	GetPreferredExchanges() ([]string, error)
 }
 
@@ -31,6 +36,7 @@ type StaticConfig struct {
 	Address            string
 	TLSConfig          *tls.Config
 	Secret             string
+	PreferredCurrency  finance.Currency
 	PreferredExchanges []string
 }
 
@@ -44,6 +50,10 @@ func (c *StaticConfig) GetTLSConfig() (*tls.Config, error) {
 
 func (c *StaticConfig) GetSecret() (string, error) {
 	return c.Secret, nil
+}
+
+func (c *StaticConfig) GetPreferredCurrency() (finance.Currency, error) {
+	return c.PreferredCurrency, nil
 }
 
 func (c *StaticConfig) GetPreferredExchanges() ([]string, error) {
