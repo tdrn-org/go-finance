@@ -30,15 +30,18 @@ import (
 )
 
 type Config struct {
-	FX            FXConfig                            `toml:"fx"`
-	Equity        EquityConfig                        `toml:"equity"`
-	AlphaVantage  AlphaVantageConfig                  `toml:"alphavantage"`
-	Consorsbank   ConsorsbankConfig                   `toml:"consorsbank"`
-	Frankfurter   FrankfurterConfig                   `toml:"frankfurter"`
-	TwelveData    TwelveDataConfig                    `toml:"twelvedata"`
-	Cache         CacheConfig                         `toml:"cache"`
-	fxFactory     apiFactory[finance.FX, *Config]     `toml:"-"`
-	equityFactory apiFactory[finance.Equity, *Config] `toml:"-"`
+	FX             FXConfig                                    `toml:"fx"`
+	Symbols        SymbolsConfig                               `toml:"symbols"`
+	Equity         EquityConfig                                `toml:"equity"`
+	AlphaVantage   AlphaVantageConfig                          `toml:"alphavantage"`
+	Consorsbank    ConsorsbankConfig                           `toml:"consorsbank"`
+	Frankfurter    FrankfurterConfig                           `toml:"frankfurter"`
+	OpenFIGI       OpenFIGIConfig                              `toml:"openfigi"`
+	TwelveData     TwelveDataConfig                            `toml:"twelvedata"`
+	Cache          CacheConfig                                 `toml:"cache"`
+	fxFactory      apiFactory[finance.FX, *Config]             `toml:"-"`
+	symbolsFactory apiFactory[finance.SymbolResolver, *Config] `toml:"-"`
+	equityFactory  apiFactory[finance.Equity, *Config]         `toml:"-"`
 }
 
 //go:embed defaults.toml
@@ -111,6 +114,41 @@ func (c *Config) NewFXProvider() (finance.FX, error) {
 		return composite.NewCachedFXProvider(composite.NewFallbackFXProvider(providers[0], time.Duration(c.FX.Cooldown), providers[1:]...), cache), nil
 	}, c)
 	return c.fxFactory.api, c.fxFactory.err
+}
+
+func (c *Config) NewSymbolsProvider() (finance.SymbolResolver, error) {
+	c.symbolsFactory.NewAPI(func(c *Config) (finance.SymbolResolver, error) {
+		providers := make([]finance.SymbolResolver, 0, len(c.Symbols.ProviderNames))
+		for _, providerName := range c.Symbols.ProviderNames {
+			var provider finance.SymbolResolver
+			var err error
+			switch providerName {
+			case SymbolsProviderNameAlphaVantage:
+				provider, err = c.AlphaVantage.NewAPI()
+			case SymbolsProviderNameConsorsbank:
+				provider, err = c.Consorsbank.NewAPI()
+			case SymbolsProviderNameOpenFIGI:
+				provider, err = c.OpenFIGI.NewAPI()
+			case SymbolsProviderNameTwelveData:
+				provider, err = c.TwelveData.NewAPI()
+			default:
+				err = fmt.Errorf("unrecognized Symbols provider name '%s'", providerName)
+			}
+			if err != nil {
+				return nil, err
+			}
+			providers = append(providers, provider)
+		}
+		if len(providers) == 0 {
+			return nil, fmt.Errorf("at least one Symbols provider must be defined")
+		}
+		cache, err := c.Cache.NewSymbolCache(time.Duration(c.FX.CacheTTL))
+		if err != nil {
+			return nil, err
+		}
+		return composite.NewCachedSymbolsProvider(composite.NewMergeSymbolsProvider(providers[0], time.Duration(c.FX.Cooldown), providers[1:]...), cache), nil
+	}, c)
+	return c.symbolsFactory.api, c.symbolsFactory.err
 }
 
 func (c *Config) NewEquityProvider() (finance.Equity, error) {

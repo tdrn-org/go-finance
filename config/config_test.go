@@ -34,7 +34,16 @@ func TestNewFXProvider(t *testing.T) {
 	provider, err := config.NewFXProvider()
 	require.NoError(t, err)
 	providerName := provider.ProviderName()
-	require.Equal(t, "cached:composite:frankfurter|alphavantage|consorsbank|twelvedata", providerName)
+	require.Equal(t, "cached:fallback:frankfurter|alphavantage|consorsbank|twelvedata", providerName)
+}
+
+func TestNewSymbolsProvider(t *testing.T) {
+	config, err := config.Load("testdata/finance.toml", true)
+	require.NoError(t, err)
+	provider, err := config.NewSymbolsProvider()
+	require.NoError(t, err)
+	providerName := provider.ProviderName()
+	require.Equal(t, "cached:merge:openfigi|alphavantage|consorsbank|twelvedata", providerName)
 }
 
 func TestNewEquityProvider(t *testing.T) {

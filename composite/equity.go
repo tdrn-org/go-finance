@@ -28,26 +28,26 @@ import (
 
 type QuoteCache cache.KeyValue[string, *finance.Quote]
 
-type equityCache struct {
+type cachedEquityProvider struct {
 	provider finance.Equity
 	cache    QuoteCache
 }
 
 func NewCachedEquityProvider(provider finance.Equity, cache QuoteCache) finance.Equity {
-	return &equityCache{
+	return &cachedEquityProvider{
 		provider: provider,
 		cache:    cache,
 	}
 }
 
-func (p *equityCache) ProviderName() string {
+func (p *cachedEquityProvider) ProviderName() string {
 	buffer := &strings.Builder{}
 	buffer.WriteString("cached:")
 	buffer.WriteString(p.provider.ProviderName())
 	return buffer.String()
 }
 
-func (p *equityCache) QueryQuote(ctx context.Context, symbol finance.Symbol) (*finance.Quote, error) {
+func (p *cachedEquityProvider) QueryQuote(ctx context.Context, symbol finance.Symbol) (*finance.Quote, error) {
 	key := fmt.Sprintf("finance:quote:%s/%s/%s/%s/%s", symbol.Exchange, symbol.Ticker, symbol.ISIN, symbol.WKN, symbol.FIGI)
 	cachedQuote, err := p.cache.Get(ctx, key)
 	if errors.Is(err, cache.ErrNotFound) {

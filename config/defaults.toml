@@ -3,6 +3,11 @@ providers = [ "frankfurter" ]
 cooldown = "10m"
 cache_ttl = "6h"
 
+[symbols]
+providers = [ "openfigi" ]
+cooldown = "10m"
+cache_ttl = "12h"
+
 [equity]
 provider = "consorsbank"
 cache_ttl = "5m"
@@ -21,6 +26,10 @@ preferred_exchanges = [ "TRG" ]
 
 [frankfurter]
 base_url = "https://api.frankfurter.dev/v2/"
+
+[openfigi]
+base_url = "https://api.openfigi.com/v3"
+api_key = ""
 
 [twelvedata]
 api_key = ""

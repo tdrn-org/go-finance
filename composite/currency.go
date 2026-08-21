@@ -30,26 +30,26 @@ import (
 
 type ExchangeRateCache cache.KeyValue[string, *finance.ExchangeRate]
 
-type exchangeRateCache struct {
+type cachedFXProvider struct {
 	provider finance.FX
 	cache    ExchangeRateCache
 }
 
 func NewCachedFXProvider(provider finance.FX, cache ExchangeRateCache) finance.FX {
-	return &exchangeRateCache{
+	return &cachedFXProvider{
 		provider: provider,
 		cache:    cache,
 	}
 }
 
-func (p *exchangeRateCache) ProviderName() string {
+func (p *cachedFXProvider) ProviderName() string {
 	buffer := &strings.Builder{}
 	buffer.WriteString("cached:")
 	buffer.WriteString(p.provider.ProviderName())
 	return buffer.String()
 }
 
-func (p *exchangeRateCache) QueryExchangeRate(ctx context.Context, base, quote finance.Currency) (*finance.ExchangeRate, error) {
+func (p *cachedFXProvider) QueryExchangeRate(ctx context.Context, base, quote finance.Currency) (*finance.ExchangeRate, error) {
 	key := fmt.Sprintf("finance:exchangeRate:%s/%s", base, quote)
 	cachedExchangeRate, err := p.cache.Get(ctx, key)
 	if errors.Is(err, cache.ErrNotFound) {
@@ -64,17 +64,19 @@ func (p *exchangeRateCache) QueryExchangeRate(ctx context.Context, base, quote f
 	return cachedExchangeRate, nil
 }
 
-type fallbackProvider struct {
+type fallbackFXProvider struct {
 	queue *cooldownQueue[finance.FX]
 }
 
 func NewFallbackFXProvider(provider finance.FX, cooldown time.Duration, fallbacks ...finance.FX) finance.FX {
-	return &fallbackProvider{queue: newCooldownQueue(provider, cooldown, fallbacks...)}
+	return &fallbackFXProvider{
+		queue: newCooldownQueue(provider, cooldown, fallbacks...),
+	}
 }
 
-func (p *fallbackProvider) ProviderName() string {
+func (p *fallbackFXProvider) ProviderName() string {
 	buffer := &strings.Builder{}
-	buffer.WriteString("composite:")
+	buffer.WriteString("fallback:")
 	initialBufferLen := buffer.Len()
 	p.queue.ForEach(func(provider finance.FX) {
 		if buffer.Len() > initialBufferLen {
@@ -85,7 +87,7 @@ func (p *fallbackProvider) ProviderName() string {
 	return buffer.String()
 }
 
-func (p *fallbackProvider) QueryExchangeRate(ctx context.Context, base, quote finance.Currency) (*finance.ExchangeRate, error) {
+func (p *fallbackFXProvider) QueryExchangeRate(ctx context.Context, base, quote finance.Currency) (*finance.ExchangeRate, error) {
 	availableProviders := p.queue.GetAvailableProviders()
 	for _, availableProvider := range availableProviders {
 		exchangeRate, err := availableProvider.QueryExchangeRate(ctx, base, quote)

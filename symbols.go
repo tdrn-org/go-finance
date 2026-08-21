@@ -19,6 +19,7 @@ package finance
 import (
 	"context"
 	"errors"
+	"fmt"
 	"regexp"
 	"strings"
 )
@@ -102,6 +103,78 @@ func (s *Symbol) HasWKN() bool { return s.WKN != "" }
 
 // HasFIGI indicates whether the [Symbols] FIGI attribute is set.
 func (s *Symbol) HasFIGI() bool { return s.FIGI != "" }
+
+type SymbolMatch int
+
+const (
+	SymbolMatchNone  SymbolMatch = 0
+	SymbolMatchSoft  SymbolMatch = 1
+	SymbolMatchEqual SymbolMatch = 2
+)
+
+func (s *Symbol) Match(other *Symbol) SymbolMatch {
+	match := SymbolMatchEqual
+	match = s.matchAttribute(match, s.Exchange, other.Exchange)
+	if match == SymbolMatchNone {
+		return SymbolMatchNone
+	}
+	match = s.matchAttribute(match, s.Ticker, other.Ticker)
+	if match == SymbolMatchNone {
+		return SymbolMatchNone
+	}
+	match = s.matchAttribute(match, s.ISIN, other.ISIN)
+	if match == SymbolMatchNone {
+		return SymbolMatchNone
+	}
+	match = s.matchAttribute(match, s.WKN, other.WKN)
+	if match == SymbolMatchNone {
+		return SymbolMatchNone
+	}
+	match = s.matchAttribute(match, s.FIGI, other.FIGI)
+	if match == SymbolMatchNone {
+		return SymbolMatchNone
+	}
+	return match
+}
+
+func (s *Symbol) matchAttribute(currentMatch SymbolMatch, a, b string) SymbolMatch {
+	attributeMatch := SymbolMatchNone
+	if a == "" || b == "" {
+		attributeMatch = SymbolMatchSoft
+	} else if strings.EqualFold(a, b) {
+		attributeMatch = SymbolMatchEqual
+	}
+	if attributeMatch == SymbolMatchNone {
+		return SymbolMatchNone
+	} else if currentMatch == SymbolMatchEqual && attributeMatch == SymbolMatchEqual {
+		return SymbolMatchEqual
+	} else {
+		return SymbolMatchSoft
+	}
+}
+
+func (s *Symbol) Merge(other Symbol) {
+	if s.Exchange == "" {
+		s.Exchange = other.Exchange
+	}
+	if s.Ticker == "" {
+		s.Ticker = other.Ticker
+	}
+	if s.ISIN == "" {
+		s.ISIN = other.ISIN
+	}
+	if s.WKN == "" {
+		s.WKN = other.WKN
+	}
+	if s.FIGI == "" {
+		s.FIGI = other.FIGI
+	}
+	if s.Name == "" {
+		s.Name = other.Name
+	} else if other.Name != "" && s.Name != other.Name {
+		s.Name = fmt.Sprintf("%s | %s", s.Name, other.Name)
+	}
+}
 
 // Symbols defines an array of [Symbol]s.
 type Symbols []Symbol

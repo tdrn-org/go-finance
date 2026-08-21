@@ -52,6 +52,22 @@ func (c *CacheConfig) NewExchangeRateCache(ttl time.Duration) (composite.Exchang
 	}
 }
 
+func (c *CacheConfig) NewSymbolCache(ttl time.Duration) (composite.SymbolCache, error) {
+	switch c.Type {
+	case CacheTypeMemory:
+		return memory.NewKeyValue(0, -ttl, cache.NotFound[string, finance.Symbols]())
+	case CacheTypeRedis:
+		options := &redis.Options{
+			Addr:     c.Redis.Address,
+			Password: c.Redis.Password,
+			DB:       c.Redis.DB,
+		}
+		return redis.NewKeyValue(options, -ttl, redis.StringKey, cache.JSONSerializer[finance.Symbols]())
+	default:
+		return nil, fmt.Errorf(unrecognizedCacheTypeErrMessage, c.Type)
+	}
+}
+
 func (c *CacheConfig) NewQuoteCache(ttl time.Duration) (composite.QuoteCache, error) {
 	switch c.Type {
 	case CacheTypeMemory:
