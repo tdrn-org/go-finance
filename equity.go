@@ -32,30 +32,30 @@ var (
 // Quote represents a single price data point for a financial instrument.
 type Quote struct {
 	// Symbol identifies the financial instrument by various ids.
-	Symbol Symbol
+	Symbol Symbol `json:"symbol"`
 	// Timestamp gives the point in time this quote was current
 	// according to the sourcing provider.
-	Timestamp time.Time
+	Timestamp time.Time `json:"timestamp"`
 	// Open gives the open price at the trading day identified by Timestamp.
-	Open float64
+	Open float64 `json:"open"`
 	// High gives the high price at the trading day identified by Timestamp.
-	High float64
+	High float64 `json:"high"`
 	// Low gives the low price at the trading day identified by Timestamp.
-	Low float64
+	Low float64 `json:"low"`
 	// Close gives the close price of the day before the trading day identified by Timestamp.
-	Close float64
+	Close float64 `json:"close"`
 	// Price gives the current price at the trading day identified by Timestamp.
-	Price float64
+	Price float64 `json:"price"`
 	// Volume gives the order volume at the trading day identified by Timestamp.
-	Volume int64
+	Volume int64 `json:"volume"`
 	// Currency gives the currency the given values.
-	Currency Currency
+	Currency Currency `json:"currency"`
 	// Sources defines the provider this quote has been
 	// queried from.
-	Source string
+	Source string `json:"source"`
 	// SourceTimestamp defines the time this quote has
 	// been queried.
-	SourceTimestamp time.Time
+	SourceTimestamp time.Time `json:"source_timestamp"`
 }
 
 // Equity provides quote data for equities, ETFs, and similar instruments.

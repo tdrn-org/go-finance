@@ -30,13 +30,15 @@ import (
 )
 
 type Config struct {
-	FX           FXConfig                        `toml:"fx"`
-	AlphaVantage AlphaVantageConfig              `toml:"alphavantage"`
-	Consorsbank  ConsorsbankConfig               `toml:"consorsbank"`
-	Frankfurter  FrankfurterConfig               `toml:"frankfurter"`
-	TwelveData   TwelveDataConfig                `toml:"twelvedata"`
-	Cache        CacheConfig                     `toml:"cache"`
-	fxFactory    apiFactory[finance.FX, *Config] `toml:"-"`
+	FX            FXConfig                            `toml:"fx"`
+	Equity        EquityConfig                        `toml:"equity"`
+	AlphaVantage  AlphaVantageConfig                  `toml:"alphavantage"`
+	Consorsbank   ConsorsbankConfig                   `toml:"consorsbank"`
+	Frankfurter   FrankfurterConfig                   `toml:"frankfurter"`
+	TwelveData    TwelveDataConfig                    `toml:"twelvedata"`
+	Cache         CacheConfig                         `toml:"cache"`
+	fxFactory     apiFactory[finance.FX, *Config]     `toml:"-"`
+	equityFactory apiFactory[finance.Equity, *Config] `toml:"-"`
 }
 
 //go:embed defaults.toml
@@ -109,6 +111,29 @@ func (c *Config) NewFXProvider() (finance.FX, error) {
 		return composite.NewCachedFXProvider(composite.NewFallbackFXProvider(providers[0], time.Duration(c.FX.Cooldown), providers[1:]...), cache), nil
 	}, c)
 	return c.fxFactory.api, c.fxFactory.err
+}
+
+func (c *Config) NewEquityProvider() (finance.Equity, error) {
+	c.equityFactory.NewAPI(func(c *Config) (finance.Equity, error) {
+		var provider finance.Equity
+		var err error
+		switch c.Equity.ProviderName {
+		case EquityProviderNameAlphaVantage:
+			provider, err = c.AlphaVantage.NewAPI()
+		case EquityProviderNameConsorsbank:
+			provider, err = c.Consorsbank.NewAPI()
+		case EquityProviderNameTwelveData:
+			provider, err = c.TwelveData.NewAPI()
+		default:
+			err = fmt.Errorf("unrecognized Equity provider name '%s'", c.Equity.ProviderName)
+		}
+		cache, err := c.Cache.NewQuoteCache(time.Duration(c.Equity.CacheTTL))
+		if err != nil {
+			return nil, err
+		}
+		return composite.NewCachedEquityProvider(provider, cache), nil
+	}, c)
+	return c.equityFactory.api, c.equityFactory.err
 }
 
 type DurationSpec time.Duration

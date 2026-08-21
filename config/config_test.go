@@ -36,3 +36,12 @@ func TestNewFXProvider(t *testing.T) {
 	providerName := provider.ProviderName()
 	require.Equal(t, "cached:composite:frankfurter|alphavantage|consorsbank|twelvedata", providerName)
 }
+
+func TestNewEquityProvider(t *testing.T) {
+	config, err := config.Load("testdata/finance.toml", true)
+	require.NoError(t, err)
+	provider, err := config.NewEquityProvider()
+	require.NoError(t, err)
+	providerName := provider.ProviderName()
+	require.Equal(t, "cached:consorsbank", providerName)
+}

@@ -2,6 +2,10 @@
 providers = [ "frankfurter", "alphavantage", "consorsbank", "twelvedata" ]
 cache_ttl = "6h"
 
+[equity]
+provider = "consorsbank"
+cache_ttl = "5m"
+
 [alphavantage]
 base_url = "https://www.alphavantage.co/query/"
 api_key = ""

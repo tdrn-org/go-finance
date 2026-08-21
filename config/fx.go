@@ -58,8 +58,8 @@ func (n *FXProviderName) Value() string {
 	return ""
 }
 
-func (t *FXProviderName) MarshalTOML() ([]byte, error) {
-	return []byte(`"` + t.Value() + `"`), nil
+func (n *FXProviderName) MarshalTOML() ([]byte, error) {
+	return []byte(`"` + n.Value() + `"`), nil
 }
 
 func (n *FXProviderName) UnmarshalTOML(value any) error {

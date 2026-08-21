@@ -68,19 +68,19 @@ func MapSecurityType(s string, aliasMap map[string]string) SecurityType {
 // the Has* methods before relying on a specific field.
 type Symbol struct {
 	// Exchange gives the MIC-Code of the exchange this Symbols refers to.
-	Exchange string // MIC-Code, e.g. "XNAS"
+	Exchange string `json:"exchange"` // MIC-Code, e.g. "XNAS"
 	// Ticker gives the ticker symbol this Symbol refers to.
-	Ticker string // e.g. "AAPL"
+	Ticker string `json:"ticker"` // e.g. "AAPL"
 	// ISIN gives the ISIN id this Symbol refers to.
-	ISIN string // e.g. "US0378331005"
+	ISIN string `json:"isin"` // e.g. "US0378331005"
 	// WKN gives the ISIN id this Symbol refers to.
-	WKN string // e.g. "865985"
+	WKN string `json:"wkn"` // e.g. "865985"
 	// FIGI gives the ISIN id this Symbol refers to.
-	FIGI string // e.g. "BBG000B9Y6W2"
+	FIGI string `json:"figi"` // e.g. "BBG000B9Y6W2"
 	// Name gives the human-readable name of this financial instrument.
-	Name string // e.g. "Apple Inc."
+	Name string `json:"name"` // e.g. "Apple Inc."
 	// Type gives the type of the financial instrument this Symbol refers to.
-	Type SecurityType // e.g. equity
+	Type SecurityType `json:"type"` // e.g. equity
 }
 
 // IsEmpty determines if a [Symbol] has any ids set.
