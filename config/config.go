@@ -142,7 +142,7 @@ func (c *Config) NewSymbolsProvider() (finance.SymbolResolver, error) {
 		if len(providers) == 0 {
 			return nil, fmt.Errorf("at least one Symbols provider must be defined")
 		}
-		cache, err := c.Cache.NewSymbolCache(time.Duration(c.FX.CacheTTL))
+		cache, err := c.Cache.NewSymbolCache(time.Duration(c.Symbols.CacheTTL))
 		if err != nil {
 			return nil, err
 		}
