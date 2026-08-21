@@ -50,7 +50,7 @@ func (p *cachedFXProvider) ProviderName() string {
 }
 
 func (p *cachedFXProvider) QueryExchangeRate(ctx context.Context, base, quote finance.Currency) (*finance.ExchangeRate, error) {
-	key := fmt.Sprintf("finance:exchangeRate:%s/%s", base, quote)
+	key := p.cacheKey(base, quote)
 	cachedExchangeRate, err := p.cache.Get(ctx, key)
 	if errors.Is(err, cache.ErrNotFound) {
 		cachedExchangeRate, err = p.provider.QueryExchangeRate(ctx, base, quote)
@@ -62,6 +62,10 @@ func (p *cachedFXProvider) QueryExchangeRate(ctx context.Context, base, quote fi
 		return nil, err
 	}
 	return cachedExchangeRate, nil
+}
+
+func (p *cachedFXProvider) cacheKey(base, quote finance.Currency) string {
+	return fmt.Sprintf("finance:exchangeRate:%s/%s", strings.ToUpper(string(base)), strings.ToUpper(string(quote)))
 }
 
 type fallbackFXProvider struct {

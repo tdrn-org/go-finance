@@ -50,7 +50,7 @@ func (p *cachedSymbolsProvider) ProviderName() string {
 }
 
 func (p *cachedSymbolsProvider) SearchSymbol(ctx context.Context, query string) (finance.Symbols, error) {
-	key := fmt.Sprintf("finance:symbols:%s", query)
+	key := p.cacheKey(query)
 	cachedSymbols, err := p.cache.Get(ctx, key)
 	if errors.Is(err, cache.ErrNotFound) {
 		cachedSymbols, err = p.provider.SearchSymbol(ctx, query)
@@ -62,6 +62,10 @@ func (p *cachedSymbolsProvider) SearchSymbol(ctx context.Context, query string) 
 		return nil, err
 	}
 	return cachedSymbols, nil
+}
+
+func (p *cachedSymbolsProvider) cacheKey(query string) string {
+	return fmt.Sprintf("finance:symbols:%s", strings.ToUpper(query))
 }
 
 type mergeSymbolsProvider struct {

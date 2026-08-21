@@ -82,7 +82,7 @@ func Load(path string, strict bool) (*Config, error) {
 }
 
 func (c *Config) NewFXProvider() (finance.FX, error) {
-	c.fxFactory.NewAPI(func(c *Config) (finance.FX, error) {
+	c.fxFactory.NewAPI(func(config *Config) (finance.FX, error) {
 		providers := make([]finance.FX, 0, len(c.FX.ProviderNames))
 		for _, providerName := range c.FX.ProviderNames {
 			var provider finance.FX

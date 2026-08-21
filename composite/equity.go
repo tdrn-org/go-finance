@@ -48,7 +48,7 @@ func (p *cachedEquityProvider) ProviderName() string {
 }
 
 func (p *cachedEquityProvider) QueryQuote(ctx context.Context, symbol finance.Symbol) (*finance.Quote, error) {
-	key := fmt.Sprintf("finance:quote:%s/%s/%s/%s/%s", symbol.Exchange, symbol.Ticker, symbol.ISIN, symbol.WKN, symbol.FIGI)
+	key := p.cacheKey(&symbol)
 	cachedQuote, err := p.cache.Get(ctx, key)
 	if errors.Is(err, cache.ErrNotFound) {
 		cachedQuote, err = p.provider.QueryQuote(ctx, symbol)
@@ -60,4 +60,13 @@ func (p *cachedEquityProvider) QueryQuote(ctx context.Context, symbol finance.Sy
 		return nil, err
 	}
 	return cachedQuote, nil
+}
+
+func (p *cachedEquityProvider) cacheKey(symbol *finance.Symbol) string {
+	return fmt.Sprintf("finance:quote:%s/%s/%s/%s/%s",
+		strings.ToUpper(symbol.Exchange),
+		strings.ToUpper(symbol.Ticker),
+		strings.ToUpper(symbol.ISIN),
+		strings.ToUpper(symbol.WKN),
+		strings.ToUpper(symbol.FIGI))
 }
