@@ -28,18 +28,18 @@ type cooldownQueueEntry[P comparable] struct {
 
 type cooldownQueue[P comparable] struct {
 	cooldown time.Duration
-	entries  []cooldownQueueEntry[P]
+	entries  []*cooldownQueueEntry[P]
 	mutex    sync.RWMutex
 }
 
 func newCooldownQueue[P comparable](provider P, cooldown time.Duration, fallbacks ...P) *cooldownQueue[P] {
 	queue := &cooldownQueue[P]{
 		cooldown: cooldown,
-		entries:  make([]cooldownQueueEntry[P], 0, 1+len(fallbacks)),
+		entries:  make([]*cooldownQueueEntry[P], 0, 1+len(fallbacks)),
 	}
-	queue.entries = append(queue.entries, cooldownQueueEntry[P]{provider: provider})
+	queue.entries = append(queue.entries, &cooldownQueueEntry[P]{provider: provider})
 	for _, fallback := range fallbacks {
-		queue.entries = append(queue.entries, cooldownQueueEntry[P]{provider: fallback})
+		queue.entries = append(queue.entries, &cooldownQueueEntry[P]{provider: fallback})
 	}
 	return queue
 }
