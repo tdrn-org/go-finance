@@ -25,6 +25,12 @@ import (
 	"github.com/tdrn-org/go-finance"
 )
 
+func TestDemoCurrencyAPI(t *testing.T) {
+	api := newDemoAPI(t)
+
+	testCurrencyAPI(t, api)
+}
+
 func TestAlphaVantageCurrencyAPI(t *testing.T) {
 	api := newAlphaVantageAPI(t)
 

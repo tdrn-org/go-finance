@@ -24,6 +24,12 @@ import (
 	"github.com/tdrn-org/go-finance"
 )
 
+func TestDemoSymbolAPI(t *testing.T) {
+	api := newDemoAPI(t)
+
+	testSymbolAPI(t, api)
+}
+
 func TestAlphaVantageSymbolAPI(t *testing.T) {
 	api := newAlphaVantageAPI(t)
 

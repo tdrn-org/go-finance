@@ -22,6 +22,7 @@ import (
 
 	"github.com/tdrn-org/go-finance/alphavantage"
 	"github.com/tdrn-org/go-finance/consorsbank"
+	"github.com/tdrn-org/go-finance/demo"
 	"github.com/tdrn-org/go-finance/twelvedata"
 )
 
@@ -33,12 +34,14 @@ type EquityConfig struct {
 type EquityProviderName string
 
 const (
+	EquityProviderNameDemo         EquityProviderName = EquityProviderName(demo.Name)
 	EquityProviderNameAlphaVantage EquityProviderName = EquityProviderName(alphavantage.Name)
 	EquityProviderNameConsorsbank  EquityProviderName = EquityProviderName(consorsbank.Name)
 	EquityProviderNameTwelveData   EquityProviderName = EquityProviderName(twelvedata.Name)
 )
 
 var knownEquityProviderNames map[string]EquityProviderName = map[string]EquityProviderName{
+	string(EquityProviderNameDemo):         EquityProviderNameDemo,
 	string(EquityProviderNameAlphaVantage): EquityProviderNameAlphaVantage,
 	string(EquityProviderNameConsorsbank):  EquityProviderNameConsorsbank,
 	string(EquityProviderNameTwelveData):   EquityProviderNameTwelveData,

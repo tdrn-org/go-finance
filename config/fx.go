@@ -22,6 +22,7 @@ import (
 
 	"github.com/tdrn-org/go-finance/alphavantage"
 	"github.com/tdrn-org/go-finance/consorsbank"
+	"github.com/tdrn-org/go-finance/demo"
 	"github.com/tdrn-org/go-finance/frankfurter"
 	"github.com/tdrn-org/go-finance/twelvedata"
 )
@@ -35,6 +36,7 @@ type FXConfig struct {
 type FXProviderName string
 
 const (
+	FXProviderNameDemo         FXProviderName = FXProviderName(demo.Name)
 	FXProviderNameAlphaVantage FXProviderName = FXProviderName(alphavantage.Name)
 	FXProviderNameConsorsbank  FXProviderName = FXProviderName(consorsbank.Name)
 	FXProviderNameFrankfurter  FXProviderName = FXProviderName(frankfurter.Name)
@@ -42,6 +44,7 @@ const (
 )
 
 var knownFXProviderNames map[string]FXProviderName = map[string]FXProviderName{
+	string(FXProviderNameDemo):         FXProviderNameDemo,
 	string(FXProviderNameAlphaVantage): FXProviderNameAlphaVantage,
 	string(FXProviderNameConsorsbank):  FXProviderNameConsorsbank,
 	string(FXProviderNameFrankfurter):  FXProviderNameFrankfurter,

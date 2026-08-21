@@ -23,8 +23,8 @@ import (
 )
 
 var (
-	// ErrNoExchangeRate indicates an exchange rate is not available.
-	ErrNoExchangeRate error = errors.New("no exchange rate")
+	// ErrExchangeRateNotAvailable indicates an exchange rate is not available.
+	ErrExchangeRateNotAvailable error = errors.New("exchange rate not available")
 )
 
 // Currency type.

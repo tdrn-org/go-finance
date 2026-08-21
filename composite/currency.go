@@ -104,5 +104,5 @@ func (p *fallbackFXProvider) QueryExchangeRate(ctx context.Context, base, quote 
 		}
 		return exchangeRate, nil
 	}
-	return nil, finance.ErrNoExchangeRate
+	return nil, finance.ErrExchangeRateNotAvailable
 }

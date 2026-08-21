@@ -93,7 +93,7 @@ func (api *API) QueryExchangeRate(ctx context.Context, base, quote finance.Curre
 	}
 	rate := response.LookupQuote(quote)
 	if rate == nil {
-		return nil, finance.ErrNoExchangeRate
+		return nil, finance.ErrExchangeRateNotAvailable
 	}
 	api.logger.Debug("found exchange rate", slog.String("date", rate.Date), slog.String("base", string(rate.Base)), slog.String("quote", string(rate.Quote)), slog.Float64("rate", rate.Rate))
 	return rate.ToExchangeRate()

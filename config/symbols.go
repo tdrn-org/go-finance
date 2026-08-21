@@ -22,6 +22,7 @@ import (
 
 	"github.com/tdrn-org/go-finance/alphavantage"
 	"github.com/tdrn-org/go-finance/consorsbank"
+	"github.com/tdrn-org/go-finance/demo"
 	"github.com/tdrn-org/go-finance/openfigi"
 	"github.com/tdrn-org/go-finance/twelvedata"
 )
@@ -35,6 +36,7 @@ type SymbolsConfig struct {
 type SymbolsProviderName string
 
 const (
+	SymbolsProviderNameDemo         SymbolsProviderName = SymbolsProviderName(demo.Name)
 	SymbolsProviderNameAlphaVantage SymbolsProviderName = SymbolsProviderName(alphavantage.Name)
 	SymbolsProviderNameConsorsbank  SymbolsProviderName = SymbolsProviderName(consorsbank.Name)
 	SymbolsProviderNameOpenFIGI     SymbolsProviderName = SymbolsProviderName(openfigi.Name)
@@ -42,6 +44,7 @@ const (
 )
 
 var knownSymbolsProviderNames map[string]SymbolsProviderName = map[string]SymbolsProviderName{
+	string(SymbolsProviderNameDemo):         SymbolsProviderNameDemo,
 	string(SymbolsProviderNameAlphaVantage): SymbolsProviderNameAlphaVantage,
 	string(SymbolsProviderNameConsorsbank):  SymbolsProviderNameConsorsbank,
 	string(SymbolsProviderNameOpenFIGI):     SymbolsProviderNameOpenFIGI,

@@ -1,16 +1,19 @@
 [fx]
-providers = [ "frankfurter" ]
+providers = [ "demo" ]
 cooldown = "10m"
 cache_ttl = "6h"
 
 [symbols]
-providers = [ "openfigi" ]
+providers = [ "demo" ]
 cooldown = "10m"
 cache_ttl = "12h"
 
 [equity]
-provider = "consorsbank"
+provider = "demo"
 cache_ttl = "5m"
+
+[demo]
+enabled = true
 
 [alphavantage]
 base_url = "https://www.alphavantage.co/query/"

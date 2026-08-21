@@ -33,6 +33,7 @@ type Config struct {
 	FX             FXConfig                                    `toml:"fx"`
 	Symbols        SymbolsConfig                               `toml:"symbols"`
 	Equity         EquityConfig                                `toml:"equity"`
+	Demo           DemoConfig                                  `toml:"demo"`
 	AlphaVantage   AlphaVantageConfig                          `toml:"alphavantage"`
 	Consorsbank    ConsorsbankConfig                           `toml:"consorsbank"`
 	Frankfurter    FrankfurterConfig                           `toml:"frankfurter"`
@@ -88,6 +89,8 @@ func (c *Config) NewFXProvider() (finance.FX, error) {
 			var provider finance.FX
 			var err error
 			switch providerName {
+			case FXProviderNameDemo:
+				provider, err = c.Demo.NewAPI()
 			case FXProviderNameAlphaVantage:
 				provider, err = c.AlphaVantage.NewAPI()
 			case FXProviderNameConsorsbank:
@@ -123,6 +126,8 @@ func (c *Config) NewSymbolsProvider() (finance.SymbolResolver, error) {
 			var provider finance.SymbolResolver
 			var err error
 			switch providerName {
+			case SymbolsProviderNameDemo:
+				provider, err = c.Demo.NewAPI()
 			case SymbolsProviderNameAlphaVantage:
 				provider, err = c.AlphaVantage.NewAPI()
 			case SymbolsProviderNameConsorsbank:
@@ -156,6 +161,8 @@ func (c *Config) NewEquityProvider() (finance.Equity, error) {
 		var provider finance.Equity
 		var err error
 		switch c.Equity.ProviderName {
+		case EquityProviderNameDemo:
+			provider, err = c.Demo.NewAPI()
 		case EquityProviderNameAlphaVantage:
 			provider, err = c.AlphaVantage.NewAPI()
 		case EquityProviderNameConsorsbank:

@@ -23,10 +23,27 @@ import (
 	"github.com/stretchr/testify/require"
 	"github.com/tdrn-org/go-finance/alphavantage"
 	"github.com/tdrn-org/go-finance/consorsbank"
+	"github.com/tdrn-org/go-finance/demo"
 	"github.com/tdrn-org/go-finance/frankfurter"
 	"github.com/tdrn-org/go-finance/openfigi"
 	"github.com/tdrn-org/go-finance/twelvedata"
 )
+
+func TestDemoProvider(t *testing.T) {
+	api := newDemoAPI(t)
+
+	providerName := api.ProviderName()
+	require.Equal(t, "demo", providerName)
+}
+
+func newDemoAPI(t *testing.T) *demo.API {
+	config := &demo.StaticConfig{
+		Enabled: true,
+	}
+	api, err := demo.NewAPI(config)
+	require.NoError(t, err)
+	return api
+}
 
 func TestAlphaVantageProvider(t *testing.T) {
 	api := newAlphaVantageAPI(t)
