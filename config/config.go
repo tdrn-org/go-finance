@@ -127,6 +127,9 @@ func (c *Config) NewEquityProvider() (finance.Equity, error) {
 		default:
 			err = fmt.Errorf("unrecognized Equity provider name '%s'", c.Equity.ProviderName)
 		}
+		if err != nil {
+			return nil, err
+		}
 		cache, err := c.Cache.NewQuoteCache(time.Duration(c.Equity.CacheTTL))
 		if err != nil {
 			return nil, err
