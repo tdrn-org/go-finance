@@ -33,13 +33,13 @@ func TLSSkipVerify() *tls.Config {
 	}
 }
 
-// TLSRootFromPEM returns a TLS configuration that pins the connection to the
+// TLSCAFromPEM returns a TLS configuration that pins the connection to the
 // single certificate provided in PEM format.
 //
 // InsecureSkipVerify is enabled so that the self-signed peer certificate is
 // validated by VerifyPeerCertificate instead of the standard PKI chain (which
 // would reject it as an unknown authority before the callback ever runs).
-func TLSRootFromPEM(data []byte) (*tls.Config, error) {
+func TLSCAFromPEM(data []byte) (*tls.Config, error) {
 	block, rest := pem.Decode(data)
 	if block == nil || block.Type != "CERTIFICATE" || len(rest) > 0 {
 		return nil, fmt.Errorf("invalid certificate data")
@@ -71,10 +71,10 @@ func TLSRootFromPEM(data []byte) (*tls.Config, error) {
 	}, nil
 }
 
-func TLSRootFromFile(file string) (*tls.Config, error) {
+func TLSCAFromFile(file string) (*tls.Config, error) {
 	data, err := os.ReadFile(file)
 	if err != nil {
 		return nil, fmt.Errorf("failed to read certificate file '%s' (cause: %w)", file, err)
 	}
-	return TLSRootFromPEM(data)
+	return TLSCAFromPEM(data)
 }

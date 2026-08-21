@@ -64,6 +64,9 @@ func NewAPI(config Config) (*API, error) {
 	if err != nil {
 		return nil, err
 	}
+	if address == "" {
+		address = DefaultAddress
+	}
 	tlsConfig, err := config.GetTLSConfig()
 	if err != nil {
 		return nil, err

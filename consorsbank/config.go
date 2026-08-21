@@ -22,6 +22,8 @@ import (
 	"github.com/tdrn-org/go-finance"
 )
 
+const DefaultAddress string = "localhost:40443"
+
 const DefaultExchange string = "TRG"
 
 type Config interface {

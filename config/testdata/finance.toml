@@ -1,0 +1,31 @@
+[fx]
+providers = [ "frankfurter", "alphavantage", "consorsbank", "twelvedata" ]
+cache_ttl = "6h"
+
+[alphavantage]
+base_url = "https://www.alphavantage.co/query/"
+api_key = ""
+
+[consorsbank]
+address = "localhost:40443"
+skip_verify = true
+ca_file = "root.pem"
+secret = ""
+preferred_currency = ""
+preferred_exchanges = [ "TRG" ]
+
+[frankfurter]
+base_url = "https://api.frankfurter.dev/v2/"
+
+[twelvedata]
+api_key = ""
+
+[cache]
+type = "memory"
+
+[cache.memory]
+
+[cache.redis]
+address = "localhost:6379"
+password = ""
+db = 0

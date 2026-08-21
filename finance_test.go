@@ -64,10 +64,9 @@ func newConsorsbankAPI(t *testing.T) *consorsbank.API {
 	if root == "" {
 		t.Skip("No Consorsbank root cert set; skipping now")
 	}
-	tlsConfig, err := consorsbank.TLSRootFromFile(root)
+	tlsConfig, err := consorsbank.TLSCAFromFile(root)
 	require.NoError(t, err)
 	config := &consorsbank.StaticConfig{
-		Address:   "localhost:40443",
 		TLSConfig: tlsConfig,
 		Secret:    os.Getenv("CONSORSBANK_SECRET"),
 	}

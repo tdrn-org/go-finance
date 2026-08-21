@@ -228,19 +228,19 @@ const (
 type ExchangeRate struct {
 	// Timestamp defines the point in time this exchange rate
 	// was current according to the provider.
-	Timestamp time.Time
+	Timestamp time.Time `json:"timestamp"`
 	// Base defines the base currency for this exchange rate.
-	Base Currency
+	Base Currency `json:"base"`
 	// Quote defines the quoted currency for this exchange rate.
-	Quote Currency
+	Quote Currency `json:"quote"`
 	// Rate defines the rate for base to quoted currency.
-	Rate float64
+	Rate float64 `json:"rate"`
 	// Sources defines the provider this exchange rate has been
 	// queried from.
-	Source string
+	Source string `json:"source"`
 	// SourceTimestamp defines the time this exchange rate has
 	// been queried.
-	SourceTimestamp time.Time
+	SourceTimestamp time.Time `json:"source_timestamp"`
 }
 
 // FX interface provides functions for querying exchange rates.
