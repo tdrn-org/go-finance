@@ -100,7 +100,7 @@ func (p *mergeSymbolsProvider) SearchSymbol(ctx context.Context, query string) (
 		}
 	}
 	if len(symbols) == 0 {
-		return nil, finance.ErrNoExchangeRate
+		return nil, finance.ErrSymbolNotAvailable
 	}
 	return symbols, nil
 }
