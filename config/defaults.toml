@@ -23,6 +23,7 @@ ca_file = "root.pem"
 secret = ""
 preferred_currency = ""
 preferred_exchanges = [ "TRG" ]
+subscription_timeout = "1h"
 
 [frankfurter]
 base_url = "https://api.frankfurter.dev/v2/"

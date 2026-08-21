@@ -26,6 +26,7 @@ import (
 	"math"
 	"strings"
 	"sync"
+	"time"
 
 	"github.com/tdrn-org/go-finance"
 	"github.com/tdrn-org/go-finance/consorsbank/proto"
@@ -41,6 +42,7 @@ type API struct {
 	secret                    string
 	preferredCurrency         finance.Currency
 	preferredExchanges        []string
+	subscriptionTimeout       time.Duration
 	session                   *apiSession
 	exchangeRateSubscriptions map[string]*streamSubscription[proto.CurrencyRateReply, finance.ExchangeRate]
 	quoteSubscriptions        map[string]*streamSubscription[proto.SecurityMarketDataReply, finance.Quote]
@@ -86,12 +88,17 @@ func NewAPI(config Config) (*API, error) {
 	if len(preferredExchanges) == 0 {
 		preferredExchanges = []string{DefaultExchange}
 	}
+	subscriptionTimeout, err := config.GetSubscriptionTimeout()
+	if err != nil {
+		return nil, err
+	}
 	api := &API{
 		address:                   address,
 		tlsConfig:                 tlsConfig,
 		secret:                    secret,
 		preferredCurrency:         preferredCurrency,
 		preferredExchanges:        preferredExchanges,
+		subscriptionTimeout:       subscriptionTimeout,
 		exchangeRateSubscriptions: make(map[string]*streamSubscription[proto.CurrencyRateReply, finance.ExchangeRate]),
 		quoteSubscriptions:        make(map[string]*streamSubscription[proto.SecurityMarketDataReply, finance.Quote]),
 		logger:                    logger,
@@ -160,11 +167,12 @@ func (api *API) startExchangeRateSubscriptionLocked(ctx context.Context, base, q
 		return nil, fmt.Errorf("failed to create exchange rate subscription (cause: %w)", err)
 	}
 	subscription := &streamSubscription[proto.CurrencyRateReply, finance.ExchangeRate]{
-		client:      client,
-		recordReply: recordCurrencyRateReply,
-		ctx:         subscriptionCtx,
-		cancel:      subscriptionCancel,
-		logger:      api.logger.With(slog.String("currencyRateSubscription", subscriptionKey)),
+		client:              client,
+		subscriptionTimeout: api.subscriptionTimeout,
+		recordReply:         recordCurrencyRateReply,
+		ctx:                 subscriptionCtx,
+		cancel:              subscriptionCancel,
+		logger:              api.logger.With(slog.String("currencyRateSubscription", subscriptionKey)),
 	}
 	api.exchangeRateSubscriptions[subscriptionKey] = subscription
 	api.stoppedWG.Go(subscription.Run)
@@ -301,7 +309,8 @@ func (api *API) startSecurityMarketDataSubscriptionLocked(ctx context.Context, s
 		return nil, fmt.Errorf("failed to create security market data subscription (cause: %w)", err)
 	}
 	subscription := &streamSubscription[proto.SecurityMarketDataReply, finance.Quote]{
-		client: client,
+		client:              client,
+		subscriptionTimeout: api.subscriptionTimeout,
 		recordReply: func(s *streamSubscription[proto.SecurityMarketDataReply, finance.Quote], reply *proto.SecurityMarketDataReply) {
 			recordSecurityMarketDataReply(s, symbol, reply)
 		},
@@ -386,14 +395,16 @@ func (api *API) closeSessionLocked() error {
 }
 
 type streamSubscription[R, T any] struct {
-	client      grpc.ServerStreamingClient[R]
-	lastReply   *T
-	recordReply func(*streamSubscription[R, T], *R)
-	ctx         context.Context
-	cancel      context.CancelFunc
-	closed      bool
-	logger      *slog.Logger
-	mutex       sync.RWMutex
+	client              grpc.ServerStreamingClient[R]
+	subscriptionTimeout time.Duration
+	suscribeUntil       time.Time
+	lastReply           *T
+	recordReply         func(*streamSubscription[R, T], *R)
+	ctx                 context.Context
+	cancel              context.CancelFunc
+	closed              bool
+	logger              *slog.Logger
+	mutex               sync.Mutex
 }
 
 func (s *streamSubscription[R, T]) IsClosed() bool {
@@ -401,8 +412,8 @@ func (s *streamSubscription[R, T]) IsClosed() bool {
 		return true
 	}
 
-	s.mutex.RLock()
-	defer s.mutex.RUnlock()
+	s.mutex.Lock()
+	defer s.mutex.Unlock()
 
 	return s.closed
 }
@@ -417,13 +428,18 @@ func (s *streamSubscription[R, T]) markClosed() {
 func (s *streamSubscription[R, T]) Run() {
 	s.logger.Info("subscription running...")
 	for {
+		if s.timeoutReached() {
+			s.logger.Info("closing subscription; timeout reached")
+			s.markClosed()
+			return
+		}
 		reply, err := s.client.Recv()
 		if err != nil {
 			s.markClosed()
 			if errors.Is(err, io.EOF) {
 				s.logger.Info("closing subscription; server closed connection")
 			} else if s.ctx.Err() != nil || s.client.Context().Err() != nil {
-				s.logger.Info("closing subscription; client shutting down")
+				s.logger.Info("closing subscription; client is disconnecting")
 			} else {
 				s.logger.Info("closing subscription; recv failure", slog.Any("err", err))
 			}
@@ -433,13 +449,28 @@ func (s *streamSubscription[R, T]) Run() {
 	}
 }
 
+func (s *streamSubscription[R, T]) timeoutReached() bool {
+	s.mutex.Lock()
+	defer s.mutex.Unlock()
+
+	now := time.Now()
+	if s.suscribeUntil.IsZero() {
+		s.suscribeUntil = now.Add(s.subscriptionTimeout)
+		return false
+	}
+	return now.After(s.suscribeUntil)
+}
+
 func (s *streamSubscription[R, T]) LastReply() (*T, error) {
-	s.mutex.RLock()
-	defer s.mutex.RUnlock()
+	s.mutex.Lock()
+	defer s.mutex.Unlock()
 
 	if s.lastReply == nil {
 		return nil, finance.ErrRequestPending
 	}
+	// Only start extending timeout after at least one reply has come
+	// to timeout disfunctional subscriptions.
+	s.suscribeUntil = time.Now().Add(s.subscriptionTimeout)
 	return s.lastReply, nil
 }
 

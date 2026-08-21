@@ -18,6 +18,7 @@ package consorsbank
 
 import (
 	"crypto/tls"
+	"time"
 
 	"github.com/tdrn-org/go-finance"
 )
@@ -32,14 +33,16 @@ type Config interface {
 	GetSecret() (string, error)
 	GetPreferredCurrency() (finance.Currency, error)
 	GetPreferredExchanges() ([]string, error)
+	GetSubscriptionTimeout() (time.Duration, error)
 }
 
 type StaticConfig struct {
-	Address            string
-	TLSConfig          *tls.Config
-	Secret             string
-	PreferredCurrency  finance.Currency
-	PreferredExchanges []string
+	Address             string
+	TLSConfig           *tls.Config
+	Secret              string
+	PreferredCurrency   finance.Currency
+	PreferredExchanges  []string
+	SubscriptionTimeout time.Duration
 }
 
 func (c *StaticConfig) GetAddress() (string, error) {
@@ -60,4 +63,8 @@ func (c *StaticConfig) GetPreferredCurrency() (finance.Currency, error) {
 
 func (c *StaticConfig) GetPreferredExchanges() ([]string, error) {
 	return c.PreferredExchanges, nil
+}
+
+func (c *StaticConfig) GetSubscriptionTimeout() (time.Duration, error) {
+	return c.SubscriptionTimeout, nil
 }

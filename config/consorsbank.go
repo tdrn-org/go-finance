@@ -18,19 +18,21 @@ package config
 
 import (
 	"crypto/tls"
+	"time"
 
 	"github.com/tdrn-org/go-finance"
 	"github.com/tdrn-org/go-finance/consorsbank"
 )
 
 type ConsorsbankConfig struct {
-	Address            string                                           `toml:"address"`
-	SkipVerify         bool                                             `toml:"skip_verify"`
-	CAFile             string                                           `toml:"ca_file"`
-	Secret             string                                           `toml:"secret"`
-	PreferredCurrency  finance.Currency                                 `toml:"preferred_currency"`
-	PreferredExchanges []string                                         `toml:"preferred_exchanges"`
-	factory            apiFactory[*consorsbank.API, consorsbank.Config] `toml:"-"`
+	Address             string                                           `toml:"address"`
+	SkipVerify          bool                                             `toml:"skip_verify"`
+	CAFile              string                                           `toml:"ca_file"`
+	Secret              string                                           `toml:"secret"`
+	PreferredCurrency   finance.Currency                                 `toml:"preferred_currency"`
+	PreferredExchanges  []string                                         `toml:"preferred_exchanges"`
+	SubscriptionTimeout DurationSpec                                     `toml:"subscription_timeout"`
+	factory             apiFactory[*consorsbank.API, consorsbank.Config] `toml:"-"`
 }
 
 func (c *ConsorsbankConfig) GetAddress() (string, error) {
@@ -54,6 +56,10 @@ func (c *ConsorsbankConfig) GetPreferredCurrency() (finance.Currency, error) {
 
 func (c *ConsorsbankConfig) GetPreferredExchanges() ([]string, error) {
 	return c.PreferredExchanges, nil
+}
+
+func (c *ConsorsbankConfig) GetSubscriptionTimeout() (time.Duration, error) {
+	return time.Duration(c.SubscriptionTimeout), nil
 }
 
 func (c *ConsorsbankConfig) NewAPI() (*consorsbank.API, error) {

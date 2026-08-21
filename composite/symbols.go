@@ -94,7 +94,9 @@ func (p *mergeSymbolsProvider) SearchSymbol(ctx context.Context, query string) (
 	symbols := make(finance.Symbols, 0)
 	for _, availableProvider := range availableProviders {
 		foundSymbols, err := availableProvider.SearchSymbol(ctx, query)
-		if err != nil {
+		if errors.Is(err, finance.ErrSymbolSearchRestricted) {
+			continue
+		} else if err != nil {
 			slog.Warn("marking Symbols provider as failed", slog.String("provider", availableProvider.ProviderName()), slog.Any("err", err))
 			p.queue.MarkProviderFailed(availableProvider)
 			continue

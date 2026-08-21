@@ -95,7 +95,9 @@ func (p *fallbackFXProvider) QueryExchangeRate(ctx context.Context, base, quote 
 	availableProviders := p.queue.GetAvailableProviders()
 	for _, availableProvider := range availableProviders {
 		exchangeRate, err := availableProvider.QueryExchangeRate(ctx, base, quote)
-		if err != nil {
+		if errors.Is(err, finance.ErrRequestPending) {
+			continue
+		} else if err != nil {
 			slog.Warn("marking FX provider as failed", slog.String("provider", availableProvider.ProviderName()), slog.Any("err", err))
 			p.queue.MarkProviderFailed(availableProvider)
 			continue
