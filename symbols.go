@@ -129,6 +129,9 @@ const (
 )
 
 func (s *Symbol) Match(other *Symbol) SymbolMatch {
+	if s.IsEmpty() || other.IsEmpty() {
+		return SymbolMatchNone
+	}
 	match := SymbolMatchEqual
 	match = s.matchAttribute(match, s.Exchange, other.Exchange)
 	if match == SymbolMatchNone {
