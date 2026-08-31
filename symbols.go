@@ -190,7 +190,7 @@ func (s *Symbol) Merge(other *Symbol) {
 	}
 	if s.Name == "" {
 		s.Name = other.Name
-	} else if other.Name != "" && s.Name != other.Name {
+	} else if other.Name != "" && !strings.Contains(strings.ToLower(s.Name), strings.ToLower(other.Name)) {
 		s.Name = fmt.Sprintf("%s | %s", s.Name, other.Name)
 	}
 }
