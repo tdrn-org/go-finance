@@ -83,6 +83,11 @@ var instrumentTypeMap map[string]string = map[string]string{
 }
 
 func (api *API) SearchSymbol(ctx context.Context, query string) (finance.Symbols, error) {
+	noHint := &finance.Symbol{}
+	return api.searchSymbol(ctx, query, noHint)
+}
+
+func (api *API) searchSymbol(ctx context.Context, query string, hint *finance.Symbol) (finance.Symbols, error) {
 	response, rsp, err := api.client.ReferenceDataAPI.
 		GetSymbolSearch(ctx).
 		Symbol(query).
@@ -94,7 +99,31 @@ func (api *API) SearchSymbol(ctx context.Context, query string) (finance.Symbols
 	if err != nil {
 		return nil, err
 	}
-	return symbolSearchResponseToSymbols(response)
+	return symbolSearchResponseToSymbols(response, hint)
+}
+
+// See [finance.Equity]
+func (api *API) ResolveSymbol(ctx context.Context, symbol finance.Symbol) (*finance.Symbol, error) {
+	if symbol.HasTicker() {
+		return &symbol, nil
+	}
+	query := ""
+	if symbol.HasISIN() {
+		query = symbol.ISIN
+	} else if symbol.HasFIGI() {
+		query = symbol.FIGI
+	} else {
+		return nil, finance.ErrInsufficientSymbol
+	}
+	foundSymbols, err := api.searchSymbol(ctx, query, &symbol)
+	if err != nil {
+		return nil, err
+	}
+	resolvedSymbol, match := foundSymbols.Match(&symbol)
+	if match == finance.SymbolMatchNone {
+		return nil, finance.ErrSymbolNotAvailable
+	}
+	return resolvedSymbol, nil
 }
 
 func (api *API) QueryQuote(ctx context.Context, symbol finance.Symbol) (*finance.Quote, error) {

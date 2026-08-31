@@ -84,6 +84,22 @@ type Symbol struct {
 	Type SecurityType `json:"type"` // e.g. equity
 }
 
+func NewTickerSymbol(exchange, ticker string) Symbol {
+	return Symbol{Exchange: exchange, Ticker: ticker}
+}
+
+func NewISINSymbol(isin string) Symbol {
+	return Symbol{ISIN: isin}
+}
+
+func NewWKNSymbol(wkn string) Symbol {
+	return Symbol{WKN: wkn}
+}
+
+func NewFIGISymbol(figi string) Symbol {
+	return Symbol{FIGI: figi}
+}
+
 // IsEmpty determines if a [Symbol] has any ids set.
 func (s *Symbol) IsEmpty() bool {
 	return !s.HasTicker() && !s.HasISIN() && !s.HasWKN() && !s.HasFIGI()
@@ -153,7 +169,7 @@ func (s *Symbol) matchAttribute(currentMatch SymbolMatch, a, b string) SymbolMat
 	}
 }
 
-func (s *Symbol) Merge(other Symbol) {
+func (s *Symbol) Merge(other *Symbol) {
 	if s.Exchange == "" {
 		s.Exchange = other.Exchange
 	}
@@ -178,6 +194,35 @@ func (s *Symbol) Merge(other Symbol) {
 
 // Symbols defines an array of [Symbol]s.
 type Symbols []Symbol
+
+func (ss Symbols) Match(other *Symbol) (*Symbol, SymbolMatch) {
+	var matchingSymbol Symbol
+	matchResult := SymbolMatchNone
+	for _, s := range ss {
+		match := s.Match(other)
+		if match == SymbolMatchNone {
+			continue
+		}
+		if match > matchResult {
+			matchingSymbol = s
+			matchResult = match
+			if matchResult == SymbolMatchEqual {
+				break
+			}
+		}
+	}
+	return &matchingSymbol, matchResult
+}
+
+// SymbolResolver searches for financial instruments.
+type SymbolResolver interface {
+	APIProvider
+
+	// SearchSymbol looks up symbols matching the given free-text query (name, ticker, ISIN, WKN, etc.).
+	// Providers may restrict search to specific code types (e.g. ISIN/WKN only); such providers return
+	// ErrSymbolSearchRestricted when the query contains no code they can resolve.
+	SearchSymbol(ctx context.Context, query string) (Symbols, error)
+}
 
 var isinPattern regexp.Regexp = *regexp.MustCompile("^[A-Z]{2}[A-Z0-9]{9}[0-9]$")
 
@@ -293,14 +338,4 @@ func (v *figiValidator) shift(i int) {
 // but not whether this FIGI really exists.
 func IsFIGI(s string) bool {
 	return (&figiValidator{}).Validate(strings.ToUpper(s))
-}
-
-// SymbolResolver searches for financial instruments.
-type SymbolResolver interface {
-	APIProvider
-
-	// SearchSymbol looks up symbols matching the given free-text query (name, ticker, ISIN, WKN, etc.).
-	// Providers may restrict search to specific code types (e.g. ISIN/WKN only); such providers return
-	// ErrSymbolSearchRestricted when the query contains no code they can resolve.
-	SearchSymbol(ctx context.Context, query string) (Symbols, error)
 }

@@ -244,6 +244,14 @@ func (api *API) getSecurityInfo(ctx context.Context, session *apiSession, securi
 	return reply, nil
 }
 
+// See [finance.Equity]
+func (api *API) ResolveSymbol(ctx context.Context, symbol finance.Symbol) (*finance.Symbol, error) {
+	if symbol.HasISIN() {
+		return &symbol, nil
+	}
+	return nil, finance.ErrInsufficientSymbol
+}
+
 func (api *API) QueryQuote(ctx context.Context, symbol finance.Symbol) (*finance.Quote, error) {
 	if !symbol.HasISIN() {
 		return nil, finance.ErrQuoteNotAvailable

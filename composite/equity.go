@@ -47,6 +47,10 @@ func (p *cachedEquityProvider) ProviderName() string {
 	return buffer.String()
 }
 
+func (p *cachedEquityProvider) ResolveSymbol(ctx context.Context, symbol finance.Symbol) (*finance.Symbol, error) {
+	return p.provider.ResolveSymbol(ctx, symbol)
+}
+
 func (p *cachedEquityProvider) QueryQuote(ctx context.Context, symbol finance.Symbol) (*finance.Quote, error) {
 	key := p.cacheKey(&symbol)
 	cachedQuote, err := p.cache.Get(ctx, key)

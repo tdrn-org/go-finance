@@ -96,26 +96,32 @@ type symbolSearchResponse struct {
 	BestMatches []bestMatchResponse `json:"bestMatches"`
 }
 
-func (r *symbolSearchResponse) ToMatchingSymbols(minScore float64) (finance.Symbols, error) {
+func (r *symbolSearchResponse) ToMatchingSymbols(minScore float64, hint *finance.Symbol) (finance.Symbols, [][2]string, error) {
 	symbols := make(finance.Symbols, 0, len(r.BestMatches))
+	symbolCurrencies := make([][2]string, 0, len(r.BestMatches))
 	for _, bestMatch := range r.BestMatches {
 		matchScore, err := stringToFloat64(bestMatch.MatchScore, "match score")
 		if err != nil {
-			return nil, err
+			return nil, nil, err
 		}
 		if matchScore < minScore {
 			continue
 		}
 		symbols = append(symbols, finance.Symbol{
-			Ticker: bestMatch.Symbol,
-			Name:   bestMatch.Name,
-			Type:   finance.MapSecurityType(bestMatch.Type, map[string]string{}),
+			Exchange: hint.Exchange,
+			Ticker:   bestMatch.Symbol,
+			ISIN:     hint.ISIN,
+			WKN:      hint.WKN,
+			FIGI:     hint.FIGI,
+			Name:     bestMatch.Name,
+			Type:     finance.MapSecurityType(bestMatch.Type, map[string]string{}),
 		})
+		symbolCurrencies = append(symbolCurrencies, [2]string{bestMatch.Symbol, bestMatch.Symbol})
 	}
 	if len(symbols) == 0 {
-		return nil, finance.ErrSymbolNotAvailable
+		return nil, nil, finance.ErrSymbolNotAvailable
 	}
-	return symbols, nil
+	return symbols, symbolCurrencies, nil
 }
 
 type quoteResponse struct {

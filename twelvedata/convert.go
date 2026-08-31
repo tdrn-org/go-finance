@@ -45,7 +45,7 @@ func exchangeRateResponseToExchangeRate(response *twelvedata.GetExchangeRate200R
 	return exchangeRate, nil
 }
 
-func symbolSearchResponseToSymbols(response *twelvedata.GetSymbolSearch200Response) (finance.Symbols, error) {
+func symbolSearchResponseToSymbols(response *twelvedata.GetSymbolSearch200Response, hint *finance.Symbol) (finance.Symbols, error) {
 	if response == nil {
 		return nil, nil
 	}
@@ -57,6 +57,9 @@ func symbolSearchResponseToSymbols(response *twelvedata.GetSymbolSearch200Respon
 		symbols = append(symbols, finance.Symbol{
 			Ticker:   responseItem.Symbol,
 			Exchange: responseItem.MicCode,
+			ISIN:     hint.ISIN,
+			WKN:      hint.WKN,
+			FIGI:     hint.FIGI,
 			Name:     responseItem.InstrumentName,
 			Type:     finance.MapSecurityType(responseItem.InstrumentType, instrumentTypeMap),
 		})

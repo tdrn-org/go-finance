@@ -125,7 +125,7 @@ func (api *API) queryExchangeRate(ctx context.Context, base, quote finance.Curre
 	return response, nil
 }
 
-const minMatchScore float64 = 0.5
+const searchMatchScore float64 = 0.5
 
 // See [finance.SymbolResolver]
 func (api *API) SearchSymbol(ctx context.Context, query string) (finance.Symbols, error) {
@@ -133,12 +133,13 @@ func (api *API) SearchSymbol(ctx context.Context, query string) (finance.Symbols
 	if err != nil {
 		return nil, err
 	}
-	symbolCurrencies := make([][2]string, 0, len(response.BestMatches))
-	for _, bestMatch := range response.BestMatches {
-		symbolCurrencies = append(symbolCurrencies, [2]string{bestMatch.Symbol, bestMatch.Currency})
+	noHint := &finance.Symbol{}
+	symbols, symbolCurrencies, err := response.ToMatchingSymbols(searchMatchScore, noHint)
+	if err != nil {
+		return nil, err
 	}
 	api.cacheSymbolCurrencies(symbolCurrencies)
-	return response.ToMatchingSymbols(minMatchScore)
+	return symbols, nil
 }
 
 func (api *API) searchSymbol(ctx context.Context, query string) (*symbolSearchResponse, error) {
@@ -169,6 +170,38 @@ func (api *API) searchSymbol(ctx context.Context, query string) (*symbolSearchRe
 	return response, nil
 }
 
+const resolveMatchScore float64 = 1.0
+
+// See [finance.Equity]
+func (api *API) ResolveSymbol(ctx context.Context, symbol finance.Symbol) (*finance.Symbol, error) {
+	if symbol.HasTicker() {
+		return &symbol, nil
+	}
+	query := ""
+	if symbol.HasISIN() {
+		query = symbol.ISIN
+	} else {
+		return nil, finance.ErrInsufficientSymbol
+	}
+	response, err := api.searchSymbol(ctx, query)
+	if err != nil {
+		return nil, err
+	}
+	foundSymbols, symbolCurrencies, err := response.ToMatchingSymbols(resolveMatchScore, &symbol)
+	if err != nil {
+		return nil, err
+	}
+	api.cacheSymbolCurrencies(symbolCurrencies)
+	resolvedSymbol := symbol
+	for _, foundSymbol := range foundSymbols {
+		if resolvedSymbol.Match(&foundSymbol) == finance.SymbolMatchEqual {
+			resolvedSymbol.Match(&foundSymbol)
+			return &resolvedSymbol, nil
+		}
+	}
+	return nil, finance.ErrSymbolNotAvailable
+}
+
 // See [finance.Equity]
 func (api *API) QueryQuote(ctx context.Context, symbol finance.Symbol) (*finance.Quote, error) {
 	quoteResponse, err := api.queryQuote(ctx, &symbol)
@@ -192,7 +225,7 @@ func (api *API) QueryQuote(ctx context.Context, symbol finance.Symbol) (*finance
 
 func (api *API) queryQuote(ctx context.Context, symbol *finance.Symbol) (*globalQuoteResponse, error) {
 	if !symbol.HasTicker() {
-		return nil, finance.ErrQuoteNotAvailable
+		return nil, finance.ErrInsufficientSymbol
 	}
 	apiURL := api.url("function", "GLOBAL_QUOTE", "symbol", symbol.Ticker)
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, apiURL.String(), nil)

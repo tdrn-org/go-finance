@@ -72,20 +72,30 @@ func (api *API) QueryExchangeRate(ctx context.Context, base, quote finance.Curre
 	return exchangeRate, nil
 }
 
+var demoSymbol finance.Symbol = finance.Symbol{
+	Exchange: "BCDS",
+	Ticker:   "SNOL",
+	ISIN:     "DE1234567890",
+	WKN:      "456789",
+	FIGI:     "BBG000000001",
+	Name:     "SnakeOil Ltd.",
+	Type:     finance.SecurityTypeEquity,
+}
+
 func (api *API) SearchSymbol(ctx context.Context, query string) (finance.Symbols, error) {
 	if !api.enabled {
 		return nil, finance.ErrSymbolSearchRestricted
 	}
-	symbol := finance.Symbol{
-		Exchange: "BCDS",
-		Ticker:   "SNOL",
-		ISIN:     "DE1234567890",
-		WKN:      "456789",
-		FIGI:     "BBG000000001",
-		Name:     "SnakeOil Ltd.",
-		Type:     finance.SecurityTypeEquity,
-	}
+	symbol := demoSymbol
 	return finance.Symbols{symbol}, nil
+}
+
+// See [finance.Equity]
+func (api *API) ResolveSymbol(ctx context.Context, symbol finance.Symbol) (*finance.Symbol, error) {
+	if demoSymbol.Match(&symbol) != finance.SymbolMatchEqual {
+		return nil, finance.ErrSymbolNotAvailable
+	}
+	return &demoSymbol, nil
 }
 
 func (api *API) QueryQuote(ctx context.Context, symbol finance.Symbol) (*finance.Quote, error) {

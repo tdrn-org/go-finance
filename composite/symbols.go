@@ -122,7 +122,7 @@ func (p *mergeSymbolsProvider) mergeSymbol(symbols finance.Symbols, foundSymbol 
 			return symbols
 		case finance.SymbolMatchSoft:
 			// Symbol is only partly in result; merge and return
-			symbol.Merge(*foundSymbol)
+			symbol.Merge(foundSymbol)
 			symbols[i] = symbol
 			return symbols
 		default:

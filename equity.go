@@ -23,6 +23,9 @@ import (
 )
 
 var (
+	// ErrInsufficientSymbol indicates a symbol does not contain
+	// the necessary information required for a provider.
+	ErrInsufficientSymbol error = errors.New("insufficient symbol")
 	// ErrQuoteNotAvailable indicates a provider is not able to
 	// provide a quote for the given [Symbol]. This is a permanent
 	// error due to missing Symbol ids required by the provider.
@@ -61,6 +64,12 @@ type Quote struct {
 // Equity provides quote data for equities, ETFs, and similar instruments.
 type Equity interface {
 	APIProvider
+
+	// ResolveSymbol resolves the given symbol to ensure it contains the
+	// necessary information to invoke [QueryQuote]. This funktion does
+	// nothing if the necessary information is already contained in the
+	// symbol.
+	ResolveSymbol(ctx context.Context, symbol Symbol) (*Symbol, error)
 
 	// QueryQuote returns the latest quote for a symbol.
 	// Returns ErrQuoteNotAvailable if the provider cannot handle the given symbol

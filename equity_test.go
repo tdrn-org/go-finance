@@ -56,15 +56,18 @@ func TestTwelveDataEquityAPI(t *testing.T) {
 func testEquityAP(t *testing.T, api finance.Equity) {
 	t.Log("provider", api.ProviderName())
 	symbol := finance.Symbol{
-		Ticker: "AAPL",
-		ISIN:   "US0378331005",
-		WKN:    "865985",
-		FIGI:   "BBG000B9XRY4",
+		Exchange: "XNGS",
+		Ticker:   "AAPL",
+		ISIN:     "US0378331005",
+		WKN:      "865985",
+		FIGI:     "BBG000B9XRY4",
 	}
+	resolvedSymbol, err := api.ResolveSymbol(t.Context(), symbol)
+	require.NoError(t, err)
 	retries := 3
 	retrySleep := 500 * time.Millisecond
 	for {
-		quote, err := api.QueryQuote(t.Context(), symbol)
+		quote, err := api.QueryQuote(t.Context(), *resolvedSymbol)
 		if errors.Is(err, finance.ErrRequestPending) {
 			retries--
 			if retries > 0 {
