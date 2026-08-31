@@ -66,7 +66,7 @@ type Equity interface {
 	APIProvider
 
 	// ResolveSymbol resolves the given symbol to ensure it contains the
-	// necessary information to invoke [QueryQuote]. This funktion does
+	// necessary information to invoke [QueryQuote]. This function does
 	// nothing if the necessary information is already contained in the
 	// symbol.
 	ResolveSymbol(ctx context.Context, symbol Symbol) (*Symbol, error)
