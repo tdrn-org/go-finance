@@ -73,12 +73,12 @@ func (api *API) QueryExchangeRate(ctx context.Context, base, quote finance.Curre
 }
 
 var demoSymbol finance.Symbol = finance.Symbol{
-	Exchange: "BCDS",
-	Ticker:   "SNOL",
-	ISIN:     "DE1234567890",
-	WKN:      "456789",
-	FIGI:     "BBG000000001",
-	Name:     "SnakeOil Ltd.",
+	Exchange: "XNGS",
+	Ticker:   "AAPL",
+	ISIN:     "US0378331005",
+	WKN:      "865985",
+	FIGI:     "BBG000B9XRY4",
+	Name:     "Apple Inc.",
 	Type:     finance.SecurityTypeEquity,
 }
 
