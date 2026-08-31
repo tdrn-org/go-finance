@@ -195,7 +195,7 @@ func (api *API) ResolveSymbol(ctx context.Context, symbol finance.Symbol) (*fina
 	resolvedSymbol := symbol
 	for _, foundSymbol := range foundSymbols {
 		if resolvedSymbol.Match(&foundSymbol) == finance.SymbolMatchEqual {
-			resolvedSymbol.Match(&foundSymbol)
+			resolvedSymbol.Merge(&foundSymbol)
 			return &resolvedSymbol, nil
 		}
 	}
