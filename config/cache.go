@@ -18,12 +18,12 @@ package config
 
 import (
 	"fmt"
-	"log/slog"
 	"time"
 
 	"github.com/tdrn-org/go-cache"
 	"github.com/tdrn-org/go-cache/memory"
 	"github.com/tdrn-org/go-cache/redis"
+	"github.com/tdrn-org/go-config-toml"
 	"github.com/tdrn-org/go-finance"
 	"github.com/tdrn-org/go-finance/composite"
 )
@@ -99,33 +99,23 @@ const (
 	CacheTypeRedis  CacheType = "redis"
 )
 
-var knownCacheTypes map[string]CacheType = map[string]CacheType{
+func (t CacheType) String() string {
+	return string(t)
+}
+
+var cacheTypeUnmarshalMap map[string]CacheType = map[string]CacheType{
 	string(CacheTypeMemory): CacheTypeMemory,
 	string(CacheTypeRedis):  CacheTypeRedis,
 }
 
-func (t *CacheType) Value() string {
-	for value, cacheType := range knownCacheTypes {
-		if *t == cacheType {
-			return value
-		}
-	}
-	slog.Warn("unexpected cache type", slog.Any("t", *t))
-	return ""
+func (t CacheType) MarshalText() ([]byte, error) {
+	return config.MarshalStringerEnum(t)
 }
 
-func (t *CacheType) MarshalTOML() ([]byte, error) {
-	return []byte(`"` + t.Value() + `"`), nil
-}
-
-func (t *CacheType) UnmarshalTOML(value any) error {
-	databaseTypeString, ok := value.(string)
-	if !ok {
-		return fmt.Errorf("unexpected cache type type %v", value)
-	}
-	cacheType, ok := knownCacheTypes[databaseTypeString]
-	if !ok {
-		return fmt.Errorf("unknown cache type: '%s'", databaseTypeString)
+func (t *CacheType) UnmarshalText(text []byte) error {
+	cacheType, err := config.UnmarshalEnum(cacheTypeUnmarshalMap, text)
+	if err != nil {
+		return err
 	}
 	*t = cacheType
 	return nil

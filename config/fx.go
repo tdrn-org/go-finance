@@ -17,9 +17,7 @@
 package config
 
 import (
-	"fmt"
-	"log/slog"
-
+	"github.com/tdrn-org/go-config-toml"
 	"github.com/tdrn-org/go-finance/alphavantage"
 	"github.com/tdrn-org/go-finance/consorsbank"
 	"github.com/tdrn-org/go-finance/demo"
@@ -28,9 +26,9 @@ import (
 )
 
 type FXConfig struct {
-	ProviderNames []FXProviderName `toml:"providers"`
-	Cooldown      DurationSpec     `toml:"cooldown"`
-	CacheTTL      DurationSpec     `toml:"cache_ttl"`
+	ProviderNames []FXProviderName    `toml:"providers"`
+	Cooldown      config.DurationSpec `toml:"cooldown"`
+	CacheTTL      config.DurationSpec `toml:"cache_ttl"`
 }
 
 type FXProviderName string
@@ -43,7 +41,11 @@ const (
 	FXProviderNameTwelveData   FXProviderName = FXProviderName(twelvedata.Name)
 )
 
-var knownFXProviderNames map[string]FXProviderName = map[string]FXProviderName{
+func (n FXProviderName) String() string {
+	return string(n)
+}
+
+var fxProviderNameUnmarshalMap map[string]FXProviderName = map[string]FXProviderName{
 	string(FXProviderNameDemo):         FXProviderNameDemo,
 	string(FXProviderNameAlphaVantage): FXProviderNameAlphaVantage,
 	string(FXProviderNameConsorsbank):  FXProviderNameConsorsbank,
@@ -51,28 +53,14 @@ var knownFXProviderNames map[string]FXProviderName = map[string]FXProviderName{
 	string(FXProviderNameTwelveData):   FXProviderNameTwelveData,
 }
 
-func (n *FXProviderName) Value() string {
-	for value, providerName := range knownFXProviderNames {
-		if *n == providerName {
-			return value
-		}
-	}
-	slog.Warn("unexpected FX provider name", slog.Any("n", *n))
-	return ""
+func (n *FXProviderName) MarshalText() ([]byte, error) {
+	return config.MarshalStringerEnum(n)
 }
 
-func (n *FXProviderName) MarshalTOML() ([]byte, error) {
-	return []byte(`"` + n.Value() + `"`), nil
-}
-
-func (n *FXProviderName) UnmarshalTOML(value any) error {
-	providerNameString, ok := value.(string)
-	if !ok {
-		return fmt.Errorf("unexpected FX provider name type %v", value)
-	}
-	providerName, ok := knownFXProviderNames[providerNameString]
-	if !ok {
-		return fmt.Errorf("unknown FX provider name: '%s'", providerNameString)
+func (n *FXProviderName) UnmarshalText(text []byte) error {
+	providerName, err := config.UnmarshalEnum(fxProviderNameUnmarshalMap, text)
+	if err != nil {
+		return err
 	}
 	*n = providerName
 	return nil

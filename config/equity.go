@@ -17,9 +17,7 @@
 package config
 
 import (
-	"fmt"
-	"log/slog"
-
+	"github.com/tdrn-org/go-config-toml"
 	"github.com/tdrn-org/go-finance/alphavantage"
 	"github.com/tdrn-org/go-finance/consorsbank"
 	"github.com/tdrn-org/go-finance/demo"
@@ -27,8 +25,8 @@ import (
 )
 
 type EquityConfig struct {
-	ProviderName EquityProviderName `toml:"provider"`
-	CacheTTL     DurationSpec       `toml:"cache_ttl"`
+	ProviderName EquityProviderName  `toml:"provider"`
+	CacheTTL     config.DurationSpec `toml:"cache_ttl"`
 }
 
 type EquityProviderName string
@@ -40,35 +38,25 @@ const (
 	EquityProviderNameTwelveData   EquityProviderName = EquityProviderName(twelvedata.Name)
 )
 
-var knownEquityProviderNames map[string]EquityProviderName = map[string]EquityProviderName{
+func (n EquityProviderName) String() string {
+	return string(n)
+}
+
+var equityProviderNameUnmarshalMap map[string]EquityProviderName = map[string]EquityProviderName{
 	string(EquityProviderNameDemo):         EquityProviderNameDemo,
 	string(EquityProviderNameAlphaVantage): EquityProviderNameAlphaVantage,
 	string(EquityProviderNameConsorsbank):  EquityProviderNameConsorsbank,
 	string(EquityProviderNameTwelveData):   EquityProviderNameTwelveData,
 }
 
-func (n *EquityProviderName) Value() string {
-	for value, providerName := range knownEquityProviderNames {
-		if *n == providerName {
-			return value
-		}
-	}
-	slog.Warn("unexpected Equity provider name", slog.Any("n", *n))
-	return ""
+func (n EquityProviderName) MarshalText() ([]byte, error) {
+	return config.MarshalStringerEnum(n)
 }
 
-func (n *EquityProviderName) MarshalTOML() ([]byte, error) {
-	return []byte(`"` + n.Value() + `"`), nil
-}
-
-func (n *EquityProviderName) UnmarshalTOML(value any) error {
-	providerNameString, ok := value.(string)
-	if !ok {
-		return fmt.Errorf("unexpected Equity provider name type %v", value)
-	}
-	providerName, ok := knownEquityProviderNames[providerNameString]
-	if !ok {
-		return fmt.Errorf("unknown Equity provider name: '%s'", providerNameString)
+func (n *EquityProviderName) UnmarshalText(text []byte) error {
+	providerName, err := config.UnmarshalEnum(equityProviderNameUnmarshalMap, text)
+	if err != nil {
+		return err
 	}
 	*n = providerName
 	return nil

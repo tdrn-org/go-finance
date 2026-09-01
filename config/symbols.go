@@ -17,9 +17,7 @@
 package config
 
 import (
-	"fmt"
-	"log/slog"
-
+	"github.com/tdrn-org/go-config-toml"
 	"github.com/tdrn-org/go-finance/alphavantage"
 	"github.com/tdrn-org/go-finance/consorsbank"
 	"github.com/tdrn-org/go-finance/demo"
@@ -29,8 +27,8 @@ import (
 
 type SymbolsConfig struct {
 	ProviderNames []SymbolsProviderName `toml:"providers"`
-	Cooldown      DurationSpec          `toml:"cooldown"`
-	CacheTTL      DurationSpec          `toml:"cache_ttl"`
+	Cooldown      config.DurationSpec   `toml:"cooldown"`
+	CacheTTL      config.DurationSpec   `toml:"cache_ttl"`
 }
 
 type SymbolsProviderName string
@@ -43,7 +41,11 @@ const (
 	SymbolsProviderNameTwelveData   SymbolsProviderName = SymbolsProviderName(twelvedata.Name)
 )
 
-var knownSymbolsProviderNames map[string]SymbolsProviderName = map[string]SymbolsProviderName{
+func (n SymbolsProviderName) String() string {
+	return string(n)
+}
+
+var symbolsProviderNamesUnmarshalMap map[string]SymbolsProviderName = map[string]SymbolsProviderName{
 	string(SymbolsProviderNameDemo):         SymbolsProviderNameDemo,
 	string(SymbolsProviderNameAlphaVantage): SymbolsProviderNameAlphaVantage,
 	string(SymbolsProviderNameConsorsbank):  SymbolsProviderNameConsorsbank,
@@ -51,28 +53,14 @@ var knownSymbolsProviderNames map[string]SymbolsProviderName = map[string]Symbol
 	string(SymbolsProviderNameTwelveData):   SymbolsProviderNameTwelveData,
 }
 
-func (n *SymbolsProviderName) Value() string {
-	for value, providerName := range knownSymbolsProviderNames {
-		if *n == providerName {
-			return value
-		}
-	}
-	slog.Warn("unexpected Symbols provider name", slog.Any("n", *n))
-	return ""
+func (n SymbolsProviderName) MarshalText() ([]byte, error) {
+	return config.MarshalStringerEnum(n)
 }
 
-func (n *SymbolsProviderName) MarshalTOML() ([]byte, error) {
-	return []byte(`"` + n.Value() + `"`), nil
-}
-
-func (n *SymbolsProviderName) UnmarshalTOML(value any) error {
-	providerNameString, ok := value.(string)
-	if !ok {
-		return fmt.Errorf("unexpected Symbols provider name type %v", value)
-	}
-	providerName, ok := knownSymbolsProviderNames[providerNameString]
-	if !ok {
-		return fmt.Errorf("unknown Symbols provider name: '%s'", providerNameString)
+func (n *SymbolsProviderName) UnmarshalText(text []byte) error {
+	providerName, err := config.UnmarshalEnum(symbolsProviderNamesUnmarshalMap, text)
+	if err != nil {
+		return err
 	}
 	*n = providerName
 	return nil

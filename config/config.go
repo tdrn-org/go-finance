@@ -19,12 +19,10 @@ package config
 import (
 	_ "embed"
 	"fmt"
-	"log/slog"
-	"net/url"
 	"sync"
 	"time"
 
-	"github.com/BurntSushi/toml"
+	"github.com/tdrn-org/go-config-toml"
 	"github.com/tdrn-org/go-finance"
 	"github.com/tdrn-org/go-finance/composite"
 )
@@ -46,40 +44,24 @@ type Config struct {
 }
 
 //go:embed defaults.toml
-var defaultsData string
+var defaultsData []byte
 
 func Default() (*Config, error) {
-	config := &Config{}
-	meta, err := toml.Decode(defaultsData, config)
-	if err != nil {
-		return nil, fmt.Errorf("failed to decode config defaults (cause: %w)", err)
-	}
-	for _, key := range meta.Undecoded() {
-		slog.Warn("unexpected default configuration key", slog.Any("key", key))
-	}
-	return config, nil
-}
-
-func Load(path string, strict bool) (*Config, error) {
-	logger := slog.With(slog.String("path", path))
-	logger.Info("loading config")
-	config, err := Default()
+	cfg := &Config{}
+	err := config.Defaults(cfg, defaultsData)
 	if err != nil {
 		return nil, err
 	}
-	meta, err := toml.DecodeFile(path, config)
+	return cfg, nil
+}
+
+func Load(path string, strict bool) (*Config, error) {
+	cfg := &Config{}
+	err := config.Load(cfg, path, defaultsData, strict)
 	if err != nil {
-		return nil, fmt.Errorf("failed to decode config '%s' (cause: %w)", path, err)
+		return nil, err
 	}
-	strictViolation := false
-	for _, key := range meta.Undecoded() {
-		strictViolation = true
-		logger.Warn("unexpected configuration key", slog.Any("key", key))
-	}
-	if strict && strictViolation {
-		return nil, fmt.Errorf("config contains unexpected keys")
-	}
-	return config, nil
+	return cfg, nil
 }
 
 func (c *Config) NewFXProvider() (finance.FX, error) {
@@ -182,60 +164,6 @@ func (c *Config) NewEquityProvider() (finance.Equity, error) {
 		return composite.NewCachedEquityProvider(provider, cache), nil
 	}, c)
 	return c.equityFactory.api, c.equityFactory.err
-}
-
-type DurationSpec time.Duration
-
-func (spec *DurationSpec) Value() string {
-	return time.Duration(*spec).String()
-}
-
-func (spec *DurationSpec) MarshalTOML() ([]byte, error) {
-	return []byte(`"` + spec.Value() + `"`), nil
-}
-
-func (spec *DurationSpec) UnmarshalTOML(value any) error {
-	durationString, ok := value.(string)
-	if !ok {
-		return fmt.Errorf("unexpected duration type %v", value)
-	}
-	parsedDuration, err := time.ParseDuration(durationString)
-	if err != nil {
-		return fmt.Errorf("invalid duration: '%s' (cause: %w)", durationString, err)
-	}
-	*spec = DurationSpec(parsedDuration)
-	return nil
-}
-
-type URLSpec struct {
-	*url.URL
-}
-
-func (spec *URLSpec) Value() string {
-	if spec.URL == nil {
-		return ""
-	}
-	return spec.String()
-}
-
-func (spec *URLSpec) MarshalTOML() ([]byte, error) {
-	return []byte(`"` + spec.Value() + `"`), nil
-}
-
-func (spec *URLSpec) UnmarshalTOML(value any) error {
-	urlString, ok := value.(string)
-	if !ok {
-		return fmt.Errorf("unexpected URL type %v", value)
-	}
-	if urlString == "" {
-		return nil
-	}
-	parsedURL, err := url.Parse(urlString)
-	if err != nil {
-		return fmt.Errorf("invalid URL: '%s' (cause: %w)", urlString, err)
-	}
-	spec.URL = parsedURL
-	return nil
 }
 
 type apiFactory[A finance.APIProvider, C any] struct {

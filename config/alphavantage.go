@@ -20,11 +20,12 @@ import (
 	"net/http"
 	"net/url"
 
+	"github.com/tdrn-org/go-config-toml"
 	"github.com/tdrn-org/go-finance/alphavantage"
 )
 
 type AlphaVantageConfig struct {
-	BaseURL URLSpec                                            `toml:"base_url"`
+	BaseURL config.URLSpec                                     `toml:"base_url"`
 	APIKey  string                                             `toml:"api_key"`
 	factory apiFactory[*alphavantage.API, alphavantage.Config] `toml:"-"`
 }

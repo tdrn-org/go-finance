@@ -20,6 +20,7 @@ import (
 	"crypto/tls"
 	"time"
 
+	"github.com/tdrn-org/go-config-toml"
 	"github.com/tdrn-org/go-finance"
 	"github.com/tdrn-org/go-finance/consorsbank"
 )
@@ -31,7 +32,7 @@ type ConsorsbankConfig struct {
 	Secret              string                                           `toml:"secret"`
 	PreferredCurrency   finance.Currency                                 `toml:"preferred_currency"`
 	PreferredExchanges  []string                                         `toml:"preferred_exchanges"`
-	SubscriptionTimeout DurationSpec                                     `toml:"subscription_timeout"`
+	SubscriptionTimeout config.DurationSpec                              `toml:"subscription_timeout"`
 	factory             apiFactory[*consorsbank.API, consorsbank.Config] `toml:"-"`
 }
 

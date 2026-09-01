@@ -20,11 +20,12 @@ import (
 	"net/http"
 	"net/url"
 
+	"github.com/tdrn-org/go-config-toml"
 	"github.com/tdrn-org/go-finance/frankfurter"
 )
 
 type FrankfurterConfig struct {
-	BaseURL URLSpec                                          `toml:"base_url"`
+	BaseURL config.URLSpec                                   `toml:"base_url"`
 	factory apiFactory[*frankfurter.API, frankfurter.Config] `toml:"-"`
 }
 
