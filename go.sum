@@ -117,8 +117,8 @@ github.com/stretchr/testify v1.12.1 h1:EuwCh5fleGS7H32xRwO3wRGT7DxrDhLAT6FF8MpWD
 github.com/stretchr/testify v1.12.1/go.mod h1:MDEgiDPPsNp5cuIrHPPCyornHKgEVbtFUmoNlxoYthg=
 github.com/tdrn-org/go-cache v0.1.2 h1:OszzX3T0MyOzQWkYkdw4YpFNn+tMnPBb75G/EKrZnbE=
 github.com/tdrn-org/go-cache v0.1.2/go.mod h1:5H0qiO4bNat0ppMLSVuKODx9mXN7lS3ZW+DKhFrnmvs=
-github.com/tdrn-org/go-config-toml v0.0.2 h1:G2Zv6PAdw90PMNU4yvJOPVKFnBqfR9qoul/h6FBYkQo=
-github.com/tdrn-org/go-config-toml v0.0.2/go.mod h1:ItaMuR/7fe+Rw9JohiaGOl5dmTnjopaSNJS4sa7O4lY=
+github.com/tdrn-org/go-config-toml v0.1.0 h1:sJM/BaTusxVazsZhiKn5WiRw8pE94dIgDPDZYrjODXI=
+github.com/tdrn-org/go-config-toml v0.1.0/go.mod h1:4gmdmSNkABSl7RxnV9aD3rf1GitdxdqwmIuxeNFW3FA=
 github.com/twelvedata/twelvedata-go v1.0.14 h1:zH9WI9T63HBUA4KasrmZQGWGc74lc4LdQf6prelTQUc=
 github.com/twelvedata/twelvedata-go v1.0.14/go.mod h1:HfZu5AU4bQbICW/uEgZrBxUnv1m08pWJWgcLzI5X70M=
 github.com/vmware-labs/yaml-jsonpath v0.3.2 h1:/5QKeCBGdsInyDCyVNLbXyilb61MXGi9NP674f9Hobk=
