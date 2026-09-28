@@ -115,6 +115,8 @@ github.com/tdrn-org/go-cache v0.1.2 h1:OszzX3T0MyOzQWkYkdw4YpFNn+tMnPBb75G/EKrZn
 github.com/tdrn-org/go-cache v0.1.2/go.mod h1:5H0qiO4bNat0ppMLSVuKODx9mXN7lS3ZW+DKhFrnmvs=
 github.com/tdrn-org/go-cache v0.1.4 h1:HZUl7NUdMJLIHPBTHcV59gbS2j1dS1FEZbXB47Z68oY=
 github.com/tdrn-org/go-cache v0.1.4/go.mod h1:vssyrKlULsikIVeGj3PNt2JZIHO5V4TAj3l+hqC7pmg=
+github.com/tdrn-org/go-cache v0.1.5 h1:f4uzSo93/qnDz638WCD0paHJONHlIKfCZ4a8hvZyNmY=
+github.com/tdrn-org/go-cache v0.1.5/go.mod h1:D8PzNAdaH+y+HrRomNx6X6CDGCaRJWc9iNQN+tb/dl8=
 github.com/tdrn-org/go-config-toml v0.0.2 h1:G2Zv6PAdw90PMNU4yvJOPVKFnBqfR9qoul/h6FBYkQo=
 github.com/tdrn-org/go-config-toml v0.0.2/go.mod h1:ItaMuR/7fe+Rw9JohiaGOl5dmTnjopaSNJS4sa7O4lY=
 github.com/tdrn-org/go-config-toml v0.1.0 h1:sJM/BaTusxVazsZhiKn5WiRw8pE94dIgDPDZYrjODXI=
