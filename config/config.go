@@ -123,7 +123,7 @@ func (c *Config) NewInstrumentProvider() (finance.InstrumentProvider, error) {
 		if err != nil {
 			return nil, err
 		}
-		return composite.NewCachedSymbolsProvider(composite.NewMergeSymbolsProvider(providers[0], time.Duration(c.FX.Cooldown), providers[1:]...), cache), nil
+		return composite.NewCachedInstrumentProvider(composite.NewMergeInstrumentProvider(providers[0], time.Duration(c.FX.Cooldown), providers[1:]...), cache), nil
 	}, c)
 	return c.symbolsFactory.api, c.symbolsFactory.err
 }

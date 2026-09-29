@@ -52,7 +52,7 @@ func (c *CacheConfig) NewExchangeRateCache(ttl time.Duration) (composite.Exchang
 	}
 }
 
-func (c *CacheConfig) NewInstrumentCache(ttl time.Duration) (composite.SymbolCache, error) {
+func (c *CacheConfig) NewInstrumentCache(ttl time.Duration) (composite.InstrumentCache, error) {
 	switch c.Type {
 	case CacheTypeMemory:
 		return memory.NewKeyValue(0, -ttl, cache.NotFound[string, []finance.Instrument]())

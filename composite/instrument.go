@@ -28,59 +28,59 @@ import (
 	"github.com/tdrn-org/go-finance"
 )
 
-type SymbolCache cache.KeyValue[string, []finance.Instrument]
+type InstrumentCache cache.KeyValue[string, []finance.Instrument]
 
-type cachedSymbolsProvider struct {
+type cachedInstrumentProvider struct {
 	provider finance.InstrumentProvider
-	cache    SymbolCache
+	cache    InstrumentCache
 }
 
-func NewCachedSymbolsProvider(provider finance.InstrumentProvider, cache SymbolCache) finance.InstrumentProvider {
-	return &cachedSymbolsProvider{
+func NewCachedInstrumentProvider(provider finance.InstrumentProvider, cache InstrumentCache) finance.InstrumentProvider {
+	return &cachedInstrumentProvider{
 		provider: provider,
 		cache:    cache,
 	}
 }
 
-func (p *cachedSymbolsProvider) ProviderName() string {
+func (p *cachedInstrumentProvider) ProviderName() string {
 	buffer := &strings.Builder{}
 	buffer.WriteString("cached:")
 	buffer.WriteString(p.provider.ProviderName())
 	return buffer.String()
 }
 
-func (p *cachedSymbolsProvider) SearchInstruments(ctx context.Context, query string) ([]finance.Instrument, error) {
+func (p *cachedInstrumentProvider) SearchInstruments(ctx context.Context, query string) ([]finance.Instrument, error) {
 	key := p.cacheKey(query)
-	cachedSymbols, err := p.cache.Get(ctx, key)
+	cachedInstruments, err := p.cache.Get(ctx, key)
 	if errors.Is(err, cache.ErrNotFound) {
-		cachedSymbols, err = p.provider.SearchInstruments(ctx, query)
+		cachedInstruments, err = p.provider.SearchInstruments(ctx, query)
 		if err != nil {
 			return nil, err
 		}
-		p.cache.Put(ctx, key, cachedSymbols)
+		p.cache.Put(ctx, key, cachedInstruments)
 	} else if err != nil {
 		return nil, err
 	}
-	return cachedSymbols, nil
+	return cachedInstruments, nil
 }
 
-func (p *cachedSymbolsProvider) ResolveInstruments(ctx context.Context, instruments []finance.Instrument) ([]finance.Instrument, error) {
+func (p *cachedInstrumentProvider) ResolveInstruments(ctx context.Context, instruments []finance.Instrument) ([]finance.Instrument, error) {
 	return instruments, nil
 }
 
-func (p *cachedSymbolsProvider) cacheKey(query string) string {
+func (p *cachedInstrumentProvider) cacheKey(query string) string {
 	return fmt.Sprintf("finance:symbols:%s", strings.ToUpper(query))
 }
 
-type mergeSymbolsProvider struct {
+type mergeInstrumentProvider struct {
 	queue *cooldownQueue[finance.InstrumentProvider]
 }
 
-func NewMergeSymbolsProvider(provider finance.InstrumentProvider, cooldown time.Duration, fallbacks ...finance.InstrumentProvider) finance.InstrumentProvider {
-	return &mergeSymbolsProvider{queue: newCooldownQueue(provider, cooldown, fallbacks...)}
+func NewMergeInstrumentProvider(provider finance.InstrumentProvider, cooldown time.Duration, fallbacks ...finance.InstrumentProvider) finance.InstrumentProvider {
+	return &mergeInstrumentProvider{queue: newCooldownQueue(provider, cooldown, fallbacks...)}
 }
 
-func (p *mergeSymbolsProvider) ProviderName() string {
+func (p *mergeInstrumentProvider) ProviderName() string {
 	buffer := &strings.Builder{}
 	buffer.WriteString("merge:")
 	initialBufferLen := buffer.Len()
@@ -93,11 +93,11 @@ func (p *mergeSymbolsProvider) ProviderName() string {
 	return buffer.String()
 }
 
-func (p *mergeSymbolsProvider) SearchInstruments(ctx context.Context, query string) ([]finance.Instrument, error) {
+func (p *mergeInstrumentProvider) SearchInstruments(ctx context.Context, query string) ([]finance.Instrument, error) {
 	availableProviders := p.queue.GetAvailableProviders()
-	symbols := make([]finance.Instrument, 0)
+	instruments := make([]finance.Instrument, 0)
 	for _, availableProvider := range availableProviders {
-		foundSymbols, err := availableProvider.SearchInstruments(ctx, query)
+		foundInstruments, err := availableProvider.SearchInstruments(ctx, query)
 		if errors.Is(err, finance.ErrInstrumentSearchRestricted) {
 			continue
 		} else if err != nil {
@@ -105,13 +105,14 @@ func (p *mergeSymbolsProvider) SearchInstruments(ctx context.Context, query stri
 			p.queue.MarkProviderFailed(availableProvider)
 			continue
 		}
-		for _, foundSymbol := range foundSymbols {
-			_ = foundSymbol
+		for _, foundInstrument := range foundInstruments {
+			//TODO: Merge
+			_ = foundInstrument
 		}
 	}
-	return symbols, nil
+	return instruments, nil
 }
 
-func (p *mergeSymbolsProvider) ResolveInstruments(ctx context.Context, instruments []finance.Instrument) ([]finance.Instrument, error) {
+func (p *mergeInstrumentProvider) ResolveInstruments(ctx context.Context, instruments []finance.Instrument) ([]finance.Instrument, error) {
 	return instruments, nil
 }
