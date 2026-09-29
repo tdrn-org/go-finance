@@ -17,7 +17,6 @@
 package consorsbank
 
 import (
-	"strings"
 	"time"
 
 	"github.com/tdrn-org/go-finance"
@@ -39,52 +38,70 @@ func currencyRateReplyToExchangeRate(reply *proto.CurrencyRateReply) *finance.Ex
 	}
 }
 
-// securityInfoToSymbol assembles a composite finance.Symbol from a TAPI
-// SecurityInfoReply. The reply carries the individual identifiers of a single
-// security (ISIN, WKN, domestic and US mnemonics) as separate code entries.
-func securityInfoToSymbol(reply *proto.SecurityInfoReply) *finance.Symbol {
+func queryToSecurityCodes(query string) []*proto.SecurityCode {
+	securityCodes := make([]*proto.SecurityCode, 0)
+	if finance.IsISIN(query) {
+		securityCodes = append(securityCodes, &proto.SecurityCode{
+			Code:     query,
+			CodeType: proto.SecurityCodeType_ISIN,
+		})
+	} else if finance.IsWKN(query) {
+		securityCodes = append(securityCodes, &proto.SecurityCode{
+			Code:     query,
+			CodeType: proto.SecurityCodeType_WKN,
+		})
+		// } else if finance.IsTicker(query) {
+		// 	securityCodes = append(securityCodes, &proto.SecurityCode{
+		// 		Code:     query,
+		// 		CodeType: proto.SecurityCodeType_MNEMONIC_US,
+		// 	})
+		// 	securityCodes = append(securityCodes, &proto.SecurityCode{
+		// 		Code:     query,
+		// 		CodeType: proto.SecurityCodeType_MNEMONIC,
+		// 	})
+	}
+	return securityCodes
+}
+
+func instrumentToSecurityCode(instrument *finance.Instrument) *proto.SecurityCode {
+	if instrument.HasIdentifier(finance.InstrumentIdentifierISIN) {
+		isin, _ := instrument.Identifier(finance.InstrumentIdentifierISIN)
+		return &proto.SecurityCode{
+			Code:     isin,
+			CodeType: proto.SecurityCodeType_ISIN,
+		}
+	}
+	if instrument.HasIdentifier(finance.InstrumentIdentifierWKN) {
+		wkn, _ := instrument.Identifier(finance.InstrumentIdentifierISIN)
+		return &proto.SecurityCode{
+			Code:     wkn,
+			CodeType: proto.SecurityCodeType_WKN,
+		}
+	}
+	return nil
+}
+
+func securityInfoToInstrument(reply *proto.SecurityInfoReply, mic string) *finance.Instrument {
 	if reply == nil {
 		return nil
 	}
-	symbol := &finance.Symbol{
-		Name: reply.GetName(),
-		Type: securityClassToSecurityType(reply.GetSecurityClass()),
-	}
-	var mnemonic, mnemonicUS string
+	instrument := finance.NewInstrument()
 	for _, securityCode := range reply.GetSecurityCodes() {
 		switch securityCode.GetCodeType() {
 		case proto.SecurityCodeType_ISIN:
-			symbol.ISIN = securityCode.GetCode()
+			instrument.Identifiers[finance.InstrumentIdentifierISIN] = securityCode.GetCode()
 		case proto.SecurityCodeType_WKN:
-			symbol.WKN = securityCode.GetCode()
-		case proto.SecurityCodeType_MNEMONIC:
-			mnemonic = securityCode.GetCode()
-		case proto.SecurityCodeType_MNEMONIC_US:
-			mnemonicUS = securityCode.GetCode()
+			instrument.Identifiers[finance.InstrumentIdentifierWKN] = securityCode.GetCode()
+		case proto.SecurityCodeType_MNEMONIC, proto.SecurityCodeType_MNEMONIC_US:
+			instrument.Identifiers[finance.InstrumentIdentifierTicker] = securityCode.GetCode()
 		}
 	}
-	if strings.HasPrefix(strings.ToUpper(symbol.ISIN), "US") {
-		symbol.Ticker = mnemonicUS
-	}
-	if symbol.Ticker == "" {
-		symbol.Ticker = mnemonic
-	}
-	return symbol
+	instrument.Name = reply.Name
+	instrument.MIC = mic
+	return instrument
 }
 
-// securityClassToSecurityType maps a TAPI SecurityClass onto a finance.SecurityType.
-func securityClassToSecurityType(securityClass proto.SecurityClass) finance.SecurityType {
-	switch securityClass {
-	case proto.SecurityClass_STOCK:
-		return finance.SecurityTypeEquity
-	case proto.SecurityClass_TRACKERS:
-		return finance.SecurityTypeETF
-	default:
-		return finance.SecurityTypeUnknown
-	}
-}
-
-func securityMarketDataReplyToQuote(symbol *finance.Symbol, reply *proto.SecurityMarketDataReply) *finance.Quote {
+func securityMarketDataReplyToQuote(instrument *finance.Instrument, reply *proto.SecurityMarketDataReply) *finance.Quote {
 	if reply == nil {
 		return nil
 	}
@@ -94,7 +111,7 @@ func securityMarketDataReplyToQuote(symbol *finance.Symbol, reply *proto.Securit
 		timestamp = time.Unix(reply.LastDateTime.Seconds, int64(reply.LastDateTime.Nanos)).UTC()
 	}
 	return &finance.Quote{
-		Symbol:          *symbol,
+		Instrument:      instrument.Clone(),
 		Timestamp:       timestamp,
 		Open:            reply.OpenPrice,
 		High:            reply.HighPrice,

@@ -42,13 +42,13 @@ const (
 type TradingState int32
 
 const (
-	// *
+	//*
 	// Trading state is not defined
 	TradingState_NO_TRADING_STATE TradingState = 0
-	// *
+	//*
 	// Tradable state
 	TradingState_TRADABLE TradingState = 1
-	// *
+	//*
 	// Not tradable state
 	TradingState_NOT_TRADABLE TradingState = 2
 )
@@ -99,22 +99,22 @@ func (TradingState) EnumDescriptor() ([]byte, []int) {
 type UnitNote int32
 
 const (
-	// *
+	//*
 	// Unit note is not defined
 	UnitNote_NO_UNIT_NOTE UnitNote = 0
-	// *
+	//*
 	// Piece unit note
 	UnitNote_PIECE UnitNote = 1
-	// *
+	//*
 	// Percent unit node. Pieces = Percent/100
 	UnitNote_PERCENT UnitNote = 2
-	// *
+	//*
 	// Permile unit node. Pieces = Percent/1000
 	UnitNote_PERMIL UnitNote = 3
-	// *
+	//*
 	// Points unit node
 	UnitNote_POINTS UnitNote = 4
-	// *
+	//*
 	// Misk unit node
 	UnitNote_MISK UnitNote = 5
 )
@@ -208,7 +208,7 @@ func (*Empty) Descriptor() ([]byte, []int) {
 // Access token request contains an access token data
 type AccessTokenRequest struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// *
+	//*
 	// Access token
 	AccessToken   string `protobuf:"bytes,1,opt,name=access_token,json=accessToken,proto3" json:"access_token,omitempty"`
 	unknownFields protoimpl.UnknownFields
@@ -256,10 +256,10 @@ func (x *AccessTokenRequest) GetAccessToken() string {
 // Error object
 type Error struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// *
+	//*
 	// Error code
 	Code string `protobuf:"bytes,1,opt,name=code,proto3" json:"code,omitempty"`
-	// *
+	//*
 	// Error message
 	Message       string `protobuf:"bytes,2,opt,name=message,proto3" json:"message,omitempty"`
 	unknownFields protoimpl.UnknownFields

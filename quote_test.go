@@ -18,56 +18,57 @@ package finance_test
 
 import (
 	"errors"
+	"fmt"
 	"testing"
 	"time"
 
 	"github.com/stretchr/testify/require"
 	"github.com/tdrn-org/go-finance"
+	"github.com/tdrn-org/go-finance/alphavantage"
 )
 
-func TestDemoEquityAPI(t *testing.T) {
+func TestDemoQuoteProviderAPI(t *testing.T) {
 	api := newDemoAPI(t)
 
-	testEquityAP(t, api)
+	testQuoteProviderAPI(t, api)
 }
 
-func TestAlphaVantageEquityAPI(t *testing.T) {
+func TestAlphaVantageQuoteProviderAPI(t *testing.T) {
 	api := newAlphaVantageAPI(t)
 
-	testEquityAP(t, api)
+	testQuoteProviderAPI(t, api)
 }
 
-func TestConsorsbankEquityAPI(t *testing.T) {
+func TestConsorsbankQuoteProviderAPI(t *testing.T) {
 	api := newConsorsbankAPI(t)
-	defer func() {
-		api.Shutdown(t.Context())
-		api.Close()
-	}()
 
-	testEquityAP(t, api)
+	testQuoteProviderAPI(t, api)
 }
 
-func TestTwelveDataEquityAPI(t *testing.T) {
+func TestTwelveDataQuoteProviderAPI(t *testing.T) {
 	api := newTwelveDataAPI(t)
 
-	testEquityAP(t, api)
+	testQuoteProviderAPI(t, api)
 }
 
-func testEquityAP(t *testing.T, api finance.Equity) {
+func testQuoteProviderAPI(t *testing.T, api finance.QuoteProvider) {
 	t.Log("provider", api.ProviderName())
-	symbol := finance.Symbol{
-		Exchange: "XNGS",
-		Ticker:   "AAPL",
-		ISIN:     "US0378331005",
-		WKN:      "865985",
-		FIGI:     "BBG000B9XRY4",
+	currency := finance.CurrencyUSD
+	instrument := &finance.Instrument{
+		ID: finance.NewInstrumentID(),
+		Identifiers: map[finance.InstrumentIdentifier]string{
+			finance.InstrumentIdentifierTicker:            "AAPL",
+			finance.InstrumentIdentifierISIN:              "US0378331005",
+			finance.InstrumentIdentifierFIGI:              "BBG000B9Y5X2",
+			alphavantage.InstrumentIdentifierAlphaVantage: "AAPL",
+		},
+		MIC:      "XNGS",
+		Currency: &currency,
 	}
-	resolvedSymbol, err := api.ResolveSymbol(t.Context(), symbol)
-	require.NoError(t, err)
 	retries := 3
 	retrySleep := 500 * time.Millisecond
 	for {
-		quote, err := api.QueryQuote(t.Context(), *resolvedSymbol)
+		quote, err := api.QueryQuote(t.Context(), instrument)
 		if errors.Is(err, finance.ErrRequestPending) {
 			retries--
 			if retries > 0 {
@@ -77,6 +78,7 @@ func testEquityAP(t *testing.T, api finance.Equity) {
 		}
 		require.NoError(t, err)
 		require.NotNil(t, quote)
-		return
+		fmt.Println(quote)
+		break
 	}
 }

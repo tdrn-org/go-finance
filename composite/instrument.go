@@ -28,14 +28,14 @@ import (
 	"github.com/tdrn-org/go-finance"
 )
 
-type SymbolCache cache.KeyValue[string, finance.Symbols]
+type SymbolCache cache.KeyValue[string, []finance.Instrument]
 
 type cachedSymbolsProvider struct {
-	provider finance.SymbolResolver
+	provider finance.InstrumentProvider
 	cache    SymbolCache
 }
 
-func NewCachedSymbolsProvider(provider finance.SymbolResolver, cache SymbolCache) finance.SymbolResolver {
+func NewCachedSymbolsProvider(provider finance.InstrumentProvider, cache SymbolCache) finance.InstrumentProvider {
 	return &cachedSymbolsProvider{
 		provider: provider,
 		cache:    cache,
@@ -49,11 +49,11 @@ func (p *cachedSymbolsProvider) ProviderName() string {
 	return buffer.String()
 }
 
-func (p *cachedSymbolsProvider) SearchSymbol(ctx context.Context, query string) (finance.Symbols, error) {
+func (p *cachedSymbolsProvider) SearchInstruments(ctx context.Context, query string) ([]finance.Instrument, error) {
 	key := p.cacheKey(query)
 	cachedSymbols, err := p.cache.Get(ctx, key)
 	if errors.Is(err, cache.ErrNotFound) {
-		cachedSymbols, err = p.provider.SearchSymbol(ctx, query)
+		cachedSymbols, err = p.provider.SearchInstruments(ctx, query)
 		if err != nil {
 			return nil, err
 		}
@@ -64,15 +64,19 @@ func (p *cachedSymbolsProvider) SearchSymbol(ctx context.Context, query string) 
 	return cachedSymbols, nil
 }
 
+func (p *cachedSymbolsProvider) ResolveInstruments(ctx context.Context, instruments []finance.Instrument) ([]finance.Instrument, error) {
+	return instruments, nil
+}
+
 func (p *cachedSymbolsProvider) cacheKey(query string) string {
 	return fmt.Sprintf("finance:symbols:%s", strings.ToUpper(query))
 }
 
 type mergeSymbolsProvider struct {
-	queue *cooldownQueue[finance.SymbolResolver]
+	queue *cooldownQueue[finance.InstrumentProvider]
 }
 
-func NewMergeSymbolsProvider(provider finance.SymbolResolver, cooldown time.Duration, fallbacks ...finance.SymbolResolver) finance.SymbolResolver {
+func NewMergeSymbolsProvider(provider finance.InstrumentProvider, cooldown time.Duration, fallbacks ...finance.InstrumentProvider) finance.InstrumentProvider {
 	return &mergeSymbolsProvider{queue: newCooldownQueue(provider, cooldown, fallbacks...)}
 }
 
@@ -80,7 +84,7 @@ func (p *mergeSymbolsProvider) ProviderName() string {
 	buffer := &strings.Builder{}
 	buffer.WriteString("merge:")
 	initialBufferLen := buffer.Len()
-	p.queue.ForEach(func(provider finance.SymbolResolver) {
+	p.queue.ForEach(func(provider finance.InstrumentProvider) {
 		if buffer.Len() > initialBufferLen {
 			buffer.WriteRune('|')
 		}
@@ -89,12 +93,12 @@ func (p *mergeSymbolsProvider) ProviderName() string {
 	return buffer.String()
 }
 
-func (p *mergeSymbolsProvider) SearchSymbol(ctx context.Context, query string) (finance.Symbols, error) {
+func (p *mergeSymbolsProvider) SearchInstruments(ctx context.Context, query string) ([]finance.Instrument, error) {
 	availableProviders := p.queue.GetAvailableProviders()
-	symbols := make(finance.Symbols, 0)
+	symbols := make([]finance.Instrument, 0)
 	for _, availableProvider := range availableProviders {
-		foundSymbols, err := availableProvider.SearchSymbol(ctx, query)
-		if errors.Is(err, finance.ErrSymbolSearchRestricted) {
+		foundSymbols, err := availableProvider.SearchInstruments(ctx, query)
+		if errors.Is(err, finance.ErrInstrumentSearchRestricted) {
 			continue
 		} else if err != nil {
 			slog.Warn("marking Symbols provider as failed", slog.String("provider", availableProvider.ProviderName()), slog.Any("err", err))
@@ -102,33 +106,12 @@ func (p *mergeSymbolsProvider) SearchSymbol(ctx context.Context, query string) (
 			continue
 		}
 		for _, foundSymbol := range foundSymbols {
-			symbols = p.mergeSymbol(symbols, &foundSymbol)
+			_ = foundSymbol
 		}
-	}
-	if len(symbols) == 0 {
-		return nil, finance.ErrSymbolNotAvailable
 	}
 	return symbols, nil
 }
 
-func (p *mergeSymbolsProvider) mergeSymbol(symbols finance.Symbols, foundSymbol *finance.Symbol) finance.Symbols {
-	if foundSymbol.IsEmpty() {
-		return symbols
-	}
-	for i, symbol := range symbols {
-		switch symbol.Match(foundSymbol) {
-		case finance.SymbolMatchEqual:
-			// Symbol is already in result; simply return
-			return symbols
-		case finance.SymbolMatchSoft:
-			// Symbol is only partly in result; merge and return
-			symbol.Merge(foundSymbol)
-			symbols[i] = symbol
-			return symbols
-		default:
-			// Symbol may not be in list; continue search
-		}
-	}
-	// Symbol is not yet in list; add it
-	return append(symbols, *foundSymbol)
+func (p *mergeSymbolsProvider) ResolveInstruments(ctx context.Context, instruments []finance.Instrument) ([]finance.Instrument, error) {
+	return instruments, nil
 }

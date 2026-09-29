@@ -41,18 +41,17 @@ const (
 // depot
 type TradingAccount struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// *
+	//*
 	// Account number
 	AccountNumber string `protobuf:"bytes,1,opt,name=account_number,json=accountNumber,proto3" json:"account_number,omitempty"`
-	// *
+	//*
 	// Depot number
 	DepotNumber string `protobuf:"bytes,2,opt,name=depot_number,json=depotNumber,proto3" json:"depot_number,omitempty"`
-	// *
+	//*
 	// Name of the account owners
 	Name string `protobuf:"bytes,3,opt,name=name,proto3" json:"name,omitempty"`
-	// *
-	//
-	//	If account is tradable then true or false otherwise
+	//*
+	//  If account is tradable then true or false otherwise
 	Tradable      bool `protobuf:"varint,4,opt,name=tradable,proto3" json:"tradable,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
@@ -120,10 +119,10 @@ func (x *TradingAccount) GetTradable() bool {
 // Trading account request contains trading account related data
 type TradingAccountRequest struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// *
+	//*
 	// Access token
 	AccessToken string `protobuf:"bytes,1,opt,name=access_token,json=accessToken,proto3" json:"access_token,omitempty"`
-	// *
+	//*
 	// Trading account
 	TradingAccount *TradingAccount `protobuf:"bytes,2,opt,name=trading_account,json=tradingAccount,proto3" json:"trading_account,omitempty"`
 	unknownFields  protoimpl.UnknownFields
@@ -179,10 +178,10 @@ func (x *TradingAccountRequest) GetTradingAccount() *TradingAccount {
 // from current session
 type TradingAccounts struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// *
+	//*
 	// List of trading accounts
 	Accounts []*TradingAccount `protobuf:"bytes,1,rep,name=accounts,proto3" json:"accounts,omitempty"`
-	// *
+	//*
 	// Error information if occuirs
 	Error         *Error `protobuf:"bytes,1000,opt,name=error,proto3" json:"error,omitempty"`
 	unknownFields protoimpl.UnknownFields
@@ -237,13 +236,13 @@ func (x *TradingAccounts) GetError() *Error {
 // TradingAccountTransactions contains account transactions
 type TradingAccountTransactions struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// *
+	//*
 	// Trading account
 	Account *TradingAccount `protobuf:"bytes,1,opt,name=account,proto3" json:"account,omitempty"`
-	// *
+	//*
 	// List of transactions
 	Transactions []*TradingAccountTransactions_Transaction `protobuf:"bytes,2,rep,name=transactions,proto3" json:"transactions,omitempty"`
-	// *
+	//*
 	// Error information if happened
 	Error         *Error `protobuf:"bytes,1000,opt,name=error,proto3" json:"error,omitempty"`
 	unknownFields protoimpl.UnknownFields
@@ -305,25 +304,25 @@ func (x *TradingAccountTransactions) GetError() *Error {
 // TradingAccountInformation contains specific for this account information
 type TradingAccountInformation struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// *
+	//*
 	// Trading account
 	Account *TradingAccount `protobuf:"bytes,1,opt,name=account,proto3" json:"account,omitempty"`
-	// *
+	//*
 	// Account balance
 	Balance float64 `protobuf:"fixed64,2,opt,name=balance,proto3" json:"balance,omitempty"`
-	// *
+	//*
 	// Credit limit information
 	CreditLimit float64 `protobuf:"fixed64,3,opt,name=credit_limit,json=creditLimit,proto3" json:"credit_limit,omitempty"`
-	// *
+	//*
 	// Buying power
 	BuyingPower float64 `protobuf:"fixed64,4,opt,name=buying_power,json=buyingPower,proto3" json:"buying_power,omitempty"`
-	// *
+	//*
 	// Credit limit intraday information, #pro# only
 	CreditLimitIntraday float64 `protobuf:"fixed64,9,opt,name=credit_limit_intraday,json=creditLimitIntraday,proto3" json:"credit_limit_intraday,omitempty"`
-	// *
+	//*
 	// Buyng power intraday, #pro# only
 	BuyingPowerIntraday float64 `protobuf:"fixed64,10,opt,name=buying_power_intraday,json=buyingPowerIntraday,proto3" json:"buying_power_intraday,omitempty"`
-	// *
+	//*
 	// Error information if occuirs
 	Error         *Error `protobuf:"bytes,1000,opt,name=error,proto3" json:"error,omitempty"`
 	unknownFields protoimpl.UnknownFields
@@ -413,19 +412,19 @@ func (x *TradingAccountInformation) GetError() *Error {
 // Transaction contains onformation about one transaction
 type TradingAccountTransactions_Transaction struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// *
+	//*
 	// Transaction date
 	TransactionDate *Date `protobuf:"bytes,1,opt,name=transaction_date,json=transactionDate,proto3" json:"transaction_date,omitempty"`
-	// *
+	//*
 	// Amount value
 	Amount float64 `protobuf:"fixed64,2,opt,name=amount,proto3" json:"amount,omitempty"`
-	// *
+	//*
 	// Transaction opponent
 	Opponent string `protobuf:"bytes,3,opt,name=opponent,proto3" json:"opponent,omitempty"`
-	// *
+	//*
 	// Information about transaction
 	Information string `protobuf:"bytes,4,opt,name=information,proto3" json:"information,omitempty"`
-	// *
+	//*
 	// Value date
 	ValueDate     *Date `protobuf:"bytes,5,opt,name=value_date,json=valueDate,proto3" json:"value_date,omitempty"`
 	unknownFields protoimpl.UnknownFields

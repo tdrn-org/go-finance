@@ -35,6 +35,16 @@ func (c *TwelveDataConfig) GetHttpClient() (*http.Client, error) {
 	return nil, nil
 }
 
+func (c *TwelveDataConfig) GetMICs() ([]string, error) {
+	//TODO
+	return nil, nil
+}
+
+func (c *TwelveDataConfig) GetIncludeInstrumentTypes() ([]string, error) {
+	//TODO
+	return nil, nil
+}
+
 func (c *TwelveDataConfig) NewAPI() (*twelvedata.API, error) {
 	return c.factory.NewAPI(twelvedata.NewAPI, c)
 }

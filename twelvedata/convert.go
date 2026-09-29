@@ -17,6 +17,8 @@
 package twelvedata
 
 import (
+	_ "embed"
+	"encoding/json"
 	"fmt"
 	"strconv"
 	"strings"
@@ -45,29 +47,47 @@ func exchangeRateResponseToExchangeRate(response *twelvedata.GetExchangeRate200R
 	return exchangeRate, nil
 }
 
-func symbolSearchResponseToSymbols(response *twelvedata.GetSymbolSearch200Response, hint *finance.Symbol) (finance.Symbols, error) {
-	if response == nil {
-		return nil, nil
+//go:embed instrumentTypeMap.json
+var instrumentTypeMapData []byte
+
+var instrumentTypeMap map[string]finance.InstrumentType = func() map[string]finance.InstrumentType {
+	var instrumentTypeMap map[string]finance.InstrumentType
+	err := json.Unmarshal(instrumentTypeMapData, &instrumentTypeMap)
+	if err != nil {
+		panic(err)
 	}
-	if len(response.Data) == 0 {
-		return nil, finance.ErrSymbolNotAvailable
+	return instrumentTypeMap
+}()
+
+func symbolSearchResponseItemToInstrument(responseItem *twelvedata.SymbolSearchResponseItem) *finance.Instrument {
+	if responseItem == nil {
+		return nil
 	}
-	symbols := make(finance.Symbols, 0, len(response.Data))
-	for _, responseItem := range response.Data {
-		symbols = append(symbols, finance.Symbol{
-			Ticker:   responseItem.Symbol,
-			Exchange: responseItem.MicCode,
-			ISIN:     hint.ISIN,
-			WKN:      hint.WKN,
-			FIGI:     hint.FIGI,
-			Name:     responseItem.InstrumentName,
-			Type:     finance.MapSecurityType(responseItem.InstrumentType, instrumentTypeMap),
-		})
-	}
-	return symbols, nil
+	instrument := finance.NewInstrument()
+	instrument.Identifiers[finance.InstrumentIdentifierTicker] = responseItem.Symbol
+	instrument.Name = responseItem.InstrumentName
+	instrument.MIC = responseItem.MicCode
+	currency := finance.Currency(responseItem.Currency)
+	instrument.Currency = &currency
+	instrument.Type = instrumentTypeMap[responseItem.InstrumentType]
+	return instrument
 }
 
-func quoteResponseToQuote(symbol *finance.Symbol, response *twelvedata.GetQuote200Response) (*finance.Quote, error) {
+func instrumentToQuery(instrument *finance.Instrument) string {
+	if instrument == nil {
+		return ""
+	}
+	if instrument.HasIdentifier(finance.InstrumentIdentifierISIN) {
+		query, _ := instrument.Identifier(finance.InstrumentIdentifierISIN)
+		return query
+	} else if instrument.HasIdentifier(finance.InstrumentIdentifierFIGI) {
+		query, _ := instrument.Identifier(finance.InstrumentIdentifierFIGI)
+		return query
+	}
+	return ""
+}
+
+func getQuoteResponseToQuote(instrument *finance.Instrument, response *twelvedata.GetQuote200Response) (*finance.Quote, error) {
 	if response == nil {
 		return nil, nil
 	}
@@ -102,11 +122,16 @@ func quoteResponseToQuote(symbol *finance.Symbol, response *twelvedata.GetQuote2
 			return nil, err
 		}
 	}
-	if response.Currency == nil {
-		return nil, fmt.Errorf("unable to determine currency for symbol '%s'", symbol.Ticker)
+	var currency finance.Currency
+	if response.Currency != nil {
+		currency = finance.Currency(*response.Currency)
+	} else if instrument.Currency != nil {
+		currency = *instrument.Currency
+	} else {
+		return nil, fmt.Errorf("%s: unable to determine quote currency for instrument '%s'", Name, instrument)
 	}
 	quote := &finance.Quote{
-		Symbol:          *symbol,
+		Instrument:      instrument.Clone(),
 		Timestamp:       timestamp,
 		Open:            open,
 		High:            high,
@@ -114,7 +139,7 @@ func quoteResponseToQuote(symbol *finance.Symbol, response *twelvedata.GetQuote2
 		Close:           previousClose,
 		Price:           close,
 		Volume:          volume,
-		Currency:        finance.Currency(*response.Currency),
+		Currency:        currency,
 		Source:          Name,
 		SourceTimestamp: time.Now().UTC(),
 	}
@@ -124,7 +149,7 @@ func quoteResponseToQuote(symbol *finance.Symbol, response *twelvedata.GetQuote2
 func stringToFloat64(s, name string) (float64, error) {
 	value, err := strconv.ParseFloat(s, 64)
 	if err != nil {
-		return 0.0, fmt.Errorf("failed to parse %s '%s' (cause: %w)", name, s, err)
+		return 0.0, fmt.Errorf("%s: failed to parse %s '%s' (cause: %w)", Name, name, s, err)
 	}
 	return value, nil
 }
@@ -132,7 +157,7 @@ func stringToFloat64(s, name string) (float64, error) {
 func stringToInt64(s, name string) (int64, error) {
 	value, err := strconv.ParseInt(s, 10, 64)
 	if err != nil {
-		return 0.0, fmt.Errorf("failed to parse %s '%s' (cause: %w)", name, s, err)
+		return 0.0, fmt.Errorf("%s: failed to parse %s '%s' (cause: %w)", Name, name, s, err)
 	}
 	return value, nil
 }

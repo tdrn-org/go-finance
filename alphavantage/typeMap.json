@@ -1,0 +1,13 @@
+{
+    "Equity": "equity",
+    "ETF": "etf",
+    "Mutual Fund": "fund",
+    "Bond": "bond",
+    "Index": "index",
+    "Forex": "forex",
+    "Crypto": "crypto",
+    "Digital Currency": "crypto",
+    "Option": "option",
+    "Future": "future",
+    "Certificate": "certificate"
+}

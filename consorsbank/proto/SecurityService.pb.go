@@ -41,20 +41,20 @@ const (
 type TimeResolution int32
 
 const (
-	// * Undefined resolution
+	//* Undefined resolution
 	TimeResolution_NO_RESOLUTION TimeResolution = 0
-	// *
+	//*
 	// Tick resolution. *intraday*.
 	//
 	// Be careful, in same cases there is a lot of data.
 	TimeResolution_TICK TimeResolution = 1
-	// * Second resolution *intraday*
+	//* Second resolution *intraday*
 	TimeResolution_SECOND TimeResolution = 2
-	// * Minute resolution *intraday*
+	//* Minute resolution *intraday*
 	TimeResolution_MINUTE TimeResolution = 3
-	// * Hour resolution *intraday*
+	//* Hour resolution *intraday*
 	TimeResolution_HOUR TimeResolution = 4
-	// * Day resolution *historic*
+	//* Day resolution *historic*
 	TimeResolution_DAY TimeResolution = 5
 )
 
@@ -111,21 +111,21 @@ func (TimeResolution) EnumDescriptor() ([]byte, []int) {
 type SecurityCodeType int32
 
 const (
-	// * Unknown code type
+	//* Unknown code type
 	SecurityCodeType_NO_CODE_TYPE SecurityCodeType = 0
-	// *  WKN code type
+	//*  WKN code type
 	SecurityCodeType_WKN SecurityCodeType = 1
-	// *  ISIN code type
+	//*  ISIN code type
 	SecurityCodeType_ISIN SecurityCodeType = 2
-	// *  Factset id notation
+	//*  Factset id notation
 	SecurityCodeType_ID_NOTATION SecurityCodeType = 3
-	// *  Factset id osi
+	//*  Factset id osi
 	SecurityCodeType_ID_OSI SecurityCodeType = 4
-	// *  Factset id instrument
+	//*  Factset id instrument
 	SecurityCodeType_ID_INSTRUMENT SecurityCodeType = 5
-	// *  Mnemonic or symbol
+	//*  Mnemonic or symbol
 	SecurityCodeType_MNEMONIC SecurityCodeType = 6
-	// *  US Mnemonic or symbol
+	//*  US Mnemonic or symbol
 	SecurityCodeType_MNEMONIC_US SecurityCodeType = 7
 )
 
@@ -185,41 +185,41 @@ func (SecurityCodeType) EnumDescriptor() ([]byte, []int) {
 type SecurityClass int32
 
 const (
-	// * Security class is undefined on unknown
+	//* Security class is undefined on unknown
 	SecurityClass_NO_SECURITY_CLASS SecurityClass = 0
-	// * Stock security class
+	//* Stock security class
 	SecurityClass_STOCK SecurityClass = 1
-	// * Bond security class
+	//* Bond security class
 	SecurityClass_BOND SecurityClass = 2
-	// * Certificate security class
+	//* Certificate security class
 	SecurityClass_CERTIFICATE SecurityClass = 3
-	// * Precious metal security class
+	//* Precious metal security class
 	SecurityClass_PRECIOUS_METAL SecurityClass = 4
-	// * Participation certificate security class
+	//* Participation certificate security class
 	SecurityClass_PARTICIPATION_CERTIFICATE SecurityClass = 5
-	// * Funds security class
+	//* Funds security class
 	SecurityClass_FUNDS SecurityClass = 6
-	// *  Mutual funds security class
+	//*  Mutual funds security class
 	SecurityClass_MUTUAL_FUNDS SecurityClass = 7
-	// * Warrants security class
+	//* Warrants security class
 	SecurityClass_WARRANT SecurityClass = 8
-	// * Futures security class
+	//* Futures security class
 	SecurityClass_FUTURE SecurityClass = 9
-	// * Indexies security class
+	//* Indexies security class
 	SecurityClass_INDEX SecurityClass = 10
-	// * Other securities security class
+	//* Other securities security class
 	SecurityClass_OTHERS SecurityClass = 11
-	// * Future c1 security class
+	//* Future c1 security class
 	SecurityClass_FUTURE_C1 SecurityClass = 12
-	// * Future c2 security class
+	//* Future c2 security class
 	SecurityClass_FUTURE_C2 SecurityClass = 13
-	// * Future c3 security class
+	//* Future c3 security class
 	SecurityClass_FUTURE_C3 SecurityClass = 14
-	// * Trackers security class
+	//* Trackers security class
 	SecurityClass_TRACKERS SecurityClass = 15
-	// * Currency security class
+	//* Currency security class
 	SecurityClass_CURRENCY SecurityClass = 16
-	// * Commodity security class
+	//* Commodity security class
 	SecurityClass_COMMODITY SecurityClass = 17
 )
 
@@ -300,31 +300,31 @@ func (SecurityClass) EnumDescriptor() ([]byte, []int) {
 type TradingPhase int32
 
 const (
-	// * Unknown trading phase
+	//* Unknown trading phase
 	TradingPhase_NONE TradingPhase = 0
-	// *  Pretrade trading phase
+	//*  Pretrade trading phase
 	TradingPhase_PRETRADE TradingPhase = 1
-	// *  Posttrade trading phase
+	//*  Posttrade trading phase
 	TradingPhase_POSTTRADE TradingPhase = 2
-	// *  Start trading phase
+	//*  Start trading phase
 	TradingPhase_START TradingPhase = 3
-	// *  End trading phase
+	//*  End trading phase
 	TradingPhase_END TradingPhase = 4
-	// *  Vola trading phase
+	//*  Vola trading phase
 	TradingPhase_VOLA TradingPhase = 5
-	// *  OCall trading phase
+	//*  OCall trading phase
 	TradingPhase_OCALL TradingPhase = 6
-	// *  ICall trading phase
+	//*  ICall trading phase
 	TradingPhase_ICALL TradingPhase = 7
-	// *  CCall trading phase
+	//*  CCall trading phase
 	TradingPhase_CCALL TradingPhase = 8
-	// *  Trade trading phase
+	//*  Trade trading phase
 	TradingPhase_TRADE TradingPhase = 9
-	// *  Trade indicative trading phase
+	//*  Trade indicative trading phase
 	TradingPhase_TRADE_INDICATIVE TradingPhase = 10
-	// *  Trade best bid / ask trading phase
+	//*  Trade best bid / ask trading phase
 	TradingPhase_TRADE_BEST_BID_ASK TradingPhase = 11
-	// *  Trade auction, but not indicative trading phase
+	//*  Trade auction, but not indicative trading phase
 	TradingPhase_TRADE_AUCTION_NO_INDICATIVE TradingPhase = 12
 )
 
@@ -395,19 +395,19 @@ func (TradingPhase) EnumDescriptor() ([]byte, []int) {
 type SecurityStockExchangeInfo_ShortMode int32
 
 const (
-	// * Undefined short selling
+	//* Undefined short selling
 	SecurityStockExchangeInfo_NO_SHORT_MODE SecurityStockExchangeInfo_ShortMode = 0
-	// * Short selling is possible
+	//* Short selling is possible
 	SecurityStockExchangeInfo_YES SecurityStockExchangeInfo_ShortMode = 1
-	// * No short selling
+	//* No short selling
 	SecurityStockExchangeInfo_NO SecurityStockExchangeInfo_ShortMode = 2
-	// * Temporary no short selling
+	//* Temporary no short selling
 	SecurityStockExchangeInfo_TEMPORARY_NO SecurityStockExchangeInfo_ShortMode = 3
-	// * Intraday short selling
+	//* Intraday short selling
 	SecurityStockExchangeInfo_INTRADAY SecurityStockExchangeInfo_ShortMode = 4
-	// * Overnight short selling
+	//* Overnight short selling
 	SecurityStockExchangeInfo_OVERNIGHT SecurityStockExchangeInfo_ShortMode = 5
-	// * Intraday and Overnight short selling
+	//* Intraday and Overnight short selling
 	SecurityStockExchangeInfo_INTRADAY_AND_OVERNIGHT SecurityStockExchangeInfo_ShortMode = 6
 )
 
@@ -466,11 +466,11 @@ func (SecurityStockExchangeInfo_ShortMode) EnumDescriptor() ([]byte, []int) {
 type SecurityStockExchangeInfo_LimitToken int32
 
 const (
-	// * AcceptQuote and AddOrder possible
+	//* AcceptQuote and AddOrder possible
 	SecurityStockExchangeInfo_LIMIT_AND_QUOTE SecurityStockExchangeInfo_LimitToken = 0
-	// * AcceptQuote only possible
+	//* AcceptQuote only possible
 	SecurityStockExchangeInfo_QUOTE_ONLY SecurityStockExchangeInfo_LimitToken = 1
-	// * AddOrder only possible
+	//* AddOrder only possible
 	SecurityStockExchangeInfo_LIMIT_ONLY SecurityStockExchangeInfo_LimitToken = 2
 )
 
@@ -522,75 +522,75 @@ func (SecurityStockExchangeInfo_LimitToken) EnumDescriptor() ([]byte, []int) {
 type SecurityMarketDataReply_SecurityChangedField int32
 
 const (
-	// * No data
+	//* No data
 	SecurityMarketDataReply_NONE SecurityMarketDataReply_SecurityChangedField = 0
-	// * Price of the last trade
+	//* Price of the last trade
 	SecurityMarketDataReply_LAST_PRICE SecurityMarketDataReply_SecurityChangedField = 4
-	// * Volume last trade
+	//* Volume last trade
 	SecurityMarketDataReply_LAST_VOLUME SecurityMarketDataReply_SecurityChangedField = 5
-	// * Last quote date and time
+	//* Last quote date and time
 	SecurityMarketDataReply_LAST_DATE_TIME SecurityMarketDataReply_SecurityChangedField = 6
-	// * Today number of tradings
+	//* Today number of tradings
 	SecurityMarketDataReply_TODAY_NUM_TRADES SecurityMarketDataReply_SecurityChangedField = 7
-	// * Today volume
+	//* Today volume
 	SecurityMarketDataReply_TODAY_VOLUME SecurityMarketDataReply_SecurityChangedField = 8
-	// * Last ask price
+	//* Last ask price
 	SecurityMarketDataReply_ASK_PRICE SecurityMarketDataReply_SecurityChangedField = 9
-	// * Volume last ask
+	//* Volume last ask
 	SecurityMarketDataReply_ASK_VOLUME SecurityMarketDataReply_SecurityChangedField = 10
-	// * Time of the last ask
+	//* Time of the last ask
 	SecurityMarketDataReply_ASK_TIME SecurityMarketDataReply_SecurityChangedField = 11
-	// * Last bid price
+	//* Last bid price
 	SecurityMarketDataReply_BID_PRICE SecurityMarketDataReply_SecurityChangedField = 12
-	// * Volume last bid
+	//* Volume last bid
 	SecurityMarketDataReply_BID_VOLUME SecurityMarketDataReply_SecurityChangedField = 13
-	// * Time of the last bid
+	//* Time of the last bid
 	SecurityMarketDataReply_BID_TIME SecurityMarketDataReply_SecurityChangedField = 14
-	// * Quote of the previous trading day
+	//* Quote of the previous trading day
 	SecurityMarketDataReply_PREVIOUS_PRICE SecurityMarketDataReply_SecurityChangedField = 15
-	// * Date of the previous trading day
+	//* Date of the previous trading day
 	SecurityMarketDataReply_PREVIOUS_DATE SecurityMarketDataReply_SecurityChangedField = 16
-	// * Relative difference to the previous day
+	//* Relative difference to the previous day
 	SecurityMarketDataReply_RELATIVE_DIFF SecurityMarketDataReply_SecurityChangedField = 17
-	// * Absolute difference to the previous day
+	//* Absolute difference to the previous day
 	SecurityMarketDataReply_ABS_DIFF SecurityMarketDataReply_SecurityChangedField = 18
-	// * Highest price
+	//* Highest price
 	SecurityMarketDataReply_HIGH_PRICE SecurityMarketDataReply_SecurityChangedField = 19
-	// * Lowest price
+	//* Lowest price
 	SecurityMarketDataReply_LOW_PRICE SecurityMarketDataReply_SecurityChangedField = 20
-	// * Price at opening
+	//* Price at opening
 	SecurityMarketDataReply_OPEN_PRICE SecurityMarketDataReply_SecurityChangedField = 21
-	// * Highest price of the previous week
+	//* Highest price of the previous week
 	SecurityMarketDataReply_WEEK_HIGH_PRICE SecurityMarketDataReply_SecurityChangedField = 22
-	// * Date of highest price of the previous week
+	//* Date of highest price of the previous week
 	SecurityMarketDataReply_DATE_WEEK_HIGH SecurityMarketDataReply_SecurityChangedField = 23
-	// * Lowest price of the previous week
+	//* Lowest price of the previous week
 	SecurityMarketDataReply_WEEK_LOW_PRICE SecurityMarketDataReply_SecurityChangedField = 24
-	// * Date of lowest price of the previous week
+	//* Date of lowest price of the previous week
 	SecurityMarketDataReply_DATE_WEEK_LOW SecurityMarketDataReply_SecurityChangedField = 25
-	// * Highest price of the previous month
+	//* Highest price of the previous month
 	SecurityMarketDataReply_MONTH_HIGH_PRICE SecurityMarketDataReply_SecurityChangedField = 26
-	// * Date of highest price of the previous month
+	//* Date of highest price of the previous month
 	SecurityMarketDataReply_DATE_MONTH_HIGH SecurityMarketDataReply_SecurityChangedField = 27
-	// * Lowest price of the previous month
+	//* Lowest price of the previous month
 	SecurityMarketDataReply_MONTH_LOW_PRICE SecurityMarketDataReply_SecurityChangedField = 28
-	// * Date of lowest price of the previous month
+	//* Date of lowest price of the previous month
 	SecurityMarketDataReply_DATE_MONTH_LOW SecurityMarketDataReply_SecurityChangedField = 29
-	// * Highest price of the current year
+	//* Highest price of the current year
 	SecurityMarketDataReply_YEAR_HIGH_PRICE SecurityMarketDataReply_SecurityChangedField = 30
-	// * Date of the highest price of the current year
+	//* Date of the highest price of the current year
 	SecurityMarketDataReply_DATE_YEAR_HIGH SecurityMarketDataReply_SecurityChangedField = 31
-	// * Lowest price of the current year
+	//* Lowest price of the current year
 	SecurityMarketDataReply_YEAR_LOW_PRICE SecurityMarketDataReply_SecurityChangedField = 32
-	// * Date of the lowest price of the current year
+	//* Date of the lowest price of the current year
 	SecurityMarketDataReply_DATE_YEAR_LOW SecurityMarketDataReply_SecurityChangedField = 33
-	// * Addendum of the last price.
+	//* Addendum of the last price.
 	SecurityMarketDataReply_LAST_ADDENDUM SecurityMarketDataReply_SecurityChangedField = 34
-	// * Trading phase
+	//* Trading phase
 	SecurityMarketDataReply_TRADING_PHASE SecurityMarketDataReply_SecurityChangedField = 35
-	// * Indicative price
+	//* Indicative price
 	SecurityMarketDataReply_INDICATIVE_PRICE SecurityMarketDataReply_SecurityChangedField = 36
-	// * Trading volume corresponding to the last price
+	//* Trading volume corresponding to the last price
 	SecurityMarketDataReply_PREVALENCE_VOLUME SecurityMarketDataReply_SecurityChangedField = 37
 )
 
@@ -703,10 +703,10 @@ func (SecurityMarketDataReply_SecurityChangedField) EnumDescriptor() ([]byte, []
 // Requests security information for security code
 type SecurityInfoRequest struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// *
+	//*
 	// Access token
 	AccessToken string `protobuf:"bytes,1,opt,name=access_token,json=accessToken,proto3" json:"access_token,omitempty"`
-	// *
+	//*
 	// Security code with security type (WKN, ISIN)
 	SecurityCode  *SecurityCode `protobuf:"bytes,2,opt,name=security_code,json=securityCode,proto3" json:"security_code,omitempty"`
 	unknownFields protoimpl.UnknownFields
@@ -761,17 +761,17 @@ func (x *SecurityInfoRequest) GetSecurityCode() *SecurityCode {
 // Returns security information
 type SecurityInfoReply struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// * Security name
+	//* Security name
 	Name string `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
-	// * Security class
+	//* Security class
 	SecurityClass SecurityClass `protobuf:"varint,2,opt,name=security_class,json=securityClass,proto3,enum=com.consorsbank.module.tapi.grpc.SecurityClass" json:"security_class,omitempty"`
-	// * Security codes with security type (WKN, ISIN, etc)
+	//* Security codes with security type (WKN, ISIN, etc)
 	SecurityCodes []*SecurityCode `protobuf:"bytes,3,rep,name=security_codes,json=securityCodes,proto3" json:"security_codes,omitempty"`
-	// *  Stockexchange info (stock exchange, name)
+	//*  Stockexchange info (stock exchange, name)
 	StockExchangeInfos []*SecurityStockExchangeInfo `protobuf:"bytes,4,rep,name=stock_exchange_infos,json=stockExchangeInfos,proto3" json:"stock_exchange_infos,omitempty"`
-	// * Unit note
+	//* Unit note
 	UnitNote UnitNote `protobuf:"varint,5,opt,name=unit_note,json=unitNote,proto3,enum=com.consorsbank.module.tapi.grpc.UnitNote" json:"unit_note,omitempty"`
-	// *
+	//*
 	// Error information if occuirs
 	Error         *Error `protobuf:"bytes,1000,opt,name=error,proto3" json:"error,omitempty"`
 	unknownFields protoimpl.UnknownFields
@@ -852,17 +852,17 @@ func (x *SecurityInfoReply) GetError() *Error {
 
 type SecurityPriceHistoryRequest struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// *
+	//*
 	// Access token
 	AccessToken string `protobuf:"bytes,1,opt,name=access_token,json=accessToken,proto3" json:"access_token,omitempty"`
-	// *
+	//*
 	// Security with stockExchange object (security code, stock exchange)
 	SecurityWithStockexchange *SecurityWithStockExchange `protobuf:"bytes,2,opt,name=security_with_stockexchange,json=securityWithStockexchange,proto3" json:"security_with_stockexchange,omitempty"`
-	// *
+	//*
 	// Amount of the day in the past. This value should be positive.
 	// Maximal value for the intraday resolution is 15.
 	Days int32 `protobuf:"varint,3,opt,name=days,proto3" json:"days,omitempty"`
-	// *
+	//*
 	// Time resolution for the data
 	TimeResolution TimeResolution `protobuf:"varint,4,opt,name=time_resolution,json=timeResolution,proto3,enum=com.consorsbank.module.tapi.grpc.TimeResolution" json:"time_resolution,omitempty"`
 	unknownFields  protoimpl.UnknownFields
@@ -930,13 +930,13 @@ func (x *SecurityPriceHistoryRequest) GetTimeResolution() TimeResolution {
 // * Returns history data for defined security
 type SecurityPriceHistoryReply struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// * Security with stockExchange object (security code, stock exchange)
+	//* Security with stockExchange object (security code, stock exchange)
 	SecurityWithStockexchange *SecurityWithStockExchange `protobuf:"bytes,1,opt,name=security_with_stockexchange,json=securityWithStockexchange,proto3" json:"security_with_stockexchange,omitempty"`
-	// * Currency
+	//* Currency
 	Currency string `protobuf:"bytes,2,opt,name=currency,proto3" json:"currency,omitempty"`
-	// * List of the price entries
+	//* List of the price entries
 	PriceEntries []*PriceEntry `protobuf:"bytes,3,rep,name=price_entries,json=priceEntries,proto3" json:"price_entries,omitempty"`
-	// *
+	//*
 	// Error information if occuirs
 	Error         *Error `protobuf:"bytes,1000,opt,name=error,proto3" json:"error,omitempty"`
 	unknownFields protoimpl.UnknownFields
@@ -1003,19 +1003,19 @@ func (x *SecurityPriceHistoryReply) GetError() *Error {
 
 type PriceEntry struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// * Open price
+	//* Open price
 	OpenPrice float64 `protobuf:"fixed64,1,opt,name=open_price,json=openPrice,proto3" json:"open_price,omitempty"`
-	// * Close price
+	//* Close price
 	ClosePrice float64 `protobuf:"fixed64,2,opt,name=close_price,json=closePrice,proto3" json:"close_price,omitempty"`
-	// * High price
+	//* High price
 	HighPrice float64 `protobuf:"fixed64,3,opt,name=high_price,json=highPrice,proto3" json:"high_price,omitempty"`
-	// * Low price
+	//* Low price
 	LowPrice float64 `protobuf:"fixed64,4,opt,name=low_price,json=lowPrice,proto3" json:"low_price,omitempty"`
-	// * Volume, can not be filled
+	//* Volume, can not be filled
 	Volume float64 `protobuf:"fixed64,5,opt,name=volume,proto3" json:"volume,omitempty"`
-	// * Open time
+	//* Open time
 	OpenTime *Timestamp `protobuf:"bytes,6,opt,name=open_time,json=openTime,proto3" json:"open_time,omitempty"`
-	// * Close time
+	//* Close time
 	CloseTime     *Timestamp `protobuf:"bytes,7,opt,name=close_time,json=closeTime,proto3" json:"close_time,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
@@ -1105,19 +1105,19 @@ func (x *PriceEntry) GetCloseTime() *Timestamp {
 // about one security on the one market
 type SecurityStockExchangeInfo struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// *  Stockexchange (id und issuer)
+	//*  Stockexchange (id und issuer)
 	StockExchange *StockExchange `protobuf:"bytes,1,opt,name=stock_exchange,json=stockExchange,proto3" json:"stock_exchange,omitempty"`
-	// * Possible limit token for buy orders
+	//* Possible limit token for buy orders
 	BuyLimitToken SecurityStockExchangeInfo_LimitToken `protobuf:"varint,2,opt,name=buy_limit_token,json=buyLimitToken,proto3,enum=com.consorsbank.module.tapi.grpc.SecurityStockExchangeInfo_LimitToken" json:"buy_limit_token,omitempty"`
-	// * Possible limit token for sell orders
+	//* Possible limit token for sell orders
 	SellLimitToken SecurityStockExchangeInfo_LimitToken `protobuf:"varint,3,opt,name=sell_limit_token,json=sellLimitToken,proto3,enum=com.consorsbank.module.tapi.grpc.SecurityStockExchangeInfo_LimitToken" json:"sell_limit_token,omitempty"`
-	// * Buy trading data (order models, order supplements, trailing notations)
+	//* Buy trading data (order models, order supplements, trailing notations)
 	BuyTradingTypes []*TradingPossibility `protobuf:"bytes,4,rep,name=buy_trading_types,json=buyTradingTypes,proto3" json:"buy_trading_types,omitempty"`
-	// * Sell trading data (order models, order supplements, trailing notations)
+	//* Sell trading data (order models, order supplements, trailing notations)
 	SellTradingTypes []*TradingPossibility `protobuf:"bytes,5,rep,name=sell_trading_types,json=sellTradingTypes,proto3" json:"sell_trading_types,omitempty"`
-	// * Maximal order validity date
+	//* Maximal order validity date
 	MaximalOrderDate *Date `protobuf:"bytes,6,opt,name=maximal_order_date,json=maximalOrderDate,proto3" json:"maximal_order_date,omitempty"`
-	// * Short selling mode
+	//* Short selling mode
 	ShortMode     SecurityStockExchangeInfo_ShortMode `protobuf:"varint,7,opt,name=short_mode,json=shortMode,proto3,enum=com.consorsbank.module.tapi.grpc.SecurityStockExchangeInfo_ShortMode" json:"short_mode,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
@@ -1204,9 +1204,9 @@ func (x *SecurityStockExchangeInfo) GetShortMode() SecurityStockExchangeInfo_Sho
 
 type SecurityCode struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// * Security code
+	//* Security code
 	Code string `protobuf:"bytes,1,opt,name=code,proto3" json:"code,omitempty"`
-	// * Security code type (WKN, ISIN, etc)
+	//* Security code type (WKN, ISIN, etc)
 	CodeType      SecurityCodeType `protobuf:"varint,2,opt,name=code_type,json=codeType,proto3,enum=com.consorsbank.module.tapi.grpc.SecurityCodeType" json:"code_type,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
@@ -1258,9 +1258,9 @@ func (x *SecurityCode) GetCodeType() SecurityCodeType {
 
 type SecurityWithStockExchange struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// * Security code object
+	//* Security code object
 	SecurityCode *SecurityCode `protobuf:"bytes,1,opt,name=security_code,json=securityCode,proto3" json:"security_code,omitempty"`
-	// * Stock exchange object
+	//* Stock exchange object
 	StockExchange *StockExchange `protobuf:"bytes,2,opt,name=stock_exchange,json=stockExchange,proto3" json:"stock_exchange,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
@@ -1314,11 +1314,11 @@ func (x *SecurityWithStockExchange) GetStockExchange() *StockExchange {
 // Requests market data values for defined security with stockexchange
 type SecurityMarketDataRequest struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// *
+	//*
 	// Access token
 	AccessToken               string                     `protobuf:"bytes,1,opt,name=access_token,json=accessToken,proto3" json:"access_token,omitempty"`
 	SecurityWithStockexchange *SecurityWithStockExchange `protobuf:"bytes,2,opt,name=security_with_stockexchange,json=securityWithStockexchange,proto3" json:"security_with_stockexchange,omitempty"`
-	// * Currency
+	//* Currency
 	Currency      string `protobuf:"bytes,3,opt,name=currency,proto3" json:"currency,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
@@ -1379,81 +1379,81 @@ func (x *SecurityMarketDataRequest) GetCurrency() string {
 // Returns market data information
 type SecurityMarketDataReply struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// * Security with stockExchange object (security code, stock exchange)
+	//* Security with stockExchange object (security code, stock exchange)
 	SecurityWithStockexchange *SecurityWithStockExchange `protobuf:"bytes,1,opt,name=security_with_stockexchange,json=securityWithStockexchange,proto3" json:"security_with_stockexchange,omitempty"`
-	// * Security fields, which were changed
+	//* Security fields, which were changed
 	ChangedFields []SecurityMarketDataReply_SecurityChangedField `protobuf:"varint,2,rep,packed,name=changed_fields,json=changedFields,proto3,enum=com.consorsbank.module.tapi.grpc.SecurityMarketDataReply_SecurityChangedField" json:"changed_fields,omitempty"`
-	// * Currency
+	//* Currency
 	Currency string `protobuf:"bytes,3,opt,name=currency,proto3" json:"currency,omitempty"`
-	// * Price of the last trade
+	//* Price of the last trade
 	LastPrice float64 `protobuf:"fixed64,4,opt,name=last_price,json=lastPrice,proto3" json:"last_price,omitempty"`
-	// * Volume last trade
+	//* Volume last trade
 	LastVolume float64 `protobuf:"fixed64,5,opt,name=last_volume,json=lastVolume,proto3" json:"last_volume,omitempty"`
-	// * Last quote date and time
+	//* Last quote date and time
 	LastDateTime *Timestamp `protobuf:"bytes,6,opt,name=last_date_time,json=lastDateTime,proto3" json:"last_date_time,omitempty"`
-	// * Today number of tradings
+	//* Today number of tradings
 	TodayNumTrades int32 `protobuf:"varint,7,opt,name=today_num_trades,json=todayNumTrades,proto3" json:"today_num_trades,omitempty"`
-	// * Today volume
+	//* Today volume
 	TodayVolume float64 `protobuf:"fixed64,8,opt,name=today_volume,json=todayVolume,proto3" json:"today_volume,omitempty"`
-	// * Last ask price
+	//* Last ask price
 	AskPrice float64 `protobuf:"fixed64,9,opt,name=ask_price,json=askPrice,proto3" json:"ask_price,omitempty"`
-	// * Volume last ask
+	//* Volume last ask
 	AskVolume float64 `protobuf:"fixed64,10,opt,name=ask_volume,json=askVolume,proto3" json:"ask_volume,omitempty"`
-	// * Time of the last ask
+	//* Time of the last ask
 	AskTime *Timestamp `protobuf:"bytes,11,opt,name=ask_time,json=askTime,proto3" json:"ask_time,omitempty"`
-	// * Last bid price
+	//* Last bid price
 	BidPrice float64 `protobuf:"fixed64,12,opt,name=bid_price,json=bidPrice,proto3" json:"bid_price,omitempty"`
-	// * Volume last bid
+	//* Volume last bid
 	BidVolume float64 `protobuf:"fixed64,13,opt,name=bid_volume,json=bidVolume,proto3" json:"bid_volume,omitempty"`
-	// * Time of the last bid
+	//* Time of the last bid
 	BidTime *Timestamp `protobuf:"bytes,14,opt,name=bid_time,json=bidTime,proto3" json:"bid_time,omitempty"`
-	// * Quote of the previous trading day
+	//* Quote of the previous trading day
 	PreviousPrice float64 `protobuf:"fixed64,15,opt,name=previous_price,json=previousPrice,proto3" json:"previous_price,omitempty"`
-	// * Date of the previous trading day
+	//* Date of the previous trading day
 	PreviousDate *Date `protobuf:"bytes,16,opt,name=previous_date,json=previousDate,proto3" json:"previous_date,omitempty"`
-	// * Relative difference to the previous day
+	//* Relative difference to the previous day
 	RelativeDiff float64 `protobuf:"fixed64,17,opt,name=relative_diff,json=relativeDiff,proto3" json:"relative_diff,omitempty"`
-	// * Absolute difference to the previous day
+	//* Absolute difference to the previous day
 	AbsDiff float64 `protobuf:"fixed64,18,opt,name=abs_diff,json=absDiff,proto3" json:"abs_diff,omitempty"`
-	// * Highest price
+	//* Highest price
 	HighPrice float64 `protobuf:"fixed64,19,opt,name=high_price,json=highPrice,proto3" json:"high_price,omitempty"`
-	// * Lowest price
+	//* Lowest price
 	LowPrice float64 `protobuf:"fixed64,20,opt,name=low_price,json=lowPrice,proto3" json:"low_price,omitempty"`
-	// * Price at opening
+	//* Price at opening
 	OpenPrice float64 `protobuf:"fixed64,21,opt,name=open_price,json=openPrice,proto3" json:"open_price,omitempty"`
-	// * Highest price of the previous week
+	//* Highest price of the previous week
 	WeekHighPrice float64 `protobuf:"fixed64,22,opt,name=week_high_price,json=weekHighPrice,proto3" json:"week_high_price,omitempty"`
-	// * Date of highest price of the previous week
+	//* Date of highest price of the previous week
 	DateWeekHigh *Date `protobuf:"bytes,23,opt,name=date_week_high,json=dateWeekHigh,proto3" json:"date_week_high,omitempty"`
-	// * Lowest price of the previous week
+	//* Lowest price of the previous week
 	WeekLowPrice float64 `protobuf:"fixed64,24,opt,name=week_low_price,json=weekLowPrice,proto3" json:"week_low_price,omitempty"`
-	// * Date of lowest price of the previous week
+	//* Date of lowest price of the previous week
 	DateWeekLow *Date `protobuf:"bytes,25,opt,name=date_week_low,json=dateWeekLow,proto3" json:"date_week_low,omitempty"`
-	// * Highest price of the previous month
+	//* Highest price of the previous month
 	MonthHighPrice float64 `protobuf:"fixed64,26,opt,name=month_high_price,json=monthHighPrice,proto3" json:"month_high_price,omitempty"`
-	// * Date of highest price of the previous month
+	//* Date of highest price of the previous month
 	DateMonthHigh *Date `protobuf:"bytes,27,opt,name=date_month_high,json=dateMonthHigh,proto3" json:"date_month_high,omitempty"`
-	// * Lowest price of the previous month
+	//* Lowest price of the previous month
 	MonthLowPrice float64 `protobuf:"fixed64,28,opt,name=month_low_price,json=monthLowPrice,proto3" json:"month_low_price,omitempty"`
-	// * Date of lowest price of the previous month
+	//* Date of lowest price of the previous month
 	DateMonthLow *Date `protobuf:"bytes,29,opt,name=date_month_low,json=dateMonthLow,proto3" json:"date_month_low,omitempty"`
-	// * Highest price of the current year
+	//* Highest price of the current year
 	YearHighPrice float64 `protobuf:"fixed64,30,opt,name=year_high_price,json=yearHighPrice,proto3" json:"year_high_price,omitempty"`
-	// * Date of the highest price of the current year
+	//* Date of the highest price of the current year
 	DateYearHigh *Date `protobuf:"bytes,31,opt,name=date_year_high,json=dateYearHigh,proto3" json:"date_year_high,omitempty"`
-	// * Lowest price of the current year
+	//* Lowest price of the current year
 	YearLowPrice float64 `protobuf:"fixed64,32,opt,name=year_low_price,json=yearLowPrice,proto3" json:"year_low_price,omitempty"`
-	// * Date of the lowest price of the current year
+	//* Date of the lowest price of the current year
 	DateYearLow *Date `protobuf:"bytes,33,opt,name=date_year_low,json=dateYearLow,proto3" json:"date_year_low,omitempty"`
-	// * Addendum of the last price.
+	//* Addendum of the last price.
 	LastAddendum string `protobuf:"bytes,34,opt,name=last_addendum,json=lastAddendum,proto3" json:"last_addendum,omitempty"`
-	// * Trading phase
+	//* Trading phase
 	TradingPhase TradingPhase `protobuf:"varint,35,opt,name=trading_phase,json=tradingPhase,proto3,enum=com.consorsbank.module.tapi.grpc.TradingPhase" json:"trading_phase,omitempty"`
-	// * Indicative price
+	//* Indicative price
 	IndicativePrice float64 `protobuf:"fixed64,36,opt,name=indicative_price,json=indicativePrice,proto3" json:"indicative_price,omitempty"`
-	// * Trading volume corresponding to the last price
+	//* Trading volume corresponding to the last price
 	PrevalenceVolume float64 `protobuf:"fixed64,37,opt,name=prevalence_volume,json=prevalenceVolume,proto3" json:"prevalence_volume,omitempty"`
-	// *
+	//*
 	// Error information if occuirs
 	Error         *Error `protobuf:"bytes,1000,opt,name=error,proto3" json:"error,omitempty"`
 	unknownFields protoimpl.UnknownFields
@@ -1760,13 +1760,13 @@ func (x *SecurityMarketDataReply) GetError() *Error {
 // Requests orderbook data for security with stockexchange
 type SecurityOrderBookRequest struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// *
+	//*
 	// Access token
 	AccessToken string `protobuf:"bytes,1,opt,name=access_token,json=accessToken,proto3" json:"access_token,omitempty"`
-	// *
+	//*
 	// Security with stockExchange object (security code, stock exchange)
 	SecurityWithStockexchange *SecurityWithStockExchange `protobuf:"bytes,2,opt,name=security_with_stockexchange,json=securityWithStockexchange,proto3" json:"security_with_stockexchange,omitempty"`
-	// *
+	//*
 	// Requested currency. If not filled used default currency.
 	// Otherwise values will be converted to requested currency.
 	Currency      string `protobuf:"bytes,3,opt,name=currency,proto3" json:"currency,omitempty"`
@@ -1831,13 +1831,13 @@ func (x *SecurityOrderBookRequest) GetCurrency() string {
 // for the second level market data instruments
 type SecurityOrderBookReply struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// * Security with stock exchange object (security code, stock exchange)
+	//* Security with stock exchange object (security code, stock exchange)
 	SecurityWithStockexchange *SecurityWithStockExchange `protobuf:"bytes,1,opt,name=security_with_stockexchange,json=securityWithStockexchange,proto3" json:"security_with_stockexchange,omitempty"`
-	// * Currency of the order book entries
+	//* Currency of the order book entries
 	Currency string `protobuf:"bytes,2,opt,name=currency,proto3" json:"currency,omitempty"`
-	// * List of the order book entries
+	//* List of the order book entries
 	OrderBookEntries []*SecurityOrderBookReply_OrderBookEntry `protobuf:"bytes,3,rep,name=order_book_entries,json=orderBookEntries,proto3" json:"order_book_entries,omitempty"`
-	// *
+	//*
 	// Error information if occuirs
 	Error         *Error `protobuf:"bytes,1000,opt,name=error,proto3" json:"error,omitempty"`
 	unknownFields protoimpl.UnknownFields
@@ -1907,13 +1907,13 @@ func (x *SecurityOrderBookReply) GetError() *Error {
 // Results depends from user market data aboniment and can be realtime or delayed.
 type CurrencyRateRequest struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// *
+	//*
 	// Access token
 	AccessToken string `protobuf:"bytes,1,opt,name=access_token,json=accessToken,proto3" json:"access_token,omitempty"`
-	// *
+	//*
 	// Source currency
 	CurrencyFrom string `protobuf:"bytes,2,opt,name=currency_from,json=currencyFrom,proto3" json:"currency_from,omitempty"`
-	// *
+	//*
 	// Target currency
 	CurrencyTo    string `protobuf:"bytes,3,opt,name=currency_to,json=currencyTo,proto3" json:"currency_to,omitempty"`
 	unknownFields protoimpl.UnknownFields
@@ -1975,13 +1975,13 @@ func (x *CurrencyRateRequest) GetCurrencyTo() string {
 // Returns currency rate
 type CurrencyRateReply struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// * Source currency
+	//* Source currency
 	CurrencyFrom string `protobuf:"bytes,1,opt,name=currency_from,json=currencyFrom,proto3" json:"currency_from,omitempty"`
-	// * Target currency
+	//* Target currency
 	CurrencyTo string `protobuf:"bytes,2,opt,name=currency_to,json=currencyTo,proto3" json:"currency_to,omitempty"`
-	// * Currency rate
+	//* Currency rate
 	CurrencyRate float64 `protobuf:"fixed64,3,opt,name=currency_rate,json=currencyRate,proto3" json:"currency_rate,omitempty"`
-	// * Error information if occuirs
+	//* Error information if occuirs
 	Error         *Error `protobuf:"bytes,1000,opt,name=error,proto3" json:"error,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
@@ -2049,13 +2049,13 @@ func (x *CurrencyRateReply) GetError() *Error {
 // This is bid price, ask price, bid volume, ask volume. Entries with lower index have lower ask and higer bid prices.
 type SecurityOrderBookReply_OrderBookEntry struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// * Bid price
+	//* Bid price
 	BidPrice float64 `protobuf:"fixed64,1,opt,name=bid_price,json=bidPrice,proto3" json:"bid_price,omitempty"`
-	// * Ask price
+	//* Ask price
 	AskPrice float64 `protobuf:"fixed64,2,opt,name=ask_price,json=askPrice,proto3" json:"ask_price,omitempty"`
-	// * Bid volume
+	//* Bid volume
 	BidVolume float64 `protobuf:"fixed64,3,opt,name=bid_volume,json=bidVolume,proto3" json:"bid_volume,omitempty"`
-	// * Ask volume
+	//* Ask volume
 	AskVolume     float64 `protobuf:"fixed64,4,opt,name=ask_volume,json=askVolume,proto3" json:"ask_volume,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache

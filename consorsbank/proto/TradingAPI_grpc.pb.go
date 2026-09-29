@@ -45,10 +45,10 @@ const (
 // *
 // Access service provides functions for the client validation / invalidation
 type AccessServiceClient interface {
-	// *
+	//*
 	// Validates client by the TAPI and gets access data
 	Login(ctx context.Context, in *LoginRequest, opts ...grpc.CallOption) (*LoginReply, error)
-	// *
+	//*
 	// Invalidates client by the TAPI and gets logout result
 	Logout(ctx context.Context, in *LogoutRequest, opts ...grpc.CallOption) (*LogoutReply, error)
 }
@@ -88,10 +88,10 @@ func (c *accessServiceClient) Logout(ctx context.Context, in *LogoutRequest, opt
 // *
 // Access service provides functions for the client validation / invalidation
 type AccessServiceServer interface {
-	// *
+	//*
 	// Validates client by the TAPI and gets access data
 	Login(context.Context, *LoginRequest) (*LoginReply, error)
-	// *
+	//*
 	// Invalidates client by the TAPI and gets logout result
 	Logout(context.Context, *LogoutRequest) (*LogoutReply, error)
 	mustEmbedUnimplementedAccessServiceServer()
@@ -203,55 +203,40 @@ const (
 // Security service provides access
 // to the
 type SecurityServiceClient interface {
-	// *
+	//*
 	// Gets security information about security
 	// @param SecurityInfoRequest
-	//
-	//	Request object with interested security
-	//
+	//   Request object with interested security
 	// @return SecurityInfoReply
-	//
-	//	Complete information about security
+	//   Complete information about security
 	GetSecurityInfo(ctx context.Context, in *SecurityInfoRequest, opts ...grpc.CallOption) (*SecurityInfoReply, error)
-	// *
+	//*
 	// Subscribes security with stock exchange for market data updates
 	// @param SecurityMarketDataRequest
-	//
-	//	Market data request with interested security and stock exchange
-	//
+	//      Market data request with interested security and stock exchange
 	// @stream SecurityMarketDataReply
-	//
-	//	Reply with all market data values
+	//      Reply with all market data values
 	StreamMarketData(ctx context.Context, in *SecurityMarketDataRequest, opts ...grpc.CallOption) (grpc.ServerStreamingClient[SecurityMarketDataReply], error)
-	// *
+	//*
 	// Subscribes security with stock exchange for orderbook updates
 	// @param SecurityOrderBookRequest
-	//
-	//	Orderbook data request with interested security and stock exchange
-	//
+	//      Orderbook data request with interested security and stock exchange
 	// @stream SecurityOrderBookReply
-	//
-	//	Reply with all orderbook values
+	//      Reply with all orderbook values
 	StreamOrderBook(ctx context.Context, in *SecurityOrderBookRequest, opts ...grpc.CallOption) (grpc.ServerStreamingClient[SecurityOrderBookReply], error)
-	// *
+	//*
 	// Subscribes for currency rate from one currency to another currency.
 	// @param SecurityOrderBookRequest
-	//
-	//	currency rate request with interested currencies from/to
-	//
+	//      currency rate request with interested currencies from/to
 	// @stream CurrencyRateReply
-	//
-	//	reply with currency rate
+	//      reply with currency rate
 	StreamCurrencyRate(ctx context.Context, in *CurrencyRateRequest, opts ...grpc.CallOption) (grpc.ServerStreamingClient[CurrencyRateReply], error)
-	// *
+	//*
 	// Requests history data for one security on one stockexchange in intraday or historical format
 	// @param SecurityPriceHistoryRequest
-	//
-	//	Data with security, stockexchange, how many days and resolution
-	//
+	//    Data with security, stockexchange, how many days and resolution
 	// @return SecurityPriceHistoryReply
-	//
-	//	List of the historical quotes or an error
+	//    List of the historical quotes or an error
 	GetSecurityPriceHistory(ctx context.Context, in *SecurityPriceHistoryRequest, opts ...grpc.CallOption) (*SecurityPriceHistoryReply, error)
 }
 
@@ -348,55 +333,40 @@ func (c *securityServiceClient) GetSecurityPriceHistory(ctx context.Context, in 
 // Security service provides access
 // to the
 type SecurityServiceServer interface {
-	// *
+	//*
 	// Gets security information about security
 	// @param SecurityInfoRequest
-	//
-	//	Request object with interested security
-	//
+	//   Request object with interested security
 	// @return SecurityInfoReply
-	//
-	//	Complete information about security
+	//   Complete information about security
 	GetSecurityInfo(context.Context, *SecurityInfoRequest) (*SecurityInfoReply, error)
-	// *
+	//*
 	// Subscribes security with stock exchange for market data updates
 	// @param SecurityMarketDataRequest
-	//
-	//	Market data request with interested security and stock exchange
-	//
+	//      Market data request with interested security and stock exchange
 	// @stream SecurityMarketDataReply
-	//
-	//	Reply with all market data values
+	//      Reply with all market data values
 	StreamMarketData(*SecurityMarketDataRequest, grpc.ServerStreamingServer[SecurityMarketDataReply]) error
-	// *
+	//*
 	// Subscribes security with stock exchange for orderbook updates
 	// @param SecurityOrderBookRequest
-	//
-	//	Orderbook data request with interested security and stock exchange
-	//
+	//      Orderbook data request with interested security and stock exchange
 	// @stream SecurityOrderBookReply
-	//
-	//	Reply with all orderbook values
+	//      Reply with all orderbook values
 	StreamOrderBook(*SecurityOrderBookRequest, grpc.ServerStreamingServer[SecurityOrderBookReply]) error
-	// *
+	//*
 	// Subscribes for currency rate from one currency to another currency.
 	// @param SecurityOrderBookRequest
-	//
-	//	currency rate request with interested currencies from/to
-	//
+	//      currency rate request with interested currencies from/to
 	// @stream CurrencyRateReply
-	//
-	//	reply with currency rate
+	//      reply with currency rate
 	StreamCurrencyRate(*CurrencyRateRequest, grpc.ServerStreamingServer[CurrencyRateReply]) error
-	// *
+	//*
 	// Requests history data for one security on one stockexchange in intraday or historical format
 	// @param SecurityPriceHistoryRequest
-	//
-	//	Data with security, stockexchange, how many days and resolution
-	//
+	//    Data with security, stockexchange, how many days and resolution
 	// @return SecurityPriceHistoryReply
-	//
-	//	List of the historical quotes or an error
+	//    List of the historical quotes or an error
 	GetSecurityPriceHistory(context.Context, *SecurityPriceHistoryRequest) (*SecurityPriceHistoryReply, error)
 	mustEmbedUnimplementedSecurityServiceServer()
 }
@@ -562,21 +532,17 @@ const (
 // StockExchangeService provide information about stockexchanges and
 // issuers
 type StockExchangeServiceClient interface {
-	// *
+	//*
 	// Gets predefined stockexchages
 	// @return StockExchangeDescriptions
-	//
-	//	list of stock exchange informations
+	//    list of stock exchange informations
 	GetStockExchanges(ctx context.Context, in *AccessTokenRequest, opts ...grpc.CallOption) (*StockExchangeDescriptions, error)
-	// *
+	//*
 	// Gets specific stock exchange
 	// @param StockExchange
-	//
-	//	Requested stock exchange
-	//
+	//    Requested stock exchange
 	// @return StockExchangeDescription
-	//
-	//	Stock exchange information
+	//    Stock exchange information
 	GetStockExchange(ctx context.Context, in *StockExchangeRequest, opts ...grpc.CallOption) (*StockExchangeDescription, error)
 }
 
@@ -616,21 +582,17 @@ func (c *stockExchangeServiceClient) GetStockExchange(ctx context.Context, in *S
 // StockExchangeService provide information about stockexchanges and
 // issuers
 type StockExchangeServiceServer interface {
-	// *
+	//*
 	// Gets predefined stockexchages
 	// @return StockExchangeDescriptions
-	//
-	//	list of stock exchange informations
+	//    list of stock exchange informations
 	GetStockExchanges(context.Context, *AccessTokenRequest) (*StockExchangeDescriptions, error)
-	// *
+	//*
 	// Gets specific stock exchange
 	// @param StockExchange
-	//
-	//	Requested stock exchange
-	//
+	//    Requested stock exchange
 	// @return StockExchangeDescription
-	//
-	//	Stock exchange information
+	//    Stock exchange information
 	GetStockExchange(context.Context, *StockExchangeRequest) (*StockExchangeDescription, error)
 	mustEmbedUnimplementedStockExchangeServiceServer()
 }
@@ -744,92 +706,67 @@ const (
 // *
 // Order service provide functionality to control orders.
 type OrderServiceClient interface {
-	// *
+	//*
 	// Subscribes one trading account for orders updates
 	// @param TradingAccount
-	//
-	//	Trading account for push
-	//
+	//      Trading account for push
 	// @stream Orders
-	//
-	//	Orders list for seleted account
+	//      Orders list for seleted account
 	StreamOrders(ctx context.Context, in *TradingAccountRequest, opts ...grpc.CallOption) (grpc.ServerStreamingClient[Orders], error)
-	// *
+	//*
 	// Initiates orders update action. All changes come by the
 	// StreamOrders subscription. This function doesn't wait for the action result.
 	// @param TradingAccount
-	//
-	//	Trading account for update
+	//      Trading account for update
 	UpdateOrders(ctx context.Context, in *TradingAccountRequest, opts ...grpc.CallOption) (*Empty, error)
-	// *
+	//*
 	// Request market quote for the selected security on the selected stock exchanges.
 	// @param QuoteRequest
-	//
-	//	quote request with interested security and stock exchanges
-	//
+	//    quote request with interested security and stock exchanges
 	// @return QuoteReply
-	//
-	//	quote reply with quotes
+	//    quote reply with quotes
 	GetQuote(ctx context.Context, in *QuoteRequest, opts ...grpc.CallOption) (*QuoteReply, error)
-	// *
+	//*
 	// Sends accept quote order request to the short term market
 	// @param AcceptQuoteRequest
-	//
-	//	accept quote request with order parameters
-	//
+	//     accept quote request with order parameters
 	// @return OrderReply
-	//
-	//	result order or error
+	//     result order or error
 	AcceptQuote(ctx context.Context, in *AcceptQuoteRequest, opts ...grpc.CallOption) (*OrderReply, error)
-	// *
+	//*
 	// Sends long term order to the market
 	// @param AddOrderRequest
-	//
-	//	order request with order parameters
-	//
+	//     order request with order parameters
 	// @return OrderReply
-	//
-	//	result order or error
+	//     result order or error
 	AddOrder(ctx context.Context, in *AddOrderRequest, opts ...grpc.CallOption) (*OrderReply, error)
-	// *
+	//*
 	// Sends order change request to the market
 	// @param ChangeOrderRequest
-	//
-	//	changed order request with order parameters
-	//
+	//     changed order request with order parameters
 	// @return OrderReply
-	//
-	//	result order or error
+	//     result order or error
 	ChangeOrder(ctx context.Context, in *ChangeOrderRequest, opts ...grpc.CallOption) (*OrderReply, error)
-	// *
+	//*
 	// Sends order cancel request to the market
 	// @param CancelOrderRequest
-	//
-	//	cancel order request with order reference
-	//
+	//     cancel order request with order reference
 	// @return OrderReply
-	//
-	//	result order or error
+	//     result order or error
 	CancelOrder(ctx context.Context, in *CancelOrderRequest, opts ...grpc.CallOption) (*OrderReply, error)
-	// *
+	//*
 	// Sends order activate request to the market. #pro# only
 	// @param ActivateOrderRequest
-	//
-	//	activate order request with order parameters
-	//
+	//     activate order request with order parameters
 	// @return OrderReply
-	//
-	//	result order or error
+	//     result order or error
 	ActivateOrder(ctx context.Context, in *ActivateOrderRequest, opts ...grpc.CallOption) (*OrderReply, error)
-	// *
+	//*
 	// Sends order deactivate request to the market. #pro# only
 	// @param DeactivateOrderRequest
-	//
-	//	deactivate order request with order parameters
-	//
+	//     deactivate order request with order parameters
 	// @return OrderReply
-	//
-	//	result order or error
+	//     result order or error
 	DeactivateOrder(ctx context.Context, in *DeactivateOrderRequest, opts ...grpc.CallOption) (*OrderReply, error)
 }
 
@@ -947,92 +884,67 @@ func (c *orderServiceClient) DeactivateOrder(ctx context.Context, in *Deactivate
 // *
 // Order service provide functionality to control orders.
 type OrderServiceServer interface {
-	// *
+	//*
 	// Subscribes one trading account for orders updates
 	// @param TradingAccount
-	//
-	//	Trading account for push
-	//
+	//      Trading account for push
 	// @stream Orders
-	//
-	//	Orders list for seleted account
+	//      Orders list for seleted account
 	StreamOrders(*TradingAccountRequest, grpc.ServerStreamingServer[Orders]) error
-	// *
+	//*
 	// Initiates orders update action. All changes come by the
 	// StreamOrders subscription. This function doesn't wait for the action result.
 	// @param TradingAccount
-	//
-	//	Trading account for update
+	//      Trading account for update
 	UpdateOrders(context.Context, *TradingAccountRequest) (*Empty, error)
-	// *
+	//*
 	// Request market quote for the selected security on the selected stock exchanges.
 	// @param QuoteRequest
-	//
-	//	quote request with interested security and stock exchanges
-	//
+	//    quote request with interested security and stock exchanges
 	// @return QuoteReply
-	//
-	//	quote reply with quotes
+	//    quote reply with quotes
 	GetQuote(context.Context, *QuoteRequest) (*QuoteReply, error)
-	// *
+	//*
 	// Sends accept quote order request to the short term market
 	// @param AcceptQuoteRequest
-	//
-	//	accept quote request with order parameters
-	//
+	//     accept quote request with order parameters
 	// @return OrderReply
-	//
-	//	result order or error
+	//     result order or error
 	AcceptQuote(context.Context, *AcceptQuoteRequest) (*OrderReply, error)
-	// *
+	//*
 	// Sends long term order to the market
 	// @param AddOrderRequest
-	//
-	//	order request with order parameters
-	//
+	//     order request with order parameters
 	// @return OrderReply
-	//
-	//	result order or error
+	//     result order or error
 	AddOrder(context.Context, *AddOrderRequest) (*OrderReply, error)
-	// *
+	//*
 	// Sends order change request to the market
 	// @param ChangeOrderRequest
-	//
-	//	changed order request with order parameters
-	//
+	//     changed order request with order parameters
 	// @return OrderReply
-	//
-	//	result order or error
+	//     result order or error
 	ChangeOrder(context.Context, *ChangeOrderRequest) (*OrderReply, error)
-	// *
+	//*
 	// Sends order cancel request to the market
 	// @param CancelOrderRequest
-	//
-	//	cancel order request with order reference
-	//
+	//     cancel order request with order reference
 	// @return OrderReply
-	//
-	//	result order or error
+	//     result order or error
 	CancelOrder(context.Context, *CancelOrderRequest) (*OrderReply, error)
-	// *
+	//*
 	// Sends order activate request to the market. #pro# only
 	// @param ActivateOrderRequest
-	//
-	//	activate order request with order parameters
-	//
+	//     activate order request with order parameters
 	// @return OrderReply
-	//
-	//	result order or error
+	//     result order or error
 	ActivateOrder(context.Context, *ActivateOrderRequest) (*OrderReply, error)
-	// *
+	//*
 	// Sends order deactivate request to the market. #pro# only
 	// @param DeactivateOrderRequest
-	//
-	//	deactivate order request with order parameters
-	//
+	//     deactivate order request with order parameters
 	// @return OrderReply
-	//
-	//	result order or error
+	//     result order or error
 	DeactivateOrder(context.Context, *DeactivateOrderRequest) (*OrderReply, error)
 	mustEmbedUnimplementedOrderServiceServer()
 }
@@ -1311,31 +1223,24 @@ const (
 // AccountService provide functionality with access
 // to the trading accounts
 type AccountServiceClient interface {
-	// *
+	//*
 	// Gets trading accounts
 	// @return TradingAccounts
-	//
-	//	List of trading accounts
+	//       List of trading accounts
 	GetTradingAccounts(ctx context.Context, in *AccessTokenRequest, opts ...grpc.CallOption) (*TradingAccounts, error)
-	// *
+	//*
 	// Subscribes one trading account for updates
 	// @param TradingAccount
-	//
-	//	Trading account for push
-	//
+	//      Trading account for push
 	// @stream TradingAccountInformation
-	//
-	//	Specific information for subscribed account (balance, kredit line, etc.)
+	//      Specific information for subscribed account (balance, kredit line, etc.)
 	StreamTradingAccount(ctx context.Context, in *TradingAccountRequest, opts ...grpc.CallOption) (grpc.ServerStreamingClient[TradingAccountInformation], error)
-	// *
+	//*
 	// Subscribes one trading account for the transactions updates
 	// @param TradingAccount
-	//
-	//	Trading account for push
-	//
+	//      Trading account for push
 	// @stream TradingAccountInformation
-	//
-	//	Transactions list for subscribed account
+	//      Transactions list for subscribed account
 	StreamTradingAccountTransactions(ctx context.Context, in *TradingAccountRequest, opts ...grpc.CallOption) (grpc.ServerStreamingClient[TradingAccountTransactions], error)
 }
 
@@ -1403,31 +1308,24 @@ type AccountService_StreamTradingAccountTransactionsClient = grpc.ServerStreamin
 // AccountService provide functionality with access
 // to the trading accounts
 type AccountServiceServer interface {
-	// *
+	//*
 	// Gets trading accounts
 	// @return TradingAccounts
-	//
-	//	List of trading accounts
+	//       List of trading accounts
 	GetTradingAccounts(context.Context, *AccessTokenRequest) (*TradingAccounts, error)
-	// *
+	//*
 	// Subscribes one trading account for updates
 	// @param TradingAccount
-	//
-	//	Trading account for push
-	//
+	//      Trading account for push
 	// @stream TradingAccountInformation
-	//
-	//	Specific information for subscribed account (balance, kredit line, etc.)
+	//      Specific information for subscribed account (balance, kredit line, etc.)
 	StreamTradingAccount(*TradingAccountRequest, grpc.ServerStreamingServer[TradingAccountInformation]) error
-	// *
+	//*
 	// Subscribes one trading account for the transactions updates
 	// @param TradingAccount
-	//
-	//	Trading account for push
-	//
+	//      Trading account for push
 	// @stream TradingAccountInformation
-	//
-	//	Transactions list for subscribed account
+	//      Transactions list for subscribed account
 	StreamTradingAccountTransactions(*TradingAccountRequest, grpc.ServerStreamingServer[TradingAccountTransactions]) error
 	mustEmbedUnimplementedAccountServiceServer()
 }
@@ -1548,20 +1446,17 @@ const (
 // *
 // Depot service provides access to the depot linked to the account
 type DepotServiceClient interface {
-	// *
+	//*
 	// Subscribes one trading account for the depot data updates
 	// @param TradingAccount
-	//
-	//	Trading account for push
-	//
+	//      Trading account for push
 	// @stream DepotEntries depot entries linked to the account
 	StreamDepot(ctx context.Context, in *TradingAccountRequest, opts ...grpc.CallOption) (grpc.ServerStreamingClient[DepotEntries], error)
-	// *
+	//*
 	// Initiates depot update action. All changes come by the
 	// StreamDepot subscription. This function doesn't wait for the action result.
 	// @param TradingAccount
-	//
-	//	Trading account for update
+	//      Trading account for update
 	UpdateDepot(ctx context.Context, in *TradingAccountRequest, opts ...grpc.CallOption) (*Empty, error)
 }
 
@@ -1609,20 +1504,17 @@ func (c *depotServiceClient) UpdateDepot(ctx context.Context, in *TradingAccount
 // *
 // Depot service provides access to the depot linked to the account
 type DepotServiceServer interface {
-	// *
+	//*
 	// Subscribes one trading account for the depot data updates
 	// @param TradingAccount
-	//
-	//	Trading account for push
-	//
+	//      Trading account for push
 	// @stream DepotEntries depot entries linked to the account
 	StreamDepot(*TradingAccountRequest, grpc.ServerStreamingServer[DepotEntries]) error
-	// *
+	//*
 	// Initiates depot update action. All changes come by the
 	// StreamDepot subscription. This function doesn't wait for the action result.
 	// @param TradingAccount
-	//
-	//	Trading account for update
+	//      Trading account for update
 	UpdateDepot(context.Context, *TradingAccountRequest) (*Empty, error)
 	mustEmbedUnimplementedDepotServiceServer()
 }

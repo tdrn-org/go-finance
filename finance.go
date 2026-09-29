@@ -14,14 +14,14 @@
  * limitations under the License.
  */
 
-// Package finance provides financial services backed up by a pluggable
-// provider system.
+// Package finance provides financial services backed up by different
+// providers in a pluggable setup.
 package finance
 
 import "errors"
 
 var (
-	// ErrRateLimitReached indicates a provider will not respond
+	// ErrRateLimitReached indicates a provider will only respond
 	// to further queries after a cool-down period.
 	ErrRateLimitReached error = errors.New("rate limit reached")
 	// ErrRequestPending indicates a request will be served

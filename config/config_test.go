@@ -40,7 +40,7 @@ func TestNewFXProvider(t *testing.T) {
 func TestNewSymbolsProvider(t *testing.T) {
 	config, err := config.Load("testdata/finance.toml", true)
 	require.NoError(t, err)
-	provider, err := config.NewSymbolsProvider()
+	provider, err := config.NewInstrumentProvider()
 	require.NoError(t, err)
 	providerName := provider.ProviderName()
 	require.Equal(t, "cached:merge:openfigi|alphavantage|consorsbank|twelvedata", providerName)
@@ -49,7 +49,7 @@ func TestNewSymbolsProvider(t *testing.T) {
 func TestNewEquityProvider(t *testing.T) {
 	config, err := config.Load("testdata/finance.toml", true)
 	require.NoError(t, err)
-	provider, err := config.NewEquityProvider()
+	provider, err := config.NewQuoteProvider()
 	require.NoError(t, err)
 	providerName := provider.ProviderName()
 	require.Equal(t, "cached:consorsbank", providerName)

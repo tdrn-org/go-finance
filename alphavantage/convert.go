@@ -17,6 +17,7 @@
 package alphavantage
 
 import (
+	_ "embed"
 	"fmt"
 	"strconv"
 	"time"

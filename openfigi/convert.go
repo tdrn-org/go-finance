@@ -17,28 +17,104 @@
 package openfigi
 
 import (
+	_ "embed"
+	"encoding/json"
+
 	"github.com/tdrn-org/go-finance"
 	"github.com/tdrn-org/go-finance/openfigi/api"
 )
 
-var securityTypeMap map[string]string = map[string]string{
-	"Common Stock": string(finance.SecurityTypeEquity),
-}
+//go:embed marketSecDesMap.json
+var marketSecDesMapData []byte
 
-func figiResultToSymbol(figiResult *api.FigiResult) *finance.Symbol {
+var marketSecDesMap map[string]finance.InstrumentType = func() map[string]finance.InstrumentType {
+	var marketSecDesMap map[string]finance.InstrumentType
+	err := json.Unmarshal(marketSecDesMapData, &marketSecDesMap)
+	if err != nil {
+		panic(err)
+	}
+	return marketSecDesMap
+}()
+
+//go:embed securityType2Map.json
+var securityType2MapData []byte
+
+var securityType2Map map[string]finance.InstrumentType = func() map[string]finance.InstrumentType {
+	var securityType2Map map[string]finance.InstrumentType
+	err := json.Unmarshal(securityType2MapData, &securityType2Map)
+	if err != nil {
+		panic(err)
+	}
+	return securityType2Map
+}()
+
+func figiResultToInstrument(figiResult *api.FigiResult, mic string) *finance.Instrument {
 	if figiResult == nil {
 		return nil
 	}
-	symbol := &finance.Symbol{
-		Ticker: ptrString(figiResult.Ticker),
-		Name:   ptrString(figiResult.Name),
-		FIGI:   ptrString(figiResult.Figi),
-		Type:   finance.MapSecurityType(ptrString(figiResult.SecurityType), securityTypeMap),
+	instrument := finance.NewInstrument()
+	instrument.Identifiers[finance.InstrumentIdentifierFIGI] = ptrString(figiResult.Figi)
+	instrument.Identifiers[finance.InstrumentIdentifierTicker] = ptrString(figiResult.Ticker)
+	instrument.Name = ptrString(figiResult.Name)
+	instrument.MIC = mic
+	instrumentType, ok := securityType2Map[ptrString(figiResult.SecurityType2)]
+	if !ok {
+		instrumentType, ok = marketSecDesMap[ptrString(figiResult.MarketSector)]
+		if !ok {
+			instrumentType = finance.InstrumentTypeUnknown
+		}
 	}
-	if symbol.IsEmpty() {
+	instrument.Type = instrumentType
+	return instrument
+}
+
+var idTypeMap map[finance.InstrumentIdentifier]api.MappingJobIdType = map[finance.InstrumentIdentifier]api.MappingJobIdType{
+	finance.InstrumentIdentifierTicker: api.TICKER,
+	finance.InstrumentIdentifierISIN:   api.IDISIN,
+	finance.InstrumentIdentifierFIGI:   api.IDBBGLOBAL,
+}
+
+func instrumentToMappingJob(instrument *finance.Instrument) *api.MappingJob {
+	hasFIGI := instrument.HasIdentifier(finance.InstrumentIdentifierFIGI)
+	hasTicker := instrument.HasIdentifier(finance.InstrumentIdentifierTicker)
+	if hasFIGI && hasTicker {
 		return nil
 	}
-	return symbol
+	var instrumentIdentifer finance.InstrumentIdentifier
+	var micCode *string
+	if hasTicker {
+		instrumentIdentifer = finance.InstrumentIdentifierTicker
+		micCode = &instrument.MIC
+	} else if hasFIGI {
+		instrumentIdentifer = finance.InstrumentIdentifierFIGI
+	} else if instrument.HasIdentifier(finance.InstrumentIdentifierISIN) {
+		instrumentIdentifer = finance.InstrumentIdentifierISIN
+		micCode = &instrument.MIC
+	} else {
+		return nil
+	}
+	idValue := api.MappingJob_IdValue{}
+	identifier, _ := instrument.Identifier(instrumentIdentifer)
+	idValue.FromMappingJobIdValue0(identifier)
+	mappingJob := &api.MappingJob{
+		IdType:  idTypeMap[instrumentIdentifer],
+		IdValue: idValue,
+		MicCode: micCode,
+	}
+	return mappingJob
+}
+
+func mappingJobResultToFigiResult(result *api.MappingJobResult) (*api.FigiResult, string) {
+	figiList, err := result.AsMappingJobResultFigiList()
+	if err != nil || figiList.Data == nil {
+		notFound, _ := result.AsMappingJobResultFigiNotFound()
+		return nil, ptrString(notFound.Warning)
+	}
+	figiResults := *figiList.Data
+	if len(figiResults) != 1 {
+		return nil, ""
+	}
+	return &figiResults[0], ""
 }
 
 func ptrString(p *string) string {

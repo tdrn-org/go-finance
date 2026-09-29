@@ -19,7 +19,6 @@ package composite
 import (
 	"context"
 	"errors"
-	"fmt"
 	"strings"
 
 	"github.com/tdrn-org/go-cache"
@@ -29,11 +28,11 @@ import (
 type QuoteCache cache.KeyValue[string, *finance.Quote]
 
 type cachedEquityProvider struct {
-	provider finance.Equity
+	provider finance.QuoteProvider
 	cache    QuoteCache
 }
 
-func NewCachedEquityProvider(provider finance.Equity, cache QuoteCache) finance.Equity {
+func NewCachedEquityProvider(provider finance.QuoteProvider, cache QuoteCache) finance.QuoteProvider {
 	return &cachedEquityProvider{
 		provider: provider,
 		cache:    cache,
@@ -47,15 +46,11 @@ func (p *cachedEquityProvider) ProviderName() string {
 	return buffer.String()
 }
 
-func (p *cachedEquityProvider) ResolveSymbol(ctx context.Context, symbol finance.Symbol) (*finance.Symbol, error) {
-	return p.provider.ResolveSymbol(ctx, symbol)
-}
-
-func (p *cachedEquityProvider) QueryQuote(ctx context.Context, symbol finance.Symbol) (*finance.Quote, error) {
-	key := p.cacheKey(&symbol)
+func (p *cachedEquityProvider) QueryQuote(ctx context.Context, instrument *finance.Instrument) (*finance.Quote, error) {
+	key := p.cacheKey(instrument)
 	cachedQuote, err := p.cache.Get(ctx, key)
 	if errors.Is(err, cache.ErrNotFound) {
-		cachedQuote, err = p.provider.QueryQuote(ctx, symbol)
+		cachedQuote, err = p.provider.QueryQuote(ctx, instrument)
 		if err != nil {
 			return nil, err
 		}
@@ -66,11 +61,9 @@ func (p *cachedEquityProvider) QueryQuote(ctx context.Context, symbol finance.Sy
 	return cachedQuote, nil
 }
 
-func (p *cachedEquityProvider) cacheKey(symbol *finance.Symbol) string {
-	return fmt.Sprintf("finance:quote:%s/%s/%s/%s/%s",
-		strings.ToUpper(symbol.Exchange),
-		strings.ToUpper(symbol.Ticker),
-		strings.ToUpper(symbol.ISIN),
-		strings.ToUpper(symbol.WKN),
-		strings.ToUpper(symbol.FIGI))
+func (p *cachedEquityProvider) cacheKey(instrument *finance.Instrument) string {
+	buffer := &strings.Builder{}
+	buffer.WriteString("finance:quote:")
+	buffer.WriteString(instrument.String())
+	return buffer.String()
 }

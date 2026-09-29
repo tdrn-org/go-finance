@@ -21,11 +21,15 @@ import "net/http"
 type Config interface {
 	GetAPIKey() (string, error)
 	GetHttpClient() (*http.Client, error)
+	GetMICs() ([]string, error)
+	GetIncludeInstrumentTypes() ([]string, error)
 }
 
 type StaticConfig struct {
-	APIKey     string
-	HttpClient *http.Client
+	APIKey                 string
+	HttpClient             *http.Client
+	MICs                   []string
+	IncludeInstrumentTypes []string
 }
 
 func (c *StaticConfig) GetAPIKey() (string, error) {
@@ -34,4 +38,12 @@ func (c *StaticConfig) GetAPIKey() (string, error) {
 
 func (c *StaticConfig) GetHttpClient() (*http.Client, error) {
 	return c.HttpClient, nil
+}
+
+func (c *StaticConfig) GetMICs() ([]string, error) {
+	return c.MICs, nil
+}
+
+func (c *StaticConfig) GetIncludeInstrumentTypes() ([]string, error) {
+	return c.IncludeInstrumentTypes, nil
 }

@@ -1,0 +1,12 @@
+{
+    "Comdty": "future",
+    "Corp": "bond",
+    "Curncy": "forex",
+    "Equity": "equity",
+    "Govt": "bond",
+    "Index": "index",
+    "M-Mkt": "bond",
+    "Mtge": "bond",
+    "Muni": "bond",
+    "Pfd": "equity"
+}

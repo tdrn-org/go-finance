@@ -18,6 +18,7 @@ package finance_test
 
 import (
 	"errors"
+	"fmt"
 	"testing"
 	"time"
 
@@ -76,6 +77,7 @@ func testCurrencyAPI(t *testing.T, api finance.FX) {
 		require.Equal(t, finance.CurrencyUSD, exchangeRate.Base)
 		require.Equal(t, finance.CurrencyEUR, exchangeRate.Quote)
 		require.NotZero(t, exchangeRate.Rate)
+		fmt.Println(exchangeRate)
 		return
 	}
 }

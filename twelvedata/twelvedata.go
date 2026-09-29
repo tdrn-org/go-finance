@@ -17,7 +17,6 @@
 package twelvedata
 
 import (
-	"context"
 	"fmt"
 	"log/slog"
 	"net/http"
@@ -31,8 +30,10 @@ const Name string = "twelvedata"
 const apiVersion string = "last"
 
 type API struct {
-	client *twelvedata.APIClient
-	logger *slog.Logger
+	client                 *twelvedata.APIClient
+	mics                   []string
+	includeInstrumentTypes []string
+	logger                 *slog.Logger
 }
 
 func NewAPI(config Config) (*API, error) {
@@ -45,6 +46,14 @@ func NewAPI(config Config) (*API, error) {
 	if err != nil {
 		return nil, err
 	}
+	mics, err := config.GetMICs()
+	if err != nil {
+		return nil, err
+	}
+	includeInstrumentTypes, err := config.GetIncludeInstrumentTypes()
+	if err != nil {
+		return nil, err
+	}
 	cfg := twelvedata.NewConfiguration()
 	cfg.AddDefaultHeader("Authorization", fmt.Sprintf("apikey %s", apiKey))
 	cfg.AddDefaultHeader("X-API-Version", apiVersion)
@@ -53,8 +62,10 @@ func NewAPI(config Config) (*API, error) {
 	}
 	client := twelvedata.NewAPIClient(cfg)
 	api := &API{
-		client: client,
-		logger: logger,
+		client:                 client,
+		mics:                   mics,
+		includeInstrumentTypes: includeInstrumentTypes,
+		logger:                 logger,
 	}
 	return api, nil
 }
@@ -63,93 +74,13 @@ func (api *API) ProviderName() string {
 	return Name
 }
 
-func (api *API) QueryExchangeRate(ctx context.Context, base, quote finance.Currency) (*finance.ExchangeRate, error) {
-	response, rsp, err := api.client.CurrenciesAPI.
-		GetExchangeRate(ctx).
-		Symbol(fmt.Sprintf("%s/%s", base, quote)).
-		Execute()
-	if err != nil {
-		return nil, fmt.Errorf("query exchange rate failure (cause: %w)", err)
-	}
-	err = api.checkHttpStatus(rsp)
-	if err != nil {
-		return nil, err
-	}
-	return exchangeRateResponseToExchangeRate(response)
-}
-
-var instrumentTypeMap map[string]string = map[string]string{
-	"Common Stock": string(finance.SecurityTypeEquity),
-}
-
-func (api *API) SearchSymbol(ctx context.Context, query string) (finance.Symbols, error) {
-	noHint := &finance.Symbol{}
-	return api.searchSymbol(ctx, query, noHint)
-}
-
-func (api *API) searchSymbol(ctx context.Context, query string, hint *finance.Symbol) (finance.Symbols, error) {
-	response, rsp, err := api.client.ReferenceDataAPI.
-		GetSymbolSearch(ctx).
-		Symbol(query).
-		Execute()
-	if err != nil {
-		return nil, fmt.Errorf("search symbol failure (cause: %w)", err)
-	}
-	err = api.checkHttpStatus(rsp)
-	if err != nil {
-		return nil, err
-	}
-	return symbolSearchResponseToSymbols(response, hint)
-}
-
-// See [finance.Equity]
-func (api *API) ResolveSymbol(ctx context.Context, symbol finance.Symbol) (*finance.Symbol, error) {
-	if symbol.HasTicker() {
-		return &symbol, nil
-	}
-	query := ""
-	if symbol.HasISIN() {
-		query = symbol.ISIN
-	} else if symbol.HasFIGI() {
-		query = symbol.FIGI
-	} else {
-		return nil, finance.ErrInsufficientSymbol
-	}
-	foundSymbols, err := api.searchSymbol(ctx, query, &symbol)
-	if err != nil {
-		return nil, err
-	}
-	resolvedSymbol, match := foundSymbols.Match(&symbol)
-	if match == finance.SymbolMatchNone {
-		return nil, finance.ErrSymbolNotAvailable
-	}
-	return resolvedSymbol, nil
-}
-
-func (api *API) QueryQuote(ctx context.Context, symbol finance.Symbol) (*finance.Quote, error) {
-	if !symbol.HasTicker() {
-		return nil, finance.ErrQuoteNotAvailable
-	}
-	response, rsp, err := api.client.MarketDataAPI.
-		GetQuote(ctx).
-		Symbol(symbol.Ticker).
-		MicCode(symbol.Exchange).
-		Execute()
-	if err != nil {
-		return nil, fmt.Errorf("query quote failure (cause: %w)", err)
-	}
-	err = api.checkHttpStatus(rsp)
-	if err != nil {
-		return nil, err
-	}
-	return quoteResponseToQuote(&symbol, response)
-}
-
 func (api *API) checkHttpStatus(rsp *http.Response) error {
 	switch rsp.StatusCode {
 	case http.StatusOK:
 		return nil
+	case http.StatusTooManyRequests:
+		return finance.ErrRateLimitReached
 	default:
-		return fmt.Errorf("service failure (status: %d %s)", rsp.StatusCode, rsp.Status)
+		return fmt.Errorf("%s: service failure (status: %s)", Name, rsp.Status)
 	}
 }

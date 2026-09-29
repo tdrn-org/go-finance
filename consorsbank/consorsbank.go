@@ -24,7 +24,6 @@ import (
 	"io"
 	"log/slog"
 	"math"
-	"strings"
 	"sync"
 	"time"
 
@@ -124,110 +123,6 @@ func (api *API) ProviderName() string {
 	return Name
 }
 
-func (api *API) QueryExchangeRate(ctx context.Context, base, quote finance.Currency) (*finance.ExchangeRate, error) {
-	api.mutex.Lock()
-	defer api.mutex.Unlock()
-
-	subscription := api.getExchangeRateSubscriptionLocked(base, quote)
-	if subscription == nil {
-		var err error
-		subscription, err = api.startExchangeRateSubscriptionLocked(ctx, base, quote)
-		if err != nil {
-			return nil, err
-		}
-	}
-	return subscription.LastReply()
-}
-
-func (api *API) getExchangeRateSubscriptionLocked(base, quote finance.Currency) *streamSubscription[proto.CurrencyRateReply, finance.ExchangeRate] {
-	subscriptionKey := fmt.Sprintf("%s/%s", base, quote)
-	subscription := api.exchangeRateSubscriptions[subscriptionKey]
-	if subscription.IsClosed() {
-		return nil
-	}
-	return subscription
-}
-
-func (api *API) startExchangeRateSubscriptionLocked(ctx context.Context, base, quote finance.Currency) (*streamSubscription[proto.CurrencyRateReply, finance.ExchangeRate], error) {
-	session, err := api.getSessionLocked(ctx)
-	if err != nil {
-		return nil, err
-	}
-	securityService := session.SecurityService()
-	subscriptionKey := fmt.Sprintf("%s/%s", base, quote)
-	subscriptionCtx, subscriptionCancel := context.WithCancel(context.Background())
-	client, err := securityService.StreamCurrencyRate(subscriptionCtx, &proto.CurrencyRateRequest{
-		AccessToken:  session.AccessToken,
-		CurrencyFrom: string(base),
-		CurrencyTo:   string(quote),
-	})
-	if err != nil {
-		subscriptionCancel()
-		api.invalidateSessionLocked()
-		return nil, fmt.Errorf("failed to create exchange rate subscription (cause: %w)", err)
-	}
-	subscription := &streamSubscription[proto.CurrencyRateReply, finance.ExchangeRate]{
-		client:              client,
-		subscriptionTimeout: api.subscriptionTimeout,
-		recordReply:         recordCurrencyRateReply,
-		ctx:                 subscriptionCtx,
-		cancel:              subscriptionCancel,
-		logger:              api.logger.With(slog.String("currencyRateSubscription", subscriptionKey)),
-	}
-	api.exchangeRateSubscriptions[subscriptionKey] = subscription
-	api.stoppedWG.Go(subscription.Run)
-	return subscription, nil
-}
-
-func (api *API) SearchSymbol(ctx context.Context, query string) (finance.Symbols, error) {
-	api.mutex.Lock()
-	defer api.mutex.Unlock()
-
-	session, err := api.getSessionLocked(ctx)
-	if err != nil {
-		return nil, err
-	}
-	securityService := session.SecurityService()
-	querySecurityCodes := api.resolveQuerySecurityCodes(query)
-	if len(querySecurityCodes) == 0 {
-		return nil, finance.ErrSymbolSearchRestricted
-	}
-	symbols := make(finance.Symbols, 0, len(querySecurityCodes))
-	for _, querySecurityCode := range querySecurityCodes {
-		reply, err := api.getSecurityInfo(ctx, session, securityService, querySecurityCode)
-		if err != nil {
-			return nil, err
-		}
-		symbol := securityInfoToSymbol(reply)
-		if !symbol.IsEmpty() {
-			symbols = append(symbols, *symbol)
-		}
-	}
-	if len(symbols) == 0 {
-		return nil, finance.ErrSymbolNotAvailable
-	}
-	return symbols, nil
-}
-
-func (api *API) resolveQuerySecurityCodes(query string) []*proto.SecurityCode {
-	securityCodes := make([]*proto.SecurityCode, 0)
-	queryFields := strings.Fields(query)
-	for _, queryField := range queryFields {
-		if finance.IsISIN(queryField) {
-			securityCodes = append(securityCodes, &proto.SecurityCode{
-				Code:     queryField,
-				CodeType: proto.SecurityCodeType_ISIN,
-			})
-		} else if finance.IsWKN(queryField) {
-			securityCodes = append(securityCodes, &proto.SecurityCode{
-				Code:     queryField,
-				CodeType: proto.SecurityCodeType_WKN,
-			})
-		}
-	}
-	return securityCodes
-}
-
 func (api *API) getSecurityInfo(ctx context.Context, session *apiSession, securityService proto.SecurityServiceClient, securityCode *proto.SecurityCode) (*proto.SecurityInfoReply, error) {
 	reply, err := securityService.GetSecurityInfo(ctx, &proto.SecurityInfoRequest{
 		AccessToken:  session.AccessToken,
@@ -244,35 +139,8 @@ func (api *API) getSecurityInfo(ctx context.Context, session *apiSession, securi
 	return reply, nil
 }
 
-// See [finance.Equity]
-func (api *API) ResolveSymbol(ctx context.Context, symbol finance.Symbol) (*finance.Symbol, error) {
-	if symbol.HasISIN() {
-		return &symbol, nil
-	}
-	return nil, finance.ErrInsufficientSymbol
-}
-
-func (api *API) QueryQuote(ctx context.Context, symbol finance.Symbol) (*finance.Quote, error) {
-	if !symbol.HasISIN() {
-		return nil, finance.ErrQuoteNotAvailable
-	}
-
-	api.mutex.Lock()
-	defer api.mutex.Unlock()
-
-	subscription := api.getSecurityMarketDataSubscriptionLocked(&symbol)
-	if subscription == nil {
-		var err error
-		subscription, err = api.startSecurityMarketDataSubscriptionLocked(ctx, &symbol)
-		if err != nil {
-			return nil, err
-		}
-	}
-	return subscription.LastReply()
-}
-
-func (api *API) getSecurityMarketDataSubscriptionLocked(symbol *finance.Symbol) *streamSubscription[proto.SecurityMarketDataReply, finance.Quote] {
-	subscriptionKey := symbol.ISIN
+func (api *API) getSecurityMarketDataSubscriptionLocked(instrument *finance.Instrument) *streamSubscription[proto.SecurityMarketDataReply, finance.Quote] {
+	subscriptionKey, _ := instrument.Identifier(finance.InstrumentIdentifierISIN)
 	subscription := api.quoteSubscriptions[subscriptionKey]
 	if subscription.IsClosed() {
 		return nil
@@ -280,14 +148,15 @@ func (api *API) getSecurityMarketDataSubscriptionLocked(symbol *finance.Symbol) 
 	return subscription
 }
 
-func (api *API) startSecurityMarketDataSubscriptionLocked(ctx context.Context, symbol *finance.Symbol) (*streamSubscription[proto.SecurityMarketDataReply, finance.Quote], error) {
+func (api *API) startSecurityMarketDataSubscriptionLocked(ctx context.Context, instrument *finance.Instrument) (*streamSubscription[proto.SecurityMarketDataReply, finance.Quote], error) {
 	session, err := api.getSessionLocked(ctx)
 	if err != nil {
 		return nil, err
 	}
 	securityService := session.SecurityService()
+	subscriptionKey, _ := instrument.Identifier(finance.InstrumentIdentifierISIN)
 	securityCode := &proto.SecurityCode{
-		Code:     symbol.ISIN,
+		Code:     subscriptionKey,
 		CodeType: proto.SecurityCodeType_ISIN,
 	}
 	securityInfoReply, err := api.getSecurityInfo(ctx, session, securityService, securityCode)
@@ -297,11 +166,10 @@ func (api *API) startSecurityMarketDataSubscriptionLocked(ctx context.Context, s
 	if len(securityInfoReply.StockExchangeInfos) == 0 {
 		return nil, fmt.Errorf("unable to determine stock exchange for quote query (symbol: %s)", securityCode.Code)
 	}
-	preferredExchange, err := api.getPreferredExchange(symbol.ISIN, securityInfoReply.StockExchangeInfos)
+	preferredExchange, err := api.getPreferredExchange(subscriptionKey, securityInfoReply.StockExchangeInfos)
 	if err != nil {
 		return nil, err
 	}
-	subscriptionKey := symbol.ISIN
 	subscriptionCtx, subscriptionCancel := context.WithCancel(context.Background())
 	client, err := securityService.StreamMarketData(subscriptionCtx, &proto.SecurityMarketDataRequest{
 		AccessToken: session.AccessToken,
@@ -320,7 +188,7 @@ func (api *API) startSecurityMarketDataSubscriptionLocked(ctx context.Context, s
 		client:              client,
 		subscriptionTimeout: api.subscriptionTimeout,
 		recordReply: func(s *streamSubscription[proto.SecurityMarketDataReply, finance.Quote], reply *proto.SecurityMarketDataReply) {
-			recordSecurityMarketDataReply(s, symbol, reply)
+			recordSecurityMarketDataReply(s, instrument, reply)
 		},
 		ctx:    subscriptionCtx,
 		cancel: subscriptionCancel,
@@ -461,6 +329,9 @@ func (s *streamSubscription[R, T]) timeoutReached() bool {
 	s.mutex.Lock()
 	defer s.mutex.Unlock()
 
+	if s.subscriptionTimeout == 0 {
+		return false
+	}
 	now := time.Now()
 	if s.suscribeUntil.IsZero() {
 		s.suscribeUntil = now.Add(s.subscriptionTimeout)
@@ -499,7 +370,7 @@ func recordCurrencyRateReply(s *streamSubscription[proto.CurrencyRateReply, fina
 	s.lastReply = currencyRateReplyToExchangeRate(reply)
 }
 
-func recordSecurityMarketDataReply(s *streamSubscription[proto.SecurityMarketDataReply, finance.Quote], symbol *finance.Symbol, reply *proto.SecurityMarketDataReply) {
+func recordSecurityMarketDataReply(s *streamSubscription[proto.SecurityMarketDataReply, finance.Quote], instrument *finance.Instrument, reply *proto.SecurityMarketDataReply) {
 	if reply.Error != nil {
 		s.logger.Debug("ignoring errornous market data reply", slog.Any("err", reply.Error))
 		return
@@ -509,5 +380,5 @@ func recordSecurityMarketDataReply(s *streamSubscription[proto.SecurityMarketDat
 	defer s.mutex.Unlock()
 
 	s.logger.Info("recording security market data reply")
-	s.lastReply = securityMarketDataReplyToQuote(symbol, reply)
+	s.lastReply = securityMarketDataReplyToQuote(instrument, reply)
 }

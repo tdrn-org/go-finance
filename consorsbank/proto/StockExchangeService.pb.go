@@ -40,9 +40,9 @@ const (
 // Stock exchange data
 type StockExchange struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// * Stock exchange id
+	//* Stock exchange id
 	Id string `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
-	// * Stock exchange issuer. Can be null
+	//* Stock exchange issuer. Can be null
 	Issuer        string `protobuf:"bytes,2,opt,name=issuer,proto3" json:"issuer,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
@@ -97,10 +97,10 @@ func (x *StockExchange) GetIssuer() string {
 // related data
 type StockExchangeRequest struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// *
+	//*
 	// Access token
 	AccessToken string `protobuf:"bytes,1,opt,name=access_token,json=accessToken,proto3" json:"access_token,omitempty"`
-	// *
+	//*
 	// Stock exchange
 	StockExchange *StockExchange `protobuf:"bytes,2,opt,name=stock_exchange,json=stockExchange,proto3" json:"stock_exchange,omitempty"`
 	unknownFields protoimpl.UnknownFields
@@ -153,9 +153,9 @@ func (x *StockExchangeRequest) GetStockExchange() *StockExchange {
 
 type StockExchangeInfo struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// * Stock exchange object
+	//* Stock exchange object
 	StockExchange *StockExchange `protobuf:"bytes,1,opt,name=stockExchange,proto3" json:"stockExchange,omitempty"`
-	// * Stock exchange name
+	//* Stock exchange name
 	Name          string `protobuf:"bytes,2,opt,name=name,proto3" json:"name,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
@@ -207,9 +207,9 @@ func (x *StockExchangeInfo) GetName() string {
 
 type StockExchangeDescriptions struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// * List with stock exchange information
+	//* List with stock exchange information
 	StockExchangeInfos []*StockExchangeInfo `protobuf:"bytes,1,rep,name=stock_exchange_infos,json=stockExchangeInfos,proto3" json:"stock_exchange_infos,omitempty"`
-	// * Error
+	//* Error
 	Error         *Error `protobuf:"bytes,1000,opt,name=error,proto3" json:"error,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
@@ -261,9 +261,9 @@ func (x *StockExchangeDescriptions) GetError() *Error {
 
 type StockExchangeDescription struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// * Stock exchange information
+	//* Stock exchange information
 	StockExchangeInfo *StockExchangeInfo `protobuf:"bytes,1,opt,name=stock_exchange_info,json=stockExchangeInfo,proto3" json:"stock_exchange_info,omitempty"`
-	// *
+	//*
 	// Error information if occuirs
 	Error         *Error `protobuf:"bytes,1000,opt,name=error,proto3" json:"error,omitempty"`
 	unknownFields protoimpl.UnknownFields

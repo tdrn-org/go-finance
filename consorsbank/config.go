@@ -23,6 +23,7 @@ import (
 	"github.com/tdrn-org/go-finance"
 )
 
+// DefaultAddress defines the default address of the Consorsbank TAPI server.
 const DefaultAddress string = "localhost:40443"
 
 const DefaultExchange string = "TRG"

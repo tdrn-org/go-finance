@@ -42,6 +42,21 @@ func (c *OpenFIGIConfig) GetHttpClient() (*http.Client, error) {
 	return nil, nil
 }
 
+func (c *OpenFIGIConfig) GetMICs() ([]string, error) {
+	//TODO
+	return nil, nil
+}
+
+func (c *OpenFIGIConfig) GetIncludeSecurityTypes() ([]string, error) {
+	//TODO
+	return nil, nil
+}
+
+func (c *OpenFIGIConfig) GetIncludeSecurityTypes2() ([]string, error) {
+	//TODO
+	return nil, nil
+}
+
 func (c *OpenFIGIConfig) NewAPI() (*openfigi.API, error) {
 	return c.factory.NewAPI(openfigi.NewAPI, c)
 }

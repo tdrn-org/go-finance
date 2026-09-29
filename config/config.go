@@ -28,40 +28,30 @@ import (
 )
 
 type Config struct {
-	FX             FXConfig                                    `toml:"fx"`
-	Symbols        SymbolsConfig                               `toml:"symbols"`
-	Equity         EquityConfig                                `toml:"equity"`
-	Demo           DemoConfig                                  `toml:"demo"`
-	AlphaVantage   AlphaVantageConfig                          `toml:"alphavantage"`
-	Consorsbank    ConsorsbankConfig                           `toml:"consorsbank"`
-	Frankfurter    FrankfurterConfig                           `toml:"frankfurter"`
-	OpenFIGI       OpenFIGIConfig                              `toml:"openfigi"`
-	TwelveData     TwelveDataConfig                            `toml:"twelvedata"`
-	Cache          CacheConfig                                 `toml:"cache"`
-	fxFactory      apiFactory[finance.FX, *Config]             `toml:"-"`
-	symbolsFactory apiFactory[finance.SymbolResolver, *Config] `toml:"-"`
-	equityFactory  apiFactory[finance.Equity, *Config]         `toml:"-"`
+	FX             FXConfig                                        `toml:"fx"`
+	Symbols        SymbolsConfig                                   `toml:"symbols"`
+	Equity         EquityConfig                                    `toml:"equity"`
+	Demo           DemoConfig                                      `toml:"demo"`
+	AlphaVantage   AlphaVantageConfig                              `toml:"alphavantage"`
+	Consorsbank    ConsorsbankConfig                               `toml:"consorsbank"`
+	Frankfurter    FrankfurterConfig                               `toml:"frankfurter"`
+	OpenFIGI       OpenFIGIConfig                                  `toml:"openfigi"`
+	TwelveData     TwelveDataConfig                                `toml:"twelvedata"`
+	Cache          CacheConfig                                     `toml:"cache"`
+	fxFactory      apiFactory[finance.FX, *Config]                 `toml:"-"`
+	symbolsFactory apiFactory[finance.InstrumentProvider, *Config] `toml:"-"`
+	equityFactory  apiFactory[finance.QuoteProvider, *Config]      `toml:"-"`
 }
 
 //go:embed defaults.toml
 var defaultsData []byte
 
 func Default() (*Config, error) {
-	cfg := &Config{}
-	err := config.Defaults(cfg, defaultsData)
-	if err != nil {
-		return nil, err
-	}
-	return cfg, nil
+	return config.Defaults(&Config{}, defaultsData)
 }
 
 func Load(path string, strict bool) (*Config, error) {
-	cfg := &Config{}
-	err := config.Load(cfg, path, defaultsData, strict)
-	if err != nil {
-		return nil, err
-	}
-	return cfg, nil
+	return config.Load(&Config{}, path, defaultsData, strict)
 }
 
 func (c *Config) NewFXProvider() (finance.FX, error) {
@@ -101,11 +91,11 @@ func (c *Config) NewFXProvider() (finance.FX, error) {
 	return c.fxFactory.api, c.fxFactory.err
 }
 
-func (c *Config) NewSymbolsProvider() (finance.SymbolResolver, error) {
-	c.symbolsFactory.NewAPI(func(c *Config) (finance.SymbolResolver, error) {
-		providers := make([]finance.SymbolResolver, 0, len(c.Symbols.ProviderNames))
+func (c *Config) NewInstrumentProvider() (finance.InstrumentProvider, error) {
+	c.symbolsFactory.NewAPI(func(c *Config) (finance.InstrumentProvider, error) {
+		providers := make([]finance.InstrumentProvider, 0, len(c.Symbols.ProviderNames))
 		for _, providerName := range c.Symbols.ProviderNames {
-			var provider finance.SymbolResolver
+			var provider finance.InstrumentProvider
 			var err error
 			switch providerName {
 			case SymbolsProviderNameDemo:
@@ -129,7 +119,7 @@ func (c *Config) NewSymbolsProvider() (finance.SymbolResolver, error) {
 		if len(providers) == 0 {
 			return nil, fmt.Errorf("at least one Symbols provider must be defined")
 		}
-		cache, err := c.Cache.NewSymbolCache(time.Duration(c.Symbols.CacheTTL))
+		cache, err := c.Cache.NewInstrumentCache(time.Duration(c.Symbols.CacheTTL))
 		if err != nil {
 			return nil, err
 		}
@@ -138,9 +128,9 @@ func (c *Config) NewSymbolsProvider() (finance.SymbolResolver, error) {
 	return c.symbolsFactory.api, c.symbolsFactory.err
 }
 
-func (c *Config) NewEquityProvider() (finance.Equity, error) {
-	c.equityFactory.NewAPI(func(c *Config) (finance.Equity, error) {
-		var provider finance.Equity
+func (c *Config) NewQuoteProvider() (finance.QuoteProvider, error) {
+	c.equityFactory.NewAPI(func(c *Config) (finance.QuoteProvider, error) {
+		var provider finance.QuoteProvider
 		var err error
 		switch c.Equity.ProviderName {
 		case EquityProviderNameDemo:

@@ -72,39 +72,37 @@ func (api *API) QueryExchangeRate(ctx context.Context, base, quote finance.Curre
 	return exchangeRate, nil
 }
 
-var demoSymbol finance.Symbol = finance.Symbol{
-	Exchange: "XNGS",
-	Ticker:   "AAPL",
-	ISIN:     "US0378331005",
-	WKN:      "865985",
-	FIGI:     "BBG000B9XRY4",
-	Name:     "Apple Inc.",
-	Type:     finance.SecurityTypeEquity,
+var demoInstrument finance.Instrument = finance.Instrument{
+	ID: finance.NewInstrumentID(),
+	Identifiers: map[finance.InstrumentIdentifier]string{
+		finance.InstrumentIdentifierTicker: "AAPL",
+		finance.InstrumentIdentifierISIN:   "US0378331005",
+		finance.InstrumentIdentifierFIGI:   "BBG000B9Y5X2",
+	},
+	Name: "Apple Inc.",
+	MIC:  "XNGS",
+	Type: finance.InstrumentTypeEquity,
 }
 
-func (api *API) SearchSymbol(ctx context.Context, query string) (finance.Symbols, error) {
+func (api *API) SearchInstruments(ctx context.Context, query string) ([]finance.Instrument, error) {
 	if !api.enabled {
-		return nil, finance.ErrSymbolSearchRestricted
+		return nil, finance.ErrInstrumentSearchRestricted
 	}
-	symbol := demoSymbol
-	return finance.Symbols{symbol}, nil
+	instruments := []finance.Instrument{demoInstrument}
+	return instruments, nil
 }
 
-// See [finance.Equity]
-func (api *API) ResolveSymbol(ctx context.Context, symbol finance.Symbol) (*finance.Symbol, error) {
-	if demoSymbol.Match(&symbol) != finance.SymbolMatchEqual {
-		return nil, finance.ErrSymbolNotAvailable
-	}
-	return &demoSymbol, nil
+func (api *API) ResolveInstruments(ctx context.Context, instruments []finance.Instrument) ([]finance.Instrument, error) {
+	return instruments, nil
 }
 
-func (api *API) QueryQuote(ctx context.Context, symbol finance.Symbol) (*finance.Quote, error) {
+func (api *API) QueryQuote(ctx context.Context, instrument *finance.Instrument) (*finance.Quote, error) {
 	if !api.enabled {
 		return nil, finance.ErrQuoteNotAvailable
 	}
 	now := time.Now()
 	quote := &finance.Quote{
-		Symbol:          symbol,
+		Instrument:      instrument.Clone(),
 		Timestamp:       now,
 		Open:            101.0,
 		High:            102.0,

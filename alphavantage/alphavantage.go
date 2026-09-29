@@ -14,18 +14,18 @@
  * limitations under the License.
  */
 
-// Package alphavantage uses the Alpha Vantage API (https://www.alphavantage.co/documentation/)
-// to implement providers for FX, SymbolSearch, Equity.
+// Package alphavantage utilizes the [Alpha Vantage API]
+// to provide FX, SymbolSearch and Equity service.
+//
+// [Alpha Vantage API]: https://www.alphavantage.co/documentation/
 package alphavantage
 
 import (
-	"context"
 	"encoding/json"
 	"fmt"
 	"log/slog"
 	"net/http"
 	"net/url"
-	"sync"
 
 	"github.com/tdrn-org/go-finance"
 )
@@ -33,25 +33,19 @@ import (
 // Name defines the Alpha Vantage provider name.
 const Name string = "alphavantage"
 
-const defaultBaseURLString string = "https://www.alphavantage.co/query/"
+const InstrumentIdentifierAlphaVantage finance.InstrumentIdentifier = "alphavantage:symbol"
 
-// DefaultBaseURL defines the default API url for the Alpha Vantage REST service.
-var DefaultBaseURL *url.URL = func() *url.URL {
-	defaultBaseURL, err := url.Parse(defaultBaseURLString)
-	if err != nil {
-		panic(err)
-	}
-	return defaultBaseURL
-}()
-
-// API represents the Alpha Vantage provider.
+// API provides access to the [Alpha Vantage API] and implements
+//   - [finance.FX]
+//   - [[]finance.Instrumentearcher]
+//   - [finance.Equity]
+//
+// [Alpha Vantage API]: https://www.alphavantage.co/documentation/
 type API struct {
-	baseURL             *url.URL
-	apiKey              string
-	httpClient          *http.Client
-	symbolCurrencyCache map[string]string
-	logger              *slog.Logger
-	mutex               sync.RWMutex
+	baseURL    *url.URL
+	apiKey     string
+	httpClient *http.Client
+	logger     *slog.Logger
 }
 
 // NewAPI creates a new Alpha Vantage provider instance using the given [Config].
@@ -73,11 +67,10 @@ func NewAPI(config Config) (*API, error) {
 		httpClient = http.DefaultClient
 	}
 	api := &API{
-		baseURL:             baseURL,
-		apiKey:              apiKey,
-		httpClient:          httpClient,
-		symbolCurrencyCache: make(map[string]string),
-		logger:              logger,
+		baseURL:    baseURL,
+		apiKey:     apiKey,
+		httpClient: httpClient,
+		logger:     logger,
 	}
 	return api, nil
 }
@@ -85,201 +78,6 @@ func NewAPI(config Config) (*API, error) {
 // See [finance.APIProvider]
 func (api *API) ProviderName() string {
 	return Name
-}
-
-// See [finance.FX]
-func (api *API) QueryExchangeRate(ctx context.Context, base, quote finance.Currency) (*finance.ExchangeRate, error) {
-	response, err := api.queryExchangeRate(ctx, base, quote)
-	if err != nil {
-		return nil, err
-	}
-	return response.ToExchangeRate()
-}
-
-func (api *API) queryExchangeRate(ctx context.Context, base, quote finance.Currency) (*currencyExchangeRateResponse, error) {
-	apiURL := api.url("function", "CURRENCY_EXCHANGE_RATE", "from_currency", string(base), "to_currency", string(quote))
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, apiURL.String(), nil)
-	if err != nil {
-		return nil, fmt.Errorf("failed create query exchange rate request (cause: %w)", err)
-	}
-	api.logger.Debug("querying exchange rate", slog.Any("url", req.URL))
-	rsp, err := api.httpClient.Do(req)
-	if err != nil {
-		return nil, fmt.Errorf("failed to send query exchange rate request (cause: %w)", err)
-	}
-	defer rsp.Body.Close()
-	err = api.checkHttpStatus(rsp)
-	if err != nil {
-		return nil, err
-	}
-	response := &currencyExchangeRateResponse{}
-	err = api.decodeResponse(rsp, response)
-	if err != nil {
-		return nil, err
-	}
-	err = response.Validate()
-	if err != nil {
-		return nil, err
-	}
-	api.logger.Debug("found exchange rate", slog.String("date", response.RealtimeRate.LastRefreshed), slog.String("base", response.RealtimeRate.FromCurrencyCode), slog.String("quote", response.RealtimeRate.ToCurrencyCode), slog.String("rate", response.RealtimeRate.ExchangeRate))
-	return response, nil
-}
-
-const searchMatchScore float64 = 0.5
-
-// See [finance.SymbolResolver]
-func (api *API) SearchSymbol(ctx context.Context, query string) (finance.Symbols, error) {
-	response, err := api.searchSymbol(ctx, query)
-	if err != nil {
-		return nil, err
-	}
-	noHint := &finance.Symbol{}
-	symbols, symbolCurrencies, err := response.ToMatchingSymbols(searchMatchScore, noHint)
-	if err != nil {
-		return nil, err
-	}
-	api.cacheSymbolCurrencies(symbolCurrencies)
-	return symbols, nil
-}
-
-func (api *API) searchSymbol(ctx context.Context, query string) (*symbolSearchResponse, error) {
-	apiURL := api.url("function", "SYMBOL_SEARCH", "keywords", query)
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, apiURL.String(), nil)
-	if err != nil {
-		return nil, fmt.Errorf("failed create search symbol request (cause: %w)", err)
-	}
-	api.logger.Debug("searching symbol", slog.Any("url", req.URL))
-	rsp, err := api.httpClient.Do(req)
-	if err != nil {
-		return nil, fmt.Errorf("failed to send symbol search request (cause: %w)", err)
-	}
-	defer rsp.Body.Close()
-	err = api.checkHttpStatus(rsp)
-	if err != nil {
-		return nil, err
-	}
-	response := &symbolSearchResponse{}
-	err = api.decodeResponse(rsp, response)
-	if err != nil {
-		return nil, err
-	}
-	err = response.Validate()
-	if err != nil {
-		return nil, err
-	}
-	return response, nil
-}
-
-const resolveMatchScore float64 = 1.0
-
-// See [finance.Equity]
-func (api *API) ResolveSymbol(ctx context.Context, symbol finance.Symbol) (*finance.Symbol, error) {
-	if symbol.HasTicker() {
-		return &symbol, nil
-	}
-	query := ""
-	if symbol.HasISIN() {
-		query = symbol.ISIN
-	} else {
-		return nil, finance.ErrInsufficientSymbol
-	}
-	response, err := api.searchSymbol(ctx, query)
-	if err != nil {
-		return nil, err
-	}
-	foundSymbols, symbolCurrencies, err := response.ToMatchingSymbols(resolveMatchScore, &symbol)
-	if err != nil {
-		return nil, err
-	}
-	api.cacheSymbolCurrencies(symbolCurrencies)
-	resolvedSymbol := symbol
-	for _, foundSymbol := range foundSymbols {
-		if resolvedSymbol.Match(&foundSymbol) == finance.SymbolMatchEqual {
-			resolvedSymbol.Merge(&foundSymbol)
-			return &resolvedSymbol, nil
-		}
-	}
-	return nil, finance.ErrSymbolNotAvailable
-}
-
-// See [finance.Equity]
-func (api *API) QueryQuote(ctx context.Context, symbol finance.Symbol) (*finance.Quote, error) {
-	quoteResponse, err := api.queryQuote(ctx, &symbol)
-	if err != nil {
-		return nil, err
-	}
-	cachedSymbolCurrency := api.cachedSymbolCurrency(symbol.Ticker)
-	if cachedSymbolCurrency == "" {
-		overviewResponse, err := api.getOverview(ctx, symbol.Ticker)
-		if err != nil {
-			return nil, err
-		}
-		cachedSymbolCurrency = overviewResponse.Currency
-		if cachedSymbolCurrency == "" {
-			return nil, fmt.Errorf("unable to determine currency for symbol '%s'", symbol.Ticker)
-		}
-		api.cacheSymbolCurrencies([][2]string{{symbol.Ticker, cachedSymbolCurrency}})
-	}
-	return quoteResponse.ToQuote(&symbol, cachedSymbolCurrency)
-}
-
-func (api *API) queryQuote(ctx context.Context, symbol *finance.Symbol) (*globalQuoteResponse, error) {
-	if !symbol.HasTicker() {
-		return nil, finance.ErrInsufficientSymbol
-	}
-	apiURL := api.url("function", "GLOBAL_QUOTE", "symbol", symbol.Ticker)
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, apiURL.String(), nil)
-	if err != nil {
-		return nil, fmt.Errorf("failed create query quote request (cause: %w)", err)
-	}
-	api.logger.Debug("querying quote", slog.Any("url", req.URL))
-	rsp, err := api.httpClient.Do(req)
-	if err != nil {
-		return nil, fmt.Errorf("failed to send query quote request (cause: %w)", err)
-	}
-	defer rsp.Body.Close()
-	err = api.checkHttpStatus(rsp)
-	if err != nil {
-		return nil, err
-	}
-	response := &globalQuoteResponse{}
-	err = api.decodeResponse(rsp, response)
-	if err != nil {
-		return nil, err
-	}
-	err = response.Validate()
-	if err != nil {
-		return nil, err
-	}
-	return response, nil
-}
-
-func (api *API) getOverview(ctx context.Context, symbol string) (*overviewResponse, error) {
-	apiURL := api.url("function", "OVERVIEW", "symbol", symbol)
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, apiURL.String(), nil)
-	if err != nil {
-		return nil, fmt.Errorf("failed create get overview request (cause: %w)", err)
-	}
-	api.logger.Debug("getting overview", slog.Any("url", req.URL))
-	rsp, err := api.httpClient.Do(req)
-	if err != nil {
-		return nil, fmt.Errorf("failed to send get overview request (cause: %w)", err)
-	}
-	defer rsp.Body.Close()
-	err = api.checkHttpStatus(rsp)
-	if err != nil {
-		return nil, err
-	}
-	response := &overviewResponse{}
-	err = api.decodeResponse(rsp, response)
-	if err != nil {
-		return nil, err
-	}
-	err = response.Validate()
-	if err != nil {
-		return nil, err
-	}
-	return response, nil
 }
 
 func (api *API) url(args ...string) *url.URL {
@@ -293,35 +91,20 @@ func (api *API) url(args ...string) *url.URL {
 	return &apiURL
 }
 
-func (api *API) checkHttpStatus(rsp *http.Response) error {
-	switch rsp.StatusCode {
-	case http.StatusOK:
-		return nil
-	default:
-		return fmt.Errorf("service failure (status: %d %s)", rsp.StatusCode, rsp.Status)
+func (api *API) decodeAndCheckResponse(rsp *http.Response, decoded any) error {
+	if rsp.StatusCode != http.StatusOK {
+		return fmt.Errorf("%s: service failure (status: %s)", Name, rsp.Status)
 	}
-}
-
-func (api *API) decodeResponse(rsp *http.Response, decoded any) error {
 	err := json.NewDecoder(rsp.Body).Decode(decoded)
 	if err != nil {
-		return fmt.Errorf("failed to decode response body (cause: %w)", err)
+		return fmt.Errorf("%s: failed to decode response body (cause: %w)", Name, err)
+	}
+	status, ok := decoded.(statusChecker)
+	if ok {
+		err = status.CheckStatus()
+		if err != nil {
+			return err
+		}
 	}
 	return nil
-}
-
-func (api *API) cachedSymbolCurrency(symbol string) string {
-	api.mutex.RLock()
-	defer api.mutex.RUnlock()
-
-	return api.symbolCurrencyCache[symbol]
-}
-
-func (api *API) cacheSymbolCurrencies(entries [][2]string) {
-	api.mutex.Lock()
-	defer api.mutex.Unlock()
-
-	for _, entry := range entries {
-		api.symbolCurrencyCache[entry[0]] = entry[1]
-	}
 }

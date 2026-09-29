@@ -1,0 +1,14 @@
+{
+    "Common Stock": "equity",
+    "Preferred Stock": "equity",
+    "ETF": "etf",
+    "Mutual Fund": "fund",
+    "Corporate Bond": "bond",
+    "Government Bond": "bond",
+    "Municipal Bond": "bond",
+    "Mortgage Security": "bond",
+    "Index": "index",
+    "Future": "future",
+    "Option": "option",
+    "Currency": "forex"
+}

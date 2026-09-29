@@ -29,6 +29,8 @@ import (
 	"github.com/tdrn-org/go-finance/twelvedata"
 )
 
+var testMICs []string = []string{"XNYS", "XNGS", "XFRA", "XGAT"}
+
 func TestDemoProvider(t *testing.T) {
 	api := newDemoAPI(t)
 
@@ -92,26 +94,9 @@ func newConsorsbankAPI(t *testing.T) *consorsbank.API {
 	}
 	api, err := consorsbank.NewAPI(config)
 	require.NoError(t, err)
-	return api
-}
-
-func TestOpenFIGIProvider(t *testing.T) {
-	api := newOpenFIGIAPI(t)
-
-	providerName := api.ProviderName()
-	require.Equal(t, "openfigi", providerName)
-}
-
-func newOpenFIGIAPI(t *testing.T) *openfigi.API {
-	config := &openfigi.StaticConfig{
-		BaseURL: openfigi.DefaultBaseURL,
-		APIKey:  os.Getenv("OPENFIGI_API_KEY"),
-	}
-	if config.APIKey == "" {
-		t.Skip("No OpenFIGI API key set; skipping tests")
-	}
-	api, err := openfigi.NewAPI(config)
-	require.NoError(t, err)
+	t.Cleanup(func() {
+		require.NoError(t, api.Close())
+	})
 	return api
 }
 
@@ -131,6 +116,27 @@ func newFrankfurterAPI(t *testing.T) *frankfurter.API {
 	return api
 }
 
+func TestOpenFIGIProvider(t *testing.T) {
+	api := newOpenFIGIAPI(t)
+
+	providerName := api.ProviderName()
+	require.Equal(t, "openfigi", providerName)
+}
+
+func newOpenFIGIAPI(t *testing.T) *openfigi.API {
+	config := &openfigi.StaticConfig{
+		BaseURL: openfigi.DefaultBaseURL,
+		APIKey:  os.Getenv("OPENFIGI_API_KEY"),
+		MICs:    testMICs,
+	}
+	if config.APIKey == "" {
+		t.Skip("No OpenFIGI API key set; skipping tests")
+	}
+	api, err := openfigi.NewAPI(config)
+	require.NoError(t, err)
+	return api
+}
+
 func TestTwelveDataProvider(t *testing.T) {
 	api := newTwelveDataAPI(t)
 
@@ -141,6 +147,7 @@ func TestTwelveDataProvider(t *testing.T) {
 func newTwelveDataAPI(t *testing.T) *twelvedata.API {
 	config := &twelvedata.StaticConfig{
 		APIKey: os.Getenv("TWELVEDATA_API_KEY"),
+		MICs:   testMICs,
 	}
 	if config.APIKey == "" {
 		t.Skip("No Twelve Data API key set; skipping tests")

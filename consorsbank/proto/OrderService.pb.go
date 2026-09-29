@@ -41,33 +41,33 @@ const (
 type OrderStatus int32
 
 const (
-	// * Status is not defined
+	//* Status is not defined
 	OrderStatus_NO_ORDER_STATUS OrderStatus = 0
-	// * New order
+	//* New order
 	OrderStatus_NEW OrderStatus = 1
-	// * Open order
+	//* Open order
 	OrderStatus_OPEN OrderStatus = 2
-	// * Fully executed order
+	//* Fully executed order
 	OrderStatus_EXECUTED OrderStatus = 3
-	// * Partially executed order
+	//* Partially executed order
 	OrderStatus_PARTIALLY_EXECUTED OrderStatus = 4
-	// * Canceled order
+	//* Canceled order
 	OrderStatus_CANCELED OrderStatus = 5
-	// * Canceled forced order
+	//* Canceled forced order
 	OrderStatus_CANCELED_FORCED OrderStatus = 6
-	// * Canceling noted order
+	//* Canceling noted order
 	OrderStatus_CANCELED_NOTED OrderStatus = 7
-	// * Canceling timeout order
+	//* Canceling timeout order
 	OrderStatus_CANCELED_TIMEOUT OrderStatus = 8
-	// * Changed order
+	//* Changed order
 	OrderStatus_CHANGED OrderStatus = 9
-	// * Changing noted order
+	//* Changing noted order
 	OrderStatus_CHANGED_NOTED OrderStatus = 10
-	// * Inactive order #pro# only
+	//* Inactive order #pro# only
 	OrderStatus_INACTIVE OrderStatus = 11
-	// * Inactivation noted order #pro# only
+	//* Inactivation noted order #pro# only
 	OrderStatus_INACTIVE_NOTED OrderStatus = 12
-	// * Storno order
+	//* Storno order
 	OrderStatus_STORNO OrderStatus = 13
 )
 
@@ -139,21 +139,21 @@ func (OrderStatus) EnumDescriptor() ([]byte, []int) {
 type Validation int32
 
 const (
-	// *
+	//*
 	// Order action will routed directly to the market.
 	Validation_WITHOUT_VALIDATION Validation = 0
-	// *
+	//*
 	// Order will checked by the backend system, but not will be routed to market
 	Validation_VALIDATE_ONLY Validation = 1
-	// *
+	//*
 	// Order will checked by the backend system, but not will be routed to market.
 	// Additionally will be requested estimated order action total costs.
 	Validation_VALIDATE_WITH_TOTAL_COSTS Validation = 2
-	// *
+	//*
 	// Order will checked by the backend system, but not will be routed to market.
 	// Additionally will be requested estimated order action detail costs.
 	Validation_VALIDATE_WITH_DETAIL_COSTS Validation = 3
-	// *
+	//*
 	// For the order will be requested estimated order action total costs.
 	// No backend system validation is processed.
 	Validation_TOTAL_COSTS_ONLY Validation = 4
@@ -208,53 +208,54 @@ func (Validation) EnumDescriptor() ([]byte, []int) {
 // Order represent one order object
 type Order struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// * Security with stock echange
+	//* Security with stock echange
 	SecurityWithStockexchange *SecurityWithStockExchange `protobuf:"bytes,1,opt,name=security_with_stockexchange,json=securityWithStockexchange,proto3" json:"security_with_stockexchange,omitempty"`
-	// * Order type
+	//* Order type
 	OrderType OrderType `protobuf:"varint,2,opt,name=order_type,json=orderType,proto3,enum=com.consorsbank.module.tapi.grpc.OrderType" json:"order_type,omitempty"`
-	// * Order number
+	//* Order number
 	OrderNumber string `protobuf:"bytes,3,opt,name=order_number,json=orderNumber,proto3" json:"order_number,omitempty"`
-	// * Amount of the securities
+	//* Amount of the securities
 	Amount float64 `protobuf:"fixed64,4,opt,name=amount,proto3" json:"amount,omitempty"`
-	// * Order model
+	//* Order model
 	OrderModel OrderModel `protobuf:"varint,5,opt,name=order_model,json=orderModel,proto3,enum=com.consorsbank.module.tapi.grpc.OrderModel" json:"order_model,omitempty"`
-	// * Order supplement
+	//* Order supplement
 	OrderSupplement OrderSupplement `protobuf:"varint,6,opt,name=order_supplement,json=orderSupplement,proto3,enum=com.consorsbank.module.tapi.grpc.OrderSupplement" json:"order_supplement,omitempty"`
-	// * Cache quotation
+	//* Cache quotation
 	CashQuotation CashQuotation `protobuf:"varint,7,opt,name=cash_quotation,json=cashQuotation,proto3,enum=com.consorsbank.module.tapi.grpc.CashQuotation" json:"cash_quotation,omitempty"`
-	// * Executed amount
+	//* Executed amount
 	ExecutedAmount float64 `protobuf:"fixed64,8,opt,name=executed_amount,json=executedAmount,proto3" json:"executed_amount,omitempty"`
-	// * Order status
+	//* Order status
 	OrderStatus OrderStatus `protobuf:"varint,9,opt,name=order_status,json=orderStatus,proto3,enum=com.consorsbank.module.tapi.grpc.OrderStatus" json:"order_status,omitempty"`
-	// * Date and time of the order status
+	//* Date and time of the order status
 	StatusTimestamp *Timestamp `protobuf:"bytes,10,opt,name=status_timestamp,json=statusTimestamp,proto3" json:"status_timestamp,omitempty"`
-	// * Validity date of the order
+	//* Validity date of the order
 	ValidityDate *Date `protobuf:"bytes,11,opt,name=validity_date,json=validityDate,proto3" json:"validity_date,omitempty"`
-	// *
+	//*
 	// Limit value. Used as the order limit for all Limit order model with exception of the
 	// StopLimit order model. For this order model please use stop limit field.
 	Limit float64 `protobuf:"fixed64,12,opt,name=limit,proto3" json:"limit,omitempty"`
-	// *
+	//*
 	// Stop value. This value can be used only together with StopMarket, StopLimit and OneCancelOter order models.
 	Stop float64 `protobuf:"fixed64,13,opt,name=stop,proto3" json:"stop,omitempty"`
-	// *
+	//*
 	// Stop limit value
 	// Can be used only tigether with the StopLimit order model.
 	// The meaning of the value is limit of the order after stop.
+	//
 	StopLimit float64 `protobuf:"fixed64,14,opt,name=stop_limit,json=stopLimit,proto3" json:"stop_limit,omitempty"`
-	// * Traling distance in traling notation units or empty value
+	//* Traling distance in traling notation units or empty value
 	TrailingDistance float64 `protobuf:"fixed64,15,opt,name=trailing_distance,json=trailingDistance,proto3" json:"trailing_distance,omitempty"`
-	// * Trailing notation for the trailing orders
+	//* Trailing notation for the trailing orders
 	TrailingNotation TrailingNotation `protobuf:"varint,16,opt,name=trailing_notation,json=trailingNotation,proto3,enum=com.consorsbank.module.tapi.grpc.TrailingNotation" json:"trailing_notation,omitempty"`
-	// * Trailing limit tolerance for the trailing orders
+	//* Trailing limit tolerance for the trailing orders
 	TrailingLimitTolerance float64 `protobuf:"fixed64,17,opt,name=trailing_limit_tolerance,json=trailingLimitTolerance,proto3" json:"trailing_limit_tolerance,omitempty"`
-	// * Dripping quantity #pro# only
+	//* Dripping quantity #pro# only
 	DrippingQuantity float64 `protobuf:"fixed64,18,opt,name=dripping_quantity,json=drippingQuantity,proto3" json:"dripping_quantity,omitempty"`
-	// * Trading partner name
+	//* Trading partner name
 	TradingPartnerName string `protobuf:"bytes,19,opt,name=trading_partner_name,json=tradingPartnerName,proto3" json:"trading_partner_name,omitempty"`
-	// * Execution quote for the executed amount
+	//* Execution quote for the executed amount
 	ExecutionQuote float64 `protobuf:"fixed64,20,opt,name=execution_quote,json=executionQuote,proto3" json:"execution_quote,omitempty"`
-	// *
+	//*
 	// Unique id of the order. Used for the order matching.
 	// In the #pro# version of the ActiveTrader order_number can be changed after activation / deactivation.
 	// All order activities need actual or delivered form the system order_number.
@@ -445,81 +446,81 @@ func (x *Order) GetUniqueId() string {
 // Add order request represents order data for the long term markets
 type AddOrderRequest struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// *
+	//*
 	// Access token
 	AccessToken string `protobuf:"bytes,1,opt,name=access_token,json=accessToken,proto3" json:"access_token,omitempty"`
-	// *
+	//*
 	// Trading account number which used for the execution
 	AccountNumber string `protobuf:"bytes,2,opt,name=account_number,json=accountNumber,proto3" json:"account_number,omitempty"`
-	// *
+	//*
 	// Security code with stock exchange
 	SecurityWithStockexchange *SecurityWithStockExchange `protobuf:"bytes,3,opt,name=security_with_stockexchange,json=securityWithStockexchange,proto3" json:"security_with_stockexchange,omitempty"`
-	// *
+	//*
 	// Order type
 	OrderType OrderType `protobuf:"varint,4,opt,name=order_type,json=orderType,proto3,enum=com.consorsbank.module.tapi.grpc.OrderType" json:"order_type,omitempty"`
-	// *
+	//*
 	// Amount of the securities
 	Amount float64 `protobuf:"fixed64,5,opt,name=amount,proto3" json:"amount,omitempty"`
-	// *
+	//*
 	// Order model
 	OrderModel OrderModel `protobuf:"varint,6,opt,name=order_model,json=orderModel,proto3,enum=com.consorsbank.module.tapi.grpc.OrderModel" json:"order_model,omitempty"`
-	// *
+	//*
 	// Order supplement
 	OrderSupplement OrderSupplement `protobuf:"varint,7,opt,name=order_supplement,json=orderSupplement,proto3,enum=com.consorsbank.module.tapi.grpc.OrderSupplement" json:"order_supplement,omitempty"`
-	// *
+	//*
 	// Cach quotation
 	CashQuotation CashQuotation `protobuf:"varint,8,opt,name=cash_quotation,json=cashQuotation,proto3,enum=com.consorsbank.module.tapi.grpc.CashQuotation" json:"cash_quotation,omitempty"`
-	// *
+	//*
 	// Order validity date
 	ValidityDate *Date `protobuf:"bytes,9,opt,name=validity_date,json=validityDate,proto3" json:"validity_date,omitempty"`
-	// *
+	//*
 	// Limit value
 	Limit float64 `protobuf:"fixed64,10,opt,name=limit,proto3" json:"limit,omitempty"`
-	// *
+	//*
 	// Stop value. This value can be used only together with StopMarket, StopLimit and OneCancelOter order models.
 	Stop float64 `protobuf:"fixed64,11,opt,name=stop,proto3" json:"stop,omitempty"`
-	// *
+	//*
 	// Stop limit used in the StopLimit and OneCancelOther order models
 	StopLimit float64 `protobuf:"fixed64,12,opt,name=stop_limit,json=stopLimit,proto3" json:"stop_limit,omitempty"`
-	// *
+	//*
 	// Traling distance in traling notation units or empty value
 	TrailingDistance float64 `protobuf:"fixed64,13,opt,name=trailing_distance,json=trailingDistance,proto3" json:"trailing_distance,omitempty"`
-	// *
+	//*
 	// Trailing notation for the trailing orders
 	TrailingNotation TrailingNotation `protobuf:"varint,14,opt,name=trailing_notation,json=trailingNotation,proto3,enum=com.consorsbank.module.tapi.grpc.TrailingNotation" json:"trailing_notation,omitempty"`
-	// *
+	//*
 	// Trailing limit tolerance for the trailing orders
 	TrailingLimitTolerance float64 `protobuf:"fixed64,15,opt,name=trailing_limit_tolerance,json=trailingLimitTolerance,proto3" json:"trailing_limit_tolerance,omitempty"`
-	// *
+	//*
 	// Dripping quantity #pro# only
 	DrippingQuantity float64 `protobuf:"fixed64,16,opt,name=dripping_quantity,json=drippingQuantity,proto3" json:"dripping_quantity,omitempty"`
-	// *
+	//*
 	// Position id of the depot position.
 	// It used only for sale certainly securities from depot
 	PositionId string `protobuf:"bytes,17,opt,name=position_id,json=positionId,proto3" json:"position_id,omitempty"`
-	// *
+	//*
 	// Validation flag.
 	// If value is WITHOUT_VALIDATION then backend system sends order actions directly to the market. +
 	// If value is VALIDATE_ONLY then backend system doesn't send order actions to the market, but validate order parameters. +
 	// If value is VALIDATE_WITH_TOTAL_COSTS then order will validated by backend system and request total costs for the order. +
 	// If value is VALIDATE_WITH_DETAIL_COSTS then order will validated by backend system and request detail costs for the order. +
 	Validation Validation `protobuf:"varint,18,opt,name=validation,proto3,enum=com.consorsbank.module.tapi.grpc.Validation" json:"validation,omitempty"`
-	// *
+	//*
 	// Risk class override flag. If true then allowes override user risk class
 	RiskClassOverride bool `protobuf:"varint,19,opt,name=risk_class_override,json=riskClassOverride,proto3" json:"risk_class_override,omitempty"`
-	// *
+	//*
 	// Target market override flag. If true then allowes override target market
 	TargetMarketOverride bool `protobuf:"varint,20,opt,name=target_market_override,json=targetMarketOverride,proto3" json:"target_market_override,omitempty"`
-	// *
+	//*
 	// Tax non trasparent override flag. If true then allowes override tax intransparesity
 	TaxNontransparentOverride bool `protobuf:"varint,21,opt,name=tax_nontransparent_override,json=taxNontransparentOverride,proto3" json:"tax_nontransparent_override,omitempty"`
-	// *
+	//*
 	// Accept additinal fees flag. If true then allowes accept non transparent fees
 	AcceptAdditionalFees bool `protobuf:"varint,22,opt,name=accept_additional_fees,json=acceptAdditionalFees,proto3" json:"accept_additional_fees,omitempty"`
-	// *
+	//*
 	// Closed realestate fond override. If true then allowes sell fonds over fds
 	ClosedRealestateFondOverride bool `protobuf:"varint,23,opt,name=closed_realestate_fond_override,json=closedRealestateFondOverride,proto3" json:"closed_realestate_fond_override,omitempty"`
-	// *
+	//*
 	// Inactive order flag, #pro# only. If true then order market as inactive and don't routed to the marker.
 	// To activate order please use ActivateOrder function
 	Inactive      bool `protobuf:"varint,24,opt,name=inactive,proto3" json:"inactive,omitempty"`
@@ -729,14 +730,14 @@ func (x *AddOrderRequest) GetInactive() bool {
 // Order reply represents result of the add order or accept quote requests
 type OrderReply struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// * Trading account
+	//* Trading account
 	Account *TradingAccount `protobuf:"bytes,1,opt,name=account,proto3" json:"account,omitempty"`
-	// * Result order
+	//* Result order
 	Order *Order `protobuf:"bytes,2,opt,name=order,proto3" json:"order,omitempty"`
-	// *
+	//*
 	// Order costs. This field contains data if order costs are requested
 	OrderCosts *OrderCosts `protobuf:"bytes,3,opt,name=order_costs,json=orderCosts,proto3" json:"order_costs,omitempty"`
-	// *
+	//*
 	// Error information if occuirs
 	Error         *Error `protobuf:"bytes,1000,opt,name=error,proto3" json:"error,omitempty"`
 	unknownFields protoimpl.UnknownFields
@@ -806,16 +807,16 @@ func (x *OrderReply) GetError() *Error {
 // This information is only *estimated values* and is depended from real execution quotes, time, etc.
 type OrderCosts struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// *
+	//*
 	// Estimated total cost for order action
 	EstimatedTotalCosts float64 `protobuf:"fixed64,1,opt,name=estimated_total_costs,json=estimatedTotalCosts,proto3" json:"estimated_total_costs,omitempty"`
-	// *
+	//*
 	// Reference backend cost id
 	CostId string `protobuf:"bytes,2,opt,name=cost_id,json=costId,proto3" json:"cost_id,omitempty"`
-	// *
+	//*
 	// List of the cost categories.  Filled only by validation request with detailed information.
 	CategorieCosts []*OrderCosts_CategoryCost `protobuf:"bytes,3,rep,name=categorie_costs,json=categorieCosts,proto3" json:"categorie_costs,omitempty"`
-	// *
+	//*
 	// Aggregated costs for the order.  Filled only by validation request with validation information.
 	AggregatedCosts *OrderCosts_AggregatedCosts `protobuf:"bytes,4,opt,name=aggregated_costs,json=aggregatedCosts,proto3" json:"aggregated_costs,omitempty"`
 	unknownFields   protoimpl.UnknownFields
@@ -885,49 +886,49 @@ func (x *OrderCosts) GetAggregatedCosts() *OrderCosts_AggregatedCosts {
 // Be careful: not all combinations are possible.
 type ChangeOrderRequest struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// *
+	//*
 	// Access token
 	AccessToken string `protobuf:"bytes,1,opt,name=access_token,json=accessToken,proto3" json:"access_token,omitempty"`
-	// *
+	//*
 	// Trading account number
 	AccountNumber string `protobuf:"bytes,2,opt,name=account_number,json=accountNumber,proto3" json:"account_number,omitempty"`
-	// *
+	//*
 	// Order number for that this changes should be accepted
 	OrderNumber string `protobuf:"bytes,3,opt,name=order_number,json=orderNumber,proto3" json:"order_number,omitempty"`
-	// *
+	//*
 	// New limit, shouldn't filled for market order
 	Limit float64 `protobuf:"fixed64,4,opt,name=limit,proto3" json:"limit,omitempty"`
-	// *
-	// New stop value
+	//*
+	//New stop value
 	Stop float64 `protobuf:"fixed64,5,opt,name=stop,proto3" json:"stop,omitempty"`
-	// *
+	//*
 	// New stop limit value
 	StopLimit float64 `protobuf:"fixed64,6,opt,name=stop_limit,json=stopLimit,proto3" json:"stop_limit,omitempty"`
-	// *
+	//*
 	// New amount
 	Amount float64 `protobuf:"fixed64,7,opt,name=amount,proto3" json:"amount,omitempty"`
-	// *
+	//*
 	// New validity date
 	ValidityDate *Date `protobuf:"bytes,8,opt,name=validity_date,json=validityDate,proto3" json:"validity_date,omitempty"`
-	// *
+	//*
 	// New order model
 	OrderModel OrderModel `protobuf:"varint,9,opt,name=order_model,json=orderModel,proto3,enum=com.consorsbank.module.tapi.grpc.OrderModel" json:"order_model,omitempty"`
-	// *
+	//*
 	// New order supplement
 	OrderSupplement OrderSupplement `protobuf:"varint,10,opt,name=order_supplement,json=orderSupplement,proto3,enum=com.consorsbank.module.tapi.grpc.OrderSupplement" json:"order_supplement,omitempty"`
-	// *
+	//*
 	// Dripping quantity #pro# only
 	DrippingQuantity float64 `protobuf:"fixed64,11,opt,name=dripping_quantity,json=drippingQuantity,proto3" json:"dripping_quantity,omitempty"`
-	// *
+	//*
 	// Validation flag. This request allowes only *WITHOUT_VALIDATION*
 	// and *VALIDATE_ONLY* values. +
 	// If value is WITHOUT_VALIDATION then backend system sends order actions directly to the market. +
 	// If value is VALIDATE_ONLY then backend system doesn't send order actions to the market, but validate order parameters.
 	Validation Validation `protobuf:"varint,12,opt,name=validation,proto3,enum=com.consorsbank.module.tapi.grpc.Validation" json:"validation,omitempty"`
-	// *
+	//*
 	// New trailing distance
 	TrailingDistance float64 `protobuf:"fixed64,13,opt,name=trailing_distance,json=trailingDistance,proto3" json:"trailing_distance,omitempty"`
-	// *
+	//*
 	// New traling limit tolerance
 	TrailingLimitTolerance float64 `protobuf:"fixed64,14,opt,name=trailing_limit_tolerance,json=trailingLimitTolerance,proto3" json:"trailing_limit_tolerance,omitempty"`
 	unknownFields          protoimpl.UnknownFields
@@ -1066,16 +1067,16 @@ func (x *ChangeOrderRequest) GetTrailingLimitTolerance() float64 {
 // Cancel order request represents canceling information for one order on the market or one inactive order
 type CancelOrderRequest struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// *
+	//*
 	// Access token
 	AccessToken string `protobuf:"bytes,1,opt,name=access_token,json=accessToken,proto3" json:"access_token,omitempty"`
-	// *
+	//*
 	// Trading account number
 	AccountNumber string `protobuf:"bytes,2,opt,name=account_number,json=accountNumber,proto3" json:"account_number,omitempty"`
-	// *
+	//*
 	// Order number for that this changes should be accepted
 	OrderNumber string `protobuf:"bytes,3,opt,name=order_number,json=orderNumber,proto3" json:"order_number,omitempty"`
-	// *
+	//*
 	// Validation flag. This request allowes only *WITHOUT_VALIDATION* value. +
 	// If value is WITHOUT_VALIDATION then backend system sends order actions directly to the market. +
 	// Otherwise request will fail.
@@ -1146,16 +1147,16 @@ func (x *CancelOrderRequest) GetValidation() Validation {
 // Activate order request represents information for activation of one inactive order #pro# only
 type ActivateOrderRequest struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// *
+	//*
 	// Access token
 	AccessToken string `protobuf:"bytes,1,opt,name=access_token,json=accessToken,proto3" json:"access_token,omitempty"`
-	// *
+	//*
 	// Trading account number
 	AccountNumber string `protobuf:"bytes,2,opt,name=account_number,json=accountNumber,proto3" json:"account_number,omitempty"`
-	// *
+	//*
 	// Order number for that this changes should be accepted
 	OrderNumber string `protobuf:"bytes,3,opt,name=order_number,json=orderNumber,proto3" json:"order_number,omitempty"`
-	// *
+	//*
 	// Validation flag. This request allowes only *WITHOUT_VALIDATION*
 	// and *VALIDATE_ONLY* values. +
 	// If value is WITHOUT_VALIDATION then backend system sends order actions directly to the market. +
@@ -1227,16 +1228,16 @@ func (x *ActivateOrderRequest) GetValidation() Validation {
 // Deactivate order request represents information for deactivation of one active order #pro# only
 type DeactivateOrderRequest struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// *
+	//*
 	// Access token
 	AccessToken string `protobuf:"bytes,1,opt,name=access_token,json=accessToken,proto3" json:"access_token,omitempty"`
-	// *
+	//*
 	// Trading account number
 	AccountNumber string `protobuf:"bytes,2,opt,name=account_number,json=accountNumber,proto3" json:"account_number,omitempty"`
-	// *
+	//*
 	// Order number for that this changes should be accepted
 	OrderNumber string `protobuf:"bytes,3,opt,name=order_number,json=orderNumber,proto3" json:"order_number,omitempty"`
-	// *
+	//*
 	// Validation flag. This request allowes only *WITHOUT_VALIDATION*
 	// and *VALIDATE_ONLY* values.
 	// If value is WITHOUT_VALIDATION then backend system sends order actions directly to the market.
@@ -1308,44 +1309,44 @@ func (x *DeactivateOrderRequest) GetValidation() Validation {
 // Accept quote request represents information about one order that should be placed on the short term market
 type AcceptQuoteRequest struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// *
+	//*
 	// Access token
 	AccessToken string `protobuf:"bytes,1,opt,name=access_token,json=accessToken,proto3" json:"access_token,omitempty"`
-	// *
+	//*
 	// Trading account number
 	AccountNumber string `protobuf:"bytes,2,opt,name=account_number,json=accountNumber,proto3" json:"account_number,omitempty"`
-	// *
+	//*
 	// Security code with stock exchange
 	SecurityWithStockexchange *SecurityWithStockExchange `protobuf:"bytes,3,opt,name=security_with_stockexchange,json=securityWithStockexchange,proto3" json:"security_with_stockexchange,omitempty"`
-	// *
+	//*
 	// Order type. It should be relevant to the requested GetQuoteRequest
 	OrderType OrderType `protobuf:"varint,4,opt,name=order_type,json=orderType,proto3,enum=com.consorsbank.module.tapi.grpc.OrderType" json:"order_type,omitempty"`
-	// *
+	//*
 	// Amount, It should be relevant to the requested GetQuoteRequest
 	Amount float64 `protobuf:"fixed64,5,opt,name=amount,proto3" json:"amount,omitempty"`
-	// *
+	//*
 	// Limit
 	Limit float64 `protobuf:"fixed64,6,opt,name=limit,proto3" json:"limit,omitempty"`
-	// *
+	//*
 	// Quote reference from GetQuoteRequest
 	QuoteReference string `protobuf:"bytes,7,opt,name=quote_reference,json=quoteReference,proto3" json:"quote_reference,omitempty"`
-	// *
+	//*
 	// Validation flag.
 	// If value is WITHOUT_VALIDATION then backend system sends order actions directly to the market. +
 	// If value is VALIDATE_ONLY then backend system doesn't send order actions to the market, but validate order parameters. +
 	// If value is VALIDATE_WITH_TOTAL_COSTS then order will validated by backend system and request total costs for the order. +
 	// If value is VALIDATE_WITH_DETAIL_COSTS then order will validated by backend system and request detail costs for the order. +
 	Validation Validation `protobuf:"varint,8,opt,name=validation,proto3,enum=com.consorsbank.module.tapi.grpc.Validation" json:"validation,omitempty"`
-	// *
+	//*
 	// Risk class override flag. If true then allowes override user risk class
 	RiskClassOverride bool `protobuf:"varint,9,opt,name=risk_class_override,json=riskClassOverride,proto3" json:"risk_class_override,omitempty"`
-	// *
+	//*
 	// Target market override flag. If true then allowes override target market
 	TargetMarketOverride bool `protobuf:"varint,10,opt,name=target_market_override,json=targetMarketOverride,proto3" json:"target_market_override,omitempty"`
-	// *
+	//*
 	// Tax non trasparent override flag. If true then allowes override tax intransparesity
 	TaxNontransparentOverride bool `protobuf:"varint,11,opt,name=tax_nontransparent_override,json=taxNontransparentOverride,proto3" json:"tax_nontransparent_override,omitempty"`
-	// *
+	//*
 	// Accept additinal fees flag. If true then allowes accept non transparent fees
 	AcceptAdditionalFees bool `protobuf:"varint,12,opt,name=accept_additional_fees,json=acceptAdditionalFees,proto3" json:"accept_additional_fees,omitempty"`
 	unknownFields        protoimpl.UnknownFields
@@ -1470,19 +1471,19 @@ func (x *AcceptQuoteRequest) GetAcceptAdditionalFees() bool {
 // Quote request represents data to get information about actual quotes on the selected makets
 type QuoteRequest struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// *
+	//*
 	// Access token
 	AccessToken string `protobuf:"bytes,1,opt,name=access_token,json=accessToken,proto3" json:"access_token,omitempty"`
-	// *
+	//*
 	// Security code
 	SecurityCode *SecurityCode `protobuf:"bytes,2,opt,name=security_code,json=securityCode,proto3" json:"security_code,omitempty"`
-	// *
+	//*
 	// Order type. Only BUY or SELL are allowed
 	OrderType OrderType `protobuf:"varint,3,opt,name=order_type,json=orderType,proto3,enum=com.consorsbank.module.tapi.grpc.OrderType" json:"order_type,omitempty"`
-	// *
+	//*
 	// Amount of securities. Relevant to the short term markets
 	Amount float64 `protobuf:"fixed64,4,opt,name=amount,proto3" json:"amount,omitempty"`
-	// *
+	//*
 	// List of stock exchanges
 	StockExchanges []*StockExchange `protobuf:"bytes,5,rep,name=stock_exchanges,json=stockExchanges,proto3" json:"stock_exchanges,omitempty"`
 	unknownFields  protoimpl.UnknownFields
@@ -1558,13 +1559,13 @@ func (x *QuoteRequest) GetStockExchanges() []*StockExchange {
 // Quote reply represents data with quote answers from requested markets
 type QuoteReply struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// * Security code
+	//* Security code
 	SecurityCode *SecurityCode `protobuf:"bytes,1,opt,name=security_code,json=securityCode,proto3" json:"security_code,omitempty"`
-	// * Order type
+	//* Order type
 	OrderType OrderType `protobuf:"varint,2,opt,name=order_type,json=orderType,proto3,enum=com.consorsbank.module.tapi.grpc.OrderType" json:"order_type,omitempty"`
-	// * List of the quites
+	//* List of the quites
 	PriceEntries []*QuoteEntry `protobuf:"bytes,3,rep,name=price_entries,json=priceEntries,proto3" json:"price_entries,omitempty"`
-	// *
+	//*
 	// Error information if occuirs
 	Error         *Error `protobuf:"bytes,1000,opt,name=error,proto3" json:"error,omitempty"`
 	unknownFields protoimpl.UnknownFields
@@ -1641,29 +1642,29 @@ func (x *QuoteReply) GetError() *Error {
 //	                         buy price and reference are informative only
 type QuoteEntry struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// * Stock exchange where infomation was requested
+	//* Stock exchange where infomation was requested
 	StockExchange *StockExchange `protobuf:"bytes,1,opt,name=stock_exchange,json=stockExchange,proto3" json:"stock_exchange,omitempty"`
-	// * Buy price
+	//* Buy price
 	BuyPrice float64 `protobuf:"fixed64,2,opt,name=buy_price,json=buyPrice,proto3" json:"buy_price,omitempty"`
-	// * Buy volume
+	//* Buy volume
 	BuyVolume float64 `protobuf:"fixed64,3,opt,name=buy_volume,json=buyVolume,proto3" json:"buy_volume,omitempty"`
-	// * Sell price
+	//* Sell price
 	SellPrice float64 `protobuf:"fixed64,4,opt,name=sell_price,json=sellPrice,proto3" json:"sell_price,omitempty"`
-	// * Sell volume
+	//* Sell volume
 	SellVolume float64 `protobuf:"fixed64,5,opt,name=sell_volume,json=sellVolume,proto3" json:"sell_volume,omitempty"`
-	// * Last price
+	//* Last price
 	LastPrice float64 `protobuf:"fixed64,6,opt,name=last_price,json=lastPrice,proto3" json:"last_price,omitempty"`
-	// * Last volume
+	//* Last volume
 	LastVolume float64 `protobuf:"fixed64,7,opt,name=last_volume,json=lastVolume,proto3" json:"last_volume,omitempty"`
-	// * Date and time of the last price
+	//* Date and time of the last price
 	LastTime *Timestamp `protobuf:"bytes,8,opt,name=last_time,json=lastTime,proto3" json:"last_time,omitempty"`
-	// * Currency
+	//* Currency
 	Currency string `protobuf:"bytes,9,opt,name=currency,proto3" json:"currency,omitempty"`
-	// * Quote reference. Used for the accept quite request. Can be empty if accept quote is not possible.
+	//* Quote reference. Used for the accept quite request. Can be empty if accept quote is not possible.
 	QuoteReference string `protobuf:"bytes,10,opt,name=quote_reference,json=quoteReference,proto3" json:"quote_reference,omitempty"`
-	// * Used by call order type
+	//* Used by call order type
 	OrderType OrderType `protobuf:"varint,11,opt,name=order_type,json=orderType,proto3,enum=com.consorsbank.module.tapi.grpc.OrderType" json:"order_type,omitempty"`
-	// *
+	//*
 	// Error information if occuirs
 	Error         *Error `protobuf:"bytes,1000,opt,name=error,proto3" json:"error,omitempty"`
 	unknownFields protoimpl.UnknownFields
@@ -1788,11 +1789,11 @@ func (x *QuoteEntry) GetError() *Error {
 // Orders represent pushed information about orders from one trading accounts
 type Orders struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// * Trading account
+	//* Trading account
 	Account *TradingAccount `protobuf:"bytes,1,opt,name=account,proto3" json:"account,omitempty"`
-	// * List of the orders
+	//* List of the orders
 	Orders []*Order `protobuf:"bytes,2,rep,name=orders,proto3" json:"orders,omitempty"`
-	// *
+	//*
 	// Error information if occuirs
 	Error         *Error `protobuf:"bytes,9000,opt,name=error,proto3" json:"error,omitempty"`
 	unknownFields protoimpl.UnknownFields
@@ -1854,22 +1855,22 @@ func (x *Orders) GetError() *Error {
 // Represents one category cost.
 type OrderCosts_CategoryCost struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// *
+	//*
 	// Category id
 	CategoryId string `protobuf:"bytes,1,opt,name=category_id,json=categoryId,proto3" json:"category_id,omitempty"`
-	// *
+	//*
 	// Human redable category label
 	CategoryLabel string `protobuf:"bytes,2,opt,name=category_label,json=categoryLabel,proto3" json:"category_label,omitempty"`
-	// *
+	//*
 	// Total absolute sum of the children values
 	TotalSumAbsolute float64 `protobuf:"fixed64,3,opt,name=total_sum_absolute,json=totalSumAbsolute,proto3" json:"total_sum_absolute,omitempty"`
-	// *
+	//*
 	// Total relative sum of the children values
 	TotalSumRelative float64 `protobuf:"fixed64,4,opt,name=total_sum_relative,json=totalSumRelative,proto3" json:"total_sum_relative,omitempty"`
-	// *
+	//*
 	// Currency for absolute sum
 	Currency string `protobuf:"bytes,5,opt,name=currency,proto3" json:"currency,omitempty"`
-	// *
+	//*
 	// List of child values or detailed information.
 	DetailCosts   []*OrderCosts_DetailCost `protobuf:"bytes,6,rep,name=detail_costs,json=detailCosts,proto3" json:"detail_costs,omitempty"`
 	unknownFields protoimpl.UnknownFields
@@ -1952,73 +1953,73 @@ func (x *OrderCosts_CategoryCost) GetDetailCosts() []*OrderCosts_DetailCost {
 // Aggregated costs contain an information about estimated costs for the selected order
 type OrderCosts_AggregatedCosts struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// *
+	//*
 	// In costs for the order
 	InCostsAbsolute float64 `protobuf:"fixed64,1,opt,name=in_costs_absolute,json=inCostsAbsolute,proto3" json:"in_costs_absolute,omitempty"`
-	// *
+	//*
 	// Percentage part of the in costs
 	InCostsRelative float64 `protobuf:"fixed64,2,opt,name=in_costs_relative,json=inCostsRelative,proto3" json:"in_costs_relative,omitempty"`
-	// *
+	//*
 	// Currency for the in costs
 	InCostsCurrency string `protobuf:"bytes,3,opt,name=in_costs_currency,json=inCostsCurrency,proto3" json:"in_costs_currency,omitempty"`
-	// *
+	//*
 	// Out costs for the order
 	OutCostsAbsolute float64 `protobuf:"fixed64,4,opt,name=out_costs_absolute,json=outCostsAbsolute,proto3" json:"out_costs_absolute,omitempty"`
-	// *
+	//*
 	// Percentage part of the out costs
 	OutCostsRelative float64 `protobuf:"fixed64,5,opt,name=out_costs_relative,json=outCostsRelative,proto3" json:"out_costs_relative,omitempty"`
-	// *
+	//*
 	// Currency for the out costs
 	OutCostsCurrency string `protobuf:"bytes,6,opt,name=out_costs_currency,json=outCostsCurrency,proto3" json:"out_costs_currency,omitempty"`
-	// *
+	//*
 	// Instrument costs for the order
 	InstrumentCostsAbsolute float64 `protobuf:"fixed64,7,opt,name=instrument_costs_absolute,json=instrumentCostsAbsolute,proto3" json:"instrument_costs_absolute,omitempty"`
-	// *
+	//*
 	// Percentage part of the instrument costs
 	InstrumentCostsRelative float64 `protobuf:"fixed64,8,opt,name=instrument_costs_relative,json=instrumentCostsRelative,proto3" json:"instrument_costs_relative,omitempty"`
-	// *
+	//*
 	// Currency for the instrument costs
 	InstrumentCostsCurrency string `protobuf:"bytes,9,opt,name=instrument_costs_currency,json=instrumentCostsCurrency,proto3" json:"instrument_costs_currency,omitempty"`
-	// *
+	//*
 	// Service costs for the order
 	ServiceCostsAbsolute float64 `protobuf:"fixed64,10,opt,name=service_costs_absolute,json=serviceCostsAbsolute,proto3" json:"service_costs_absolute,omitempty"`
-	// *
+	//*
 	// Percentage part of the service costs
 	ServiceCostsRelative float64 `protobuf:"fixed64,11,opt,name=service_costs_relative,json=serviceCostsRelative,proto3" json:"service_costs_relative,omitempty"`
-	// *
+	//*
 	// Currency for the servcie costs
 	ServiceCostsCurrency string `protobuf:"bytes,12,opt,name=service_costs_currency,json=serviceCostsCurrency,proto3" json:"service_costs_currency,omitempty"`
-	// *
+	//*
 	// Subsidy costs for the order
 	SubsidyCostsAbsolute float64 `protobuf:"fixed64,13,opt,name=subsidy_costs_absolute,json=subsidyCostsAbsolute,proto3" json:"subsidy_costs_absolute,omitempty"`
-	// *
+	//*
 	// Percentage part of the subsidy costs
 	SubsidyCostsRelative float64 `protobuf:"fixed64,14,opt,name=subsidy_costs_relative,json=subsidyCostsRelative,proto3" json:"subsidy_costs_relative,omitempty"`
-	// *
+	//*
 	// Currency for the subsidy costs
 	SubsidyCostsCurrency string `protobuf:"bytes,15,opt,name=subsidy_costs_currency,json=subsidyCostsCurrency,proto3" json:"subsidy_costs_currency,omitempty"`
-	// *
+	//*
 	// Foreign currency costs for the order
 	ForeignCurrencyCostsAbsolute float64 `protobuf:"fixed64,16,opt,name=foreign_currency_costs_absolute,json=foreignCurrencyCostsAbsolute,proto3" json:"foreign_currency_costs_absolute,omitempty"`
-	// *
+	//*
 	// Percentage part of the foreign currency costs
 	ForeignCurrencyCostsRelative float64 `protobuf:"fixed64,17,opt,name=foreign_currency_costs_relative,json=foreignCurrencyCostsRelative,proto3" json:"foreign_currency_costs_relative,omitempty"`
-	// *
+	//*
 	// Currency for the foreign currency costs
 	ForeignCurrencyCostsCurrency string `protobuf:"bytes,18,opt,name=foreign_currency_costs_currency,json=foreignCurrencyCostsCurrency,proto3" json:"foreign_currency_costs_currency,omitempty"`
-	// *
+	//*
 	// Performance impact for the order
 	PerformanceImpactAbsolute float64 `protobuf:"fixed64,19,opt,name=performance_impact_absolute,json=performanceImpactAbsolute,proto3" json:"performance_impact_absolute,omitempty"`
-	// *
+	//*
 	// Percentage part of the performance impact
 	PerformanceImpactRelative float64 `protobuf:"fixed64,20,opt,name=performance_impact_relative,json=performanceImpactRelative,proto3" json:"performance_impact_relative,omitempty"`
-	// *
+	//*
 	// Currency for the performance impact
 	PerformanceImpactCurrency string `protobuf:"bytes,21,opt,name=performance_impact_currency,json=performanceImpactCurrency,proto3" json:"performance_impact_currency,omitempty"`
-	// *
+	//*
 	// Expected amount estimated for the order
 	ExpectedAmount float64 `protobuf:"fixed64,22,opt,name=expected_amount,json=expectedAmount,proto3" json:"expected_amount,omitempty"`
-	// *
+	//*
 	// Currency for the expected amount
 	ExpectedAmountCurrency string `protobuf:"bytes,23,opt,name=expected_amount_currency,json=expectedAmountCurrency,proto3" json:"expected_amount_currency,omitempty"`
 	unknownFields          protoimpl.UnknownFields
@@ -2221,22 +2222,22 @@ func (x *OrderCosts_AggregatedCosts) GetExpectedAmountCurrency() string {
 // category
 type OrderCosts_DetailCost struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// *
+	//*
 	// Detail id
 	DetailId string `protobuf:"bytes,1,opt,name=detail_id,json=detailId,proto3" json:"detail_id,omitempty"`
-	// *
+	//*
 	// Human redable detail label
 	DetailLabel string `protobuf:"bytes,2,opt,name=detail_label,json=detailLabel,proto3" json:"detail_label,omitempty"`
-	// *
+	//*
 	// Absolute value for this entry
 	ValueAbsolute float64 `protobuf:"fixed64,3,opt,name=value_absolute,json=valueAbsolute,proto3" json:"value_absolute,omitempty"`
-	// *
+	//*
 	// Relative value for this entry
 	ValueRelative float64 `protobuf:"fixed64,4,opt,name=value_relative,json=valueRelative,proto3" json:"value_relative,omitempty"`
-	// *
+	//*
 	// Currency for this entry
 	Currency string `protobuf:"bytes,5,opt,name=currency,proto3" json:"currency,omitempty"`
-	// *
+	//*
 	// Specific entry type
 	DetailType    string `protobuf:"bytes,6,opt,name=detail_type,json=detailType,proto3" json:"detail_type,omitempty"`
 	unknownFields protoimpl.UnknownFields

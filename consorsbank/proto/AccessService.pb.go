@@ -40,7 +40,7 @@ const (
 // Login request provides data for initial access to the TAPI
 type LoginRequest struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// *
+	//*
 	// Secret is user defined access string.
 	// It's not possible to restore this secret directly. See double MD5 hash logic + salt
 	Secret        string `protobuf:"bytes,1,opt,name=secret,proto3" json:"secret,omitempty"`
@@ -89,10 +89,10 @@ func (x *LoginRequest) GetSecret() string {
 // Login reply provides information that need for the access to the TAPI
 type LoginReply struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// *
+	//*
 	// Access token is used in each request by the access to the TAPI.
 	AccessToken string `protobuf:"bytes,1,opt,name=access_token,json=accessToken,proto3" json:"access_token,omitempty"`
-	// *
+	//*
 	// Error information if occuirs
 	Error         *Error `protobuf:"bytes,1000,opt,name=error,proto3" json:"error,omitempty"`
 	unknownFields protoimpl.UnknownFields
@@ -145,7 +145,7 @@ func (x *LoginReply) GetError() *Error {
 
 type LogoutRequest struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// *
+	//*
 	// Access token to invalidate.
 	AccessToken   string `protobuf:"bytes,1,opt,name=access_token,json=accessToken,proto3" json:"access_token,omitempty"`
 	unknownFields protoimpl.UnknownFields
@@ -191,7 +191,7 @@ func (x *LogoutRequest) GetAccessToken() string {
 
 type LogoutReply struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// *
+	//*
 	// Error information if occuirs
 	Error         *Error `protobuf:"bytes,1000,opt,name=error,proto3" json:"error,omitempty"`
 	unknownFields protoimpl.UnknownFields

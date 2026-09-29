@@ -19,23 +19,22 @@ package finance
 import (
 	"context"
 	"errors"
+	"strconv"
+	"strings"
 	"time"
 )
 
 var (
-	// ErrInsufficientSymbol indicates a symbol does not contain
-	// the necessary information required for a provider.
-	ErrInsufficientSymbol error = errors.New("insufficient symbol")
 	// ErrQuoteNotAvailable indicates a provider is not able to
-	// provide a quote for the given [Symbol]. This is a permanent
-	// error due to missing Symbol ids required by the provider.
+	// provide a quote for the given [Instrument]. This is a
+	// permanent error.
 	ErrQuoteNotAvailable error = errors.New("quote not available")
 )
 
-// Quote represents a single price data point for a financial instrument.
+// Quote represents a single price data point for an [Instrument].
 type Quote struct {
-	// Symbol identifies the financial instrument by various ids.
-	Symbol Symbol `json:"symbol"`
+	// Instrument the financial instrument this quote is for.
+	Instrument Instrument `json:"instrument"`
 	// Timestamp gives the point in time this quote was current
 	// according to the sourcing provider.
 	Timestamp time.Time `json:"timestamp"`
@@ -61,18 +60,26 @@ type Quote struct {
 	SourceTimestamp time.Time `json:"source_timestamp"`
 }
 
-// Equity provides quote data for equities, ETFs, and similar instruments.
-type Equity interface {
+// String formats this Quote.
+func (q *Quote) String() string {
+	buffer := &strings.Builder{}
+	buffer.WriteString(q.Instrument.String())
+	buffer.WriteString("|timestamp:")
+	buffer.WriteString(q.Timestamp.UTC().Format(time.RFC3339Nano))
+	buffer.WriteString("|price:")
+	buffer.WriteString(strconv.FormatFloat(q.Price, 'g', -1, 64))
+	buffer.WriteString("|currency:")
+	buffer.WriteString(string(q.Currency))
+	buffer.WriteString("|source:")
+	buffer.WriteString(q.Source)
+	buffer.WriteString("|queried:")
+	buffer.WriteString(q.SourceTimestamp.UTC().Format(time.RFC3339Nano))
+	return buffer.String()
+}
+
+// QuoteProvider queries quotes for instruments.
+type QuoteProvider interface {
 	APIProvider
-
-	// ResolveSymbol resolves the given symbol to ensure it contains the
-	// necessary information to invoke [QueryQuote]. This function does
-	// nothing if the necessary information is already contained in the
-	// symbol.
-	ResolveSymbol(ctx context.Context, symbol Symbol) (*Symbol, error)
-
-	// QueryQuote returns the latest quote for a symbol.
-	// Returns ErrQuoteNotAvailable if the provider cannot handle the given symbol
-	// (e.g. because it requires a ticker but none was provided).
-	QueryQuote(ctx context.Context, symbol Symbol) (*Quote, error)
+	// QueryQuote returns the latest quote for the given instrument.
+	QueryQuote(ctx context.Context, instrument *Instrument) (*Quote, error)
 }

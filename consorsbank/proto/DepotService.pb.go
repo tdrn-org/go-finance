@@ -41,29 +41,29 @@ const (
 // one position in the depot
 type DepotPosition struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// *
+	//*
 	// Ammount of the securities
 	Amount float64 `protobuf:"fixed64,1,opt,name=amount,proto3" json:"amount,omitempty"`
-	// *
+	//*
 	// Position identification
 	PositionId string `protobuf:"bytes,2,opt,name=position_id,json=positionId,proto3" json:"position_id,omitempty"`
-	// *
+	//*
 	// True if sell of the position is possible or false otherwise
 	SellPossible bool `protobuf:"varint,3,opt,name=sell_possible,json=sellPossible,proto3" json:"sell_possible,omitempty"`
-	// *
+	//*
 	// Unit note
 	UnitNote UnitNote `protobuf:"varint,4,opt,name=unit_note,json=unitNote,proto3,enum=com.consorsbank.module.tapi.grpc.UnitNote" json:"unit_note,omitempty"`
-	// *
+	//*
 	// True if entry is blocked or false otherwise
 	Blocked bool `protobuf:"varint,5,opt,name=blocked,proto3" json:"blocked,omitempty"`
-	// *
+	//*
 	// Purchase quotation or NaN if not defined.
 	// Currently this field ALWAYS undefined, reserved for future use
 	PurchaseQuotation float64 `protobuf:"fixed64,6,opt,name=purchase_quotation,json=purchaseQuotation,proto3" json:"purchase_quotation,omitempty"`
-	// *
+	//*
 	// Purchase currency or empty value if not defined
 	PurchaseCurrency string `protobuf:"bytes,7,opt,name=purchase_currency,json=purchaseCurrency,proto3" json:"purchase_currency,omitempty"`
-	// *
+	//*
 	// Purchase currency rate or NaN if not defined
 	PurchaseCurrencyRate float64 `protobuf:"fixed64,8,opt,name=purchase_currency_rate,json=purchaseCurrencyRate,proto3" json:"purchase_currency_rate,omitempty"`
 	unknownFields        protoimpl.UnknownFields
@@ -161,41 +161,41 @@ func (x *DepotPosition) GetPurchaseCurrencyRate() float64 {
 // This entry combines data from one or more depot positions
 type DepotEntry struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// *
+	//*
 	// Security code
 	SecurityCode *SecurityCode `protobuf:"bytes,1,opt,name=security_code,json=securityCode,proto3" json:"security_code,omitempty"`
-	// *
+	//*
 	// List of linked depot positions. This list contains at least one element
 	Positions []*DepotPosition `protobuf:"bytes,2,rep,name=positions,proto3" json:"positions,omitempty"`
-	// *
+	//*
 	// Effective amount
 	EffectiveAmount float64 `protobuf:"fixed64,3,opt,name=effective_amount,json=effectiveAmount,proto3" json:"effective_amount,omitempty"`
-	// *
+	//*
 	// Scheduled amount
 	ScheduledAmount float64 `protobuf:"fixed64,4,opt,name=scheduled_amount,json=scheduledAmount,proto3" json:"scheduled_amount,omitempty"`
-	// *
+	//*
 	// Total amount of the securities
 	TotalAmount float64 `protobuf:"fixed64,5,opt,name=total_amount,json=totalAmount,proto3" json:"total_amount,omitempty"`
-	// *
+	//*
 	// True if sell possible for this entry or false otherwise. This value
 	// can be true only if all child positions have sell_possible = true
 	SellPossible bool `protobuf:"varint,6,opt,name=sell_possible,json=sellPossible,proto3" json:"sell_possible,omitempty"`
-	// *
+	//*
 	// Unit note
 	UnitNote UnitNote `protobuf:"varint,7,opt,name=unit_note,json=unitNote,proto3,enum=com.consorsbank.module.tapi.grpc.UnitNote" json:"unit_note,omitempty"`
-	// *
+	//*
 	// True if entry is blocked or false otherwise
 	Blocked bool `protobuf:"varint,10,opt,name=blocked,proto3" json:"blocked,omitempty"`
-	// *
+	//*
 	// Purchase quotation or NaN if not defined
 	PurchaseQuotation float64 `protobuf:"fixed64,11,opt,name=purchase_quotation,json=purchaseQuotation,proto3" json:"purchase_quotation,omitempty"`
-	// *
+	//*
 	// Purchase currency or empty value if not defined
 	PurchaseCurrency string `protobuf:"bytes,12,opt,name=purchase_currency,json=purchaseCurrency,proto3" json:"purchase_currency,omitempty"`
-	// *
+	//*
 	// Purchase currency rate or NaN if not defined
 	PurchaseCurrencyRate float64 `protobuf:"fixed64,13,opt,name=purchase_currency_rate,json=purchaseCurrencyRate,proto3" json:"purchase_currency_rate,omitempty"`
-	// *
+	//*
 	// Open sales
 	OpenSales     float64 `protobuf:"fixed64,14,opt,name=open_sales,json=openSales,proto3" json:"open_sales,omitempty"`
 	unknownFields protoimpl.UnknownFields
@@ -318,13 +318,13 @@ func (x *DepotEntry) GetOpenSales() float64 {
 
 type DepotEntries struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// *
+	//*
 	// Trading account
 	Account *TradingAccount `protobuf:"bytes,1,opt,name=account,proto3" json:"account,omitempty"`
-	// *
+	//*
 	// Depot entries list
 	Entries []*DepotEntry `protobuf:"bytes,2,rep,name=entries,proto3" json:"entries,omitempty"`
-	// *
+	//*
 	// Error information if occuirs
 	Error         *Error `protobuf:"bytes,1000,opt,name=error,proto3" json:"error,omitempty"`
 	unknownFields protoimpl.UnknownFields

@@ -19,6 +19,8 @@ package finance
 import (
 	"context"
 	"errors"
+	"strconv"
+	"strings"
 	"time"
 )
 
@@ -243,10 +245,30 @@ type ExchangeRate struct {
 	SourceTimestamp time.Time `json:"source_timestamp"`
 }
 
+// String formats this ExchangeRate.
+func (r *ExchangeRate) String() string {
+	buffer := &strings.Builder{}
+	buffer.WriteString("timestamp:")
+	buffer.WriteString(r.Timestamp.UTC().Format(time.RFC3339Nano))
+	buffer.WriteString("|base:")
+	buffer.WriteString(string(r.Base))
+	buffer.WriteString("|quote:")
+	buffer.WriteString(string(r.Quote))
+	buffer.WriteString("|rate:")
+	buffer.WriteString(strconv.FormatFloat(r.Rate, 'g', -1, 64))
+	buffer.WriteString("|source:")
+	buffer.WriteString(r.Source)
+	buffer.WriteString("|queried:")
+	buffer.WriteString(r.SourceTimestamp.UTC().Format(time.RFC3339Nano))
+	return buffer.String()
+}
+
 // FX interface provides functions for querying exchange rates.
 type FX interface {
 	APIProvider
-	// QueryExchangeRate queries the exchange rate for the given base and quote
-	// currency.
+
+	// QueryExchangeRate queries the exchange rate for the given base and
+	// quote currency. [ErrExchangeRateNotAvailable] is returned if the
+	// provider does not support the given base/quote combination.
 	QueryExchangeRate(ctx context.Context, base, quote Currency) (*ExchangeRate, error)
 }

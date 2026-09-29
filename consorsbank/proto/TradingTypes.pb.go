@@ -41,31 +41,31 @@ const (
 type OrderModel int32
 
 const (
-	// *
-	// Order model absent
+	//*
+	//Order model absent
 	OrderModel_NO_ORDER_MODEL OrderModel = 0
-	// *
+	//*
 	// Market order
 	OrderModel_MARKET OrderModel = 1
-	// *
+	//*
 	// Limit order
 	OrderModel_LIMIT OrderModel = 2
-	// *
+	//*
 	// Stop market order.
 	OrderModel_STOP_MARKET OrderModel = 3
-	// *
+	//*
 	// Stop limit order
 	OrderModel_STOP_LIMIT OrderModel = 4
-	// *
+	//*
 	// One cancels other market order
 	OrderModel_ONE_CANCELS_OTHER_MARKET OrderModel = 5
-	// *
+	//*
 	// One cancels other limit order
 	OrderModel_ONE_CANCELS_OTHER_LIMIT OrderModel = 6
-	// *
+	//*
 	// Trailing stop market order
 	OrderModel_TRAILING_STOP_MARKET OrderModel = 7
-	// *
+	//*
 	// Trailing stop limit order
 	OrderModel_TRAILING_STOP_LIMIT OrderModel = 8
 )
@@ -128,22 +128,22 @@ func (OrderModel) EnumDescriptor() ([]byte, []int) {
 type OrderType int32
 
 const (
-	// *
+	//*
 	// Order type is not defined
 	OrderType_NO_ORDER_TYPE OrderType = 0
-	// *
+	//*
 	// Buy order type
 	OrderType_BUY OrderType = 1
-	// *
+	//*
 	// Sell order type
 	OrderType_SELL OrderType = 2
-	// *
+	//*
 	// Short sell order type
 	OrderType_SHORT_SELL OrderType = 3
-	// *
+	//*
 	// Short cover order type. This type is not allowed as input parameter
 	OrderType_SHORT_COVER OrderType = 4
-	// *
+	//*
 	// Rorced cover order type. This type is not allowed as input parameter
 	OrderType_FORCED_COVER OrderType = 5
 )
@@ -200,19 +200,19 @@ func (OrderType) EnumDescriptor() ([]byte, []int) {
 type OrderSupplement int32
 
 const (
-	// *
+	//*
 	// Normal order supplement
 	OrderSupplement_NORMAL OrderSupplement = 0
-	// *
+	//*
 	// Immidiate or cancel order supplement
 	OrderSupplement_IMMIDIATE_OR_CANCEL OrderSupplement = 1
-	// *
+	//*
 	// Fill or kill order supplement
 	OrderSupplement_FILL_OR_KILL OrderSupplement = 2
-	// *
+	//*
 	// Icesberg order supplement. Allowes to delivery amount in portions. #pro# only
 	OrderSupplement_ICEBERG OrderSupplement = 3
-	// *
+	//*
 	// Market place order supplement
 	OrderSupplement_MARKET_PRICE OrderSupplement = 4
 )
@@ -267,13 +267,13 @@ func (OrderSupplement) EnumDescriptor() ([]byte, []int) {
 type TrailingNotation int32
 
 const (
-	// *
+	//*
 	// Trailing notation is not defined
 	TrailingNotation_NO_TRAILING_NOTATION TrailingNotation = 0
-	// *
+	//*
 	// Absolute order notation
 	TrailingNotation_ABSOLUTE TrailingNotation = 1
-	// *
+	//*
 	// Relative order notation
 	TrailingNotation_RELATIVE TrailingNotation = 2
 )
@@ -324,22 +324,22 @@ func (TrailingNotation) EnumDescriptor() ([]byte, []int) {
 type CashQuotation int32
 
 const (
-	// *
+	//*
 	// Quotation is not defined
 	CashQuotation_NOTHING CashQuotation = 0
-	// *
+	//*
 	// Kassa quotation
 	CashQuotation_KASSA CashQuotation = 1
-	// *
+	//*
 	// Auction quotation
 	CashQuotation_AUCTION CashQuotation = 2
-	// *
+	//*
 	// Opening quotation
 	CashQuotation_OPENING CashQuotation = 3
-	// *
+	//*
 	// Intraday quotation
 	CashQuotation_INTRADAY CashQuotation = 4
-	// *
+	//*
 	// Close quotation
 	CashQuotation_CLOSING CashQuotation = 5
 )
@@ -403,16 +403,16 @@ func (CashQuotation) EnumDescriptor() ([]byte, []int) {
 //	...
 type TradingPossibility struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// *
+	//*
 	// Order model
 	OrderModel OrderModel `protobuf:"varint,1,opt,name=order_model,json=orderModel,proto3,enum=com.consorsbank.module.tapi.grpc.OrderModel" json:"order_model,omitempty"`
-	// *
+	//*
 	// Order supplement
 	OrderSupplement OrderSupplement `protobuf:"varint,2,opt,name=order_supplement,json=orderSupplement,proto3,enum=com.consorsbank.module.tapi.grpc.OrderSupplement" json:"order_supplement,omitempty"`
-	// *
+	//*
 	// Trailing notation
 	TrailingNotation TrailingNotation `protobuf:"varint,3,opt,name=trailing_notation,json=trailingNotation,proto3,enum=com.consorsbank.module.tapi.grpc.TrailingNotation" json:"trailing_notation,omitempty"`
-	// *
+	//*
 	// List of allowed cash_quatations
 	CashQuotations []CashQuotation `protobuf:"varint,4,rep,packed,name=cash_quotations,json=cashQuotations,proto3,enum=com.consorsbank.module.tapi.grpc.CashQuotation" json:"cash_quotations,omitempty"`
 	unknownFields  protoimpl.UnknownFields
