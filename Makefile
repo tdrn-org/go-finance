@@ -6,18 +6,34 @@ export PATH := $(GOBIN):$(PATH)
 
 .DEFAULT_GOAL := check
 
+# Generated code (*.pb.go, OpenAPI-derived files) is committed to this repository.
+# Two rules keep that deterministic across machines and CI:
+#
+#  1. 'check' never generates. Regenerating rewrites tracked files with the local
+#     toolchain's version stamp — a machine-specific working-tree change that has
+#     nothing to do with the code under review. 'make generate' is explicit.
+#  2. The code generators are pinned through the 'tool' directives in go.mod, so
+#     every machine and CI produce identical output. protoc itself is deliberately
+#     NOT pinned: it only contributes a version comment.
+
 .PHONE: deps
 deps:
 	go mod download -x
-	go install google.golang.org/protobuf/cmd/protoc-gen-go@latest
-	go install google.golang.org/grpc/cmd/protoc-gen-go-grpc@latest
 
-.PHONE: testdeps
-testdeps: deps
-	go install honnef.co/go/tools/cmd/staticcheck@latest
+.PHONE: prototools
+prototools:
+	go install google.golang.org/protobuf/cmd/protoc-gen-go
+	go install google.golang.org/grpc/cmd/protoc-gen-go-grpc
+
+.PHONE: linttools
+linttools:
+	go install honnef.co/go/tools/cmd/staticcheck
 
 .PHONE: generate
-generate: deps
+generate: deps prototools
+	@echo "==> protoc        $$(protoc --version)"
+	@echo "==> protoc-gen-go $$(protoc-gen-go --version)"
+	@echo "==> Generated files are tracked: commit the regenerated sources."
 	go generate ./...
 
 .PHONE: tidy
@@ -26,11 +42,11 @@ tidy:
 	go mod tidy
 
 .PHONE: vet
-vet: testdeps
+vet:
 	go vet ./...
 
 .PHONE: staticcheck
-staticcheck: testdeps
+staticcheck: linttools
 	$(GOBIN)/staticcheck ./...
 
 .PHONE: lint
@@ -41,7 +57,7 @@ test:
 	go test -v -covermode=atomic -coverpkg=./... -coverprofile=coverage.out ./...
 
 .PHONE: check
-check: generate test lint
+check: test lint
 
 .PHONE: clean
 clean:
