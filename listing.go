@@ -268,6 +268,18 @@ func (l *ProviderListing) UnmarshalJSON(data []byte) error {
 	return nil
 }
 
+func (l *ProviderListing) MarshalString() (string, error) {
+	encoded, err := l.MarshalJSON()
+	if err != nil {
+		return "", err
+	}
+	return string(encoded), nil
+}
+
+func (l *ProviderListing) UnmarshalString(s string) error {
+	return l.UnmarshalJSON([]byte(s))
+}
+
 // ProviderListingBuilder implements the builder pattern to create
 // a new ProviderListing.
 type ProviderListingBuilder struct {
