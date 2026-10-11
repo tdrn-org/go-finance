@@ -68,7 +68,6 @@ func symbolSearchResponseItemToProviderListing(responseItem *twelvedata.SymbolSe
 		InstrumentName(responseItem.InstrumentName).
 		InstrumentType(instrumentTypeMap[responseItem.InstrumentType]).
 		Attribute(finance.ListingAttributeKeyTicker, responseItem.Symbol).
-		Attribute(finance.ListingAttributeKeyExchange, responseItem.Exchange).
 		Attribute(finance.ListingAttributeKeyMIC, responseItem.MicCode).
 		Currency(&currency).
 		Build().Validate()
