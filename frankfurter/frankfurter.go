@@ -14,30 +14,21 @@
  * limitations under the License.
  */
 
+// Package frankfurter integrates the [Frankfurter REST API] service.
+//
+// [Frankfurter REST API]: https://frankfurter.dev/
 package frankfurter
 
 import (
-	"context"
 	"encoding/json"
 	"fmt"
 	"log/slog"
 	"net/http"
 	"net/url"
-
-	"github.com/tdrn-org/go-finance"
 )
 
+// Name of Frankfurter Provider.
 const Name string = "frankfurter"
-
-const defaultBaseURLString string = "https://api.frankfurter.dev/v2/"
-
-var DefaultBaseURL *url.URL = func() *url.URL {
-	defaultBaseURL, err := url.Parse(defaultBaseURLString)
-	if err != nil {
-		panic(err)
-	}
-	return defaultBaseURL
-}()
 
 type API struct {
 	baseURL    *url.URL
@@ -68,35 +59,6 @@ func NewAPI(config Config) (*API, error) {
 
 func (api *API) ProviderName() string {
 	return Name
-}
-
-func (api *API) QueryExchangeRate(ctx context.Context, base, quote finance.Currency) (*finance.ExchangeRate, error) {
-	apiURL := api.url("/rates", "base", string(base))
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, apiURL.String(), nil)
-	if err != nil {
-		return nil, fmt.Errorf("failed create query exchange rate request (cause: %w)", err)
-	}
-	api.logger.Debug("querying exchange rate", slog.Any("url", req.URL))
-	rsp, err := api.httpClient.Do(req)
-	if err != nil {
-		return nil, fmt.Errorf("failed to send query exchange rate request (cause: %w)", err)
-	}
-	defer rsp.Body.Close()
-	err = api.checkHttpStatus(rsp)
-	if err != nil {
-		return nil, err
-	}
-	var response ratesResponse
-	err = api.decodeResponse(rsp, &response)
-	if err != nil {
-		return nil, err
-	}
-	rate := response.LookupQuote(quote)
-	if rate == nil {
-		return nil, finance.ErrExchangeRateNotAvailable
-	}
-	api.logger.Debug("found exchange rate", slog.String("date", rate.Date), slog.String("base", string(rate.Base)), slog.String("quote", string(rate.Quote)), slog.Float64("rate", rate.Rate))
-	return rate.ToExchangeRate()
 }
 
 func (api *API) url(service string, args ...string) *url.URL {

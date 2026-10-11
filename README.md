@@ -8,17 +8,15 @@
 
 The go-finance module provides the following services via different providers:
 * FX service: Query currency exchange rates.
-* SymbolResolver service: Search Symbols
-* Equity service: Query Quotes
+* ListingProvider service: Search listings and query quotes
 
 The following providers are available:
-| Provider | FX | SymbolResolver | Equity | Comment |
-|----------|----|----------------|--------|---------|
-|[Alpha Vantage](https://www.alphavantage.co)|&check;|&check;|&check;|API key required|
-|[Consorsbank TAPI](https://www.consorsbank.de/web/Wertpapierhandel/Trading-Software/ActiveTrader#API)|&check;|&check;|&check;|Requires Consorsbank depot and Active Trader|
-|[Frankfurter](https://frankfurter.dev/)|&check;|||Free|
-|[OpenFIGI](https://www.openfigi.com/api/overview)||&check;||API key optional|
-|[Twelve Data](https://twelvedata.com/)|&check;|&check;|&check;|API key required|
+| Provider | FX | ListingProvider | Comment |
+|----------|----|----------------|---------|
+|[Alpha Vantage](https://www.alphavantage.co/documentation/)|&check;|&check;|API key required|
+|[Consorsbank TAPI](https://www.consorsbank.de/web/Wertpapierhandel/Trading-Software/ActiveTrader#API)|&check;|&check;|Requires Consorsbank depot and Active Trader|
+|[Frankfurter](https://frankfurter.dev/)|&check;||Free|
+|[Twelve Data](https://twelvedata.com/docs/)|&check;|&check;|API key required|
 
 ### Development
 

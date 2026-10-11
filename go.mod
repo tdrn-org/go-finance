@@ -5,7 +5,6 @@ go 1.27.0
 toolchain go1.27.1
 
 require (
-	github.com/google/uuid v1.6.0
 	github.com/oapi-codegen/runtime v1.7.0
 	github.com/stretchr/testify v1.12.1
 	github.com/tdrn-org/go-cache v0.1.5
@@ -22,6 +21,7 @@ require (
 	github.com/dprotaso/go-yit v0.0.0-20220510233725-9ba8df137936 // indirect
 	github.com/getkin/kin-openapi v0.149.0 // indirect
 	github.com/go-openapi/jsonpointer v1.0.2 // indirect
+	github.com/google/uuid v1.6.0 // indirect
 	github.com/maypok86/otter/v2 v2.3.0 // indirect
 	github.com/oapi-codegen/oapi-codegen/v2 v2.8.0 // indirect
 	github.com/oasdiff/yaml v0.1.1 // indirect

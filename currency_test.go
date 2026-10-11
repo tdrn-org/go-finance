@@ -78,6 +78,6 @@ func testCurrencyAPI(t *testing.T, api finance.FX) {
 		require.Equal(t, finance.CurrencyEUR, exchangeRate.Quote)
 		require.NotZero(t, exchangeRate.Rate)
 		fmt.Println(exchangeRate)
-		return
+		break
 	}
 }

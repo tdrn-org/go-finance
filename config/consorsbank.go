@@ -30,8 +30,8 @@ type ConsorsbankConfig struct {
 	SkipVerify          bool                                             `toml:"skip_verify"`
 	CAFile              string                                           `toml:"ca_file"`
 	Secret              string                                           `toml:"secret"`
+	IncludeExchanges    []string                                         `toml:"include_exchanges"`
 	PreferredCurrency   finance.Currency                                 `toml:"preferred_currency"`
-	PreferredExchanges  []string                                         `toml:"preferred_exchanges"`
 	SubscriptionTimeout config.DurationSpec                              `toml:"subscription_timeout"`
 	factory             apiFactory[*consorsbank.API, consorsbank.Config] `toml:"-"`
 }
@@ -51,12 +51,12 @@ func (c *ConsorsbankConfig) GetSecret() (string, error) {
 	return c.Secret, nil
 }
 
-func (c *ConsorsbankConfig) GetPreferredCurrency() (finance.Currency, error) {
-	return c.PreferredCurrency, nil
+func (c *ConsorsbankConfig) GetIncludeExchanges() ([]string, error) {
+	return c.IncludeExchanges, nil
 }
 
-func (c *ConsorsbankConfig) GetPreferredExchanges() ([]string, error) {
-	return c.PreferredExchanges, nil
+func (c *ConsorsbankConfig) GetPreferredCurrency() (finance.Currency, error) {
+	return c.PreferredCurrency, nil
 }
 
 func (c *ConsorsbankConfig) GetSubscriptionTimeout() (time.Duration, error) {

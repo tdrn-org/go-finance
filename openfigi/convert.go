@@ -18,108 +18,47 @@ package openfigi
 
 import (
 	_ "embed"
-	"encoding/json"
 
 	"github.com/tdrn-org/go-finance"
 	"github.com/tdrn-org/go-finance/openfigi/api"
 )
 
-//go:embed marketSecDesMap.json
-var marketSecDesMapData []byte
-
-var marketSecDesMap map[string]finance.InstrumentType = func() map[string]finance.InstrumentType {
-	var marketSecDesMap map[string]finance.InstrumentType
-	err := json.Unmarshal(marketSecDesMapData, &marketSecDesMap)
-	if err != nil {
-		panic(err)
-	}
-	return marketSecDesMap
-}()
-
-//go:embed securityType2Map.json
-var securityType2MapData []byte
-
-var securityType2Map map[string]finance.InstrumentType = func() map[string]finance.InstrumentType {
-	var securityType2Map map[string]finance.InstrumentType
-	err := json.Unmarshal(securityType2MapData, &securityType2Map)
-	if err != nil {
-		panic(err)
-	}
-	return securityType2Map
-}()
-
-func figiResultToInstrument(figiResult *api.FigiResult, mic string) *finance.Instrument {
-	if figiResult == nil {
-		return nil
-	}
-	instrument := finance.NewInstrument()
-	instrument.Identifiers[finance.InstrumentIdentifierFIGI] = ptrString(figiResult.Figi)
-	instrument.Identifiers[finance.InstrumentIdentifierTicker] = ptrString(figiResult.Ticker)
-	instrument.Name = ptrString(figiResult.Name)
-	instrument.MIC = mic
-	instrumentType, ok := securityType2Map[ptrString(figiResult.SecurityType2)]
-	if !ok {
-		instrumentType, ok = marketSecDesMap[ptrString(figiResult.MarketSector)]
-		if !ok {
-			instrumentType = finance.InstrumentTypeUnknown
-		}
-	}
-	instrument.Type = instrumentType
-	return instrument
-}
-
-var idTypeMap map[finance.InstrumentIdentifier]api.MappingJobIdType = map[finance.InstrumentIdentifier]api.MappingJobIdType{
-	finance.InstrumentIdentifierTicker: api.TICKER,
-	finance.InstrumentIdentifierISIN:   api.IDISIN,
-	finance.InstrumentIdentifierFIGI:   api.IDBBGLOBAL,
-}
-
-func instrumentToMappingJob(instrument *finance.Instrument) *api.MappingJob {
-	hasFIGI := instrument.HasIdentifier(finance.InstrumentIdentifierFIGI)
-	hasTicker := instrument.HasIdentifier(finance.InstrumentIdentifierTicker)
-	if hasFIGI && hasTicker {
-		return nil
-	}
-	var instrumentIdentifer finance.InstrumentIdentifier
+func listingToMappingJob(listing finance.ProviderListing) *api.MappingJob {
+	var idType api.MappingJobIdType
+	idValue := api.MappingJob_IdValue{}
 	var micCode *string
-	if hasTicker {
-		instrumentIdentifer = finance.InstrumentIdentifierTicker
-		micCode = &instrument.MIC
-	} else if hasFIGI {
-		instrumentIdentifer = finance.InstrumentIdentifierFIGI
-	} else if instrument.HasIdentifier(finance.InstrumentIdentifierISIN) {
-		instrumentIdentifer = finance.InstrumentIdentifierISIN
-		micCode = &instrument.MIC
+
+	isin, hasISIN := listing.Attribute(finance.ListingAttributeKeyISIN)
+	wkn, hasWKN := listing.Attribute(finance.ListingAttributeKeyWKN)
+	ticker, hasTicker := listing.Attribute(finance.ListingAttributeKeyTicker)
+	if hasISIN {
+		idType = api.IDISIN
+		idValue.FromMappingJobIdValue0(isin)
+	} else if hasWKN {
+		idType = api.IDWERTPAPIER
+		idValue.FromMappingJobIdValue0(wkn)
+	} else if hasTicker {
+		idType = api.TICKER
+		idValue.FromMappingJobIdValue0(ticker)
 	} else {
 		return nil
 	}
-	idValue := api.MappingJob_IdValue{}
-	identifier, _ := instrument.Identifier(instrumentIdentifer)
-	idValue.FromMappingJobIdValue0(identifier)
+	mic, hasMIC := listing.Attribute(finance.ListingAttributeKeyMIC)
+	if hasMIC {
+		micCode = &mic
+	}
 	mappingJob := &api.MappingJob{
-		IdType:  idTypeMap[instrumentIdentifer],
+		IdType:  idType,
 		IdValue: idValue,
 		MicCode: micCode,
 	}
 	return mappingJob
 }
 
-func mappingJobResultToFigiResult(result *api.MappingJobResult) (*api.FigiResult, string) {
+func mappingJobResultToFigiResult(result *api.MappingJobResult) []api.FigiResult {
 	figiList, err := result.AsMappingJobResultFigiList()
 	if err != nil || figiList.Data == nil {
-		notFound, _ := result.AsMappingJobResultFigiNotFound()
-		return nil, ptrString(notFound.Warning)
+		return nil
 	}
-	figiResults := *figiList.Data
-	if len(figiResults) != 1 {
-		return nil, ""
-	}
-	return &figiResults[0], ""
-}
-
-func ptrString(p *string) string {
-	if p == nil {
-		return ""
-	}
-	return *p
+	return *figiList.Data
 }

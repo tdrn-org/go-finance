@@ -25,7 +25,6 @@ import (
 	"github.com/tdrn-org/go-finance/consorsbank"
 	"github.com/tdrn-org/go-finance/demo"
 	"github.com/tdrn-org/go-finance/frankfurter"
-	"github.com/tdrn-org/go-finance/openfigi"
 	"github.com/tdrn-org/go-finance/twelvedata"
 )
 
@@ -86,8 +85,9 @@ func newConsorsbankAPI(t *testing.T) *consorsbank.API {
 	tlsConfig, err := consorsbank.TLSCAFromFile(root)
 	require.NoError(t, err)
 	config := &consorsbank.StaticConfig{
-		TLSConfig: tlsConfig,
-		Secret:    os.Getenv("CONSORSBANK_SECRET"),
+		TLSConfig:        tlsConfig,
+		Secret:           os.Getenv("CONSORSBANK_SECRET"),
+		IncludeExchanges: []string{"TRG"},
 	}
 	if config.Secret == "" {
 		t.Skip("No Consorsbank secret set; skipping now")
@@ -116,27 +116,6 @@ func newFrankfurterAPI(t *testing.T) *frankfurter.API {
 	return api
 }
 
-func TestOpenFIGIProvider(t *testing.T) {
-	api := newOpenFIGIAPI(t)
-
-	providerName := api.ProviderName()
-	require.Equal(t, "openfigi", providerName)
-}
-
-func newOpenFIGIAPI(t *testing.T) *openfigi.API {
-	config := &openfigi.StaticConfig{
-		BaseURL: openfigi.DefaultBaseURL,
-		APIKey:  os.Getenv("OPENFIGI_API_KEY"),
-		MICs:    testMICs,
-	}
-	if config.APIKey == "" {
-		t.Skip("No OpenFIGI API key set; skipping tests")
-	}
-	api, err := openfigi.NewAPI(config)
-	require.NoError(t, err)
-	return api
-}
-
 func TestTwelveDataProvider(t *testing.T) {
 	api := newTwelveDataAPI(t)
 
@@ -146,8 +125,8 @@ func TestTwelveDataProvider(t *testing.T) {
 
 func newTwelveDataAPI(t *testing.T) *twelvedata.API {
 	config := &twelvedata.StaticConfig{
-		APIKey: os.Getenv("TWELVEDATA_API_KEY"),
-		MICs:   testMICs,
+		APIKey:      os.Getenv("TWELVEDATA_API_KEY"),
+		IncludeMICs: testMICs,
 	}
 	if config.APIKey == "" {
 		t.Skip("No Twelve Data API key set; skipping tests")

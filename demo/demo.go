@@ -14,35 +14,25 @@
  * limitations under the License.
  */
 
+// Package demo implements demo providers for testing purposes.
 package demo
 
 import (
-	"context"
 	"log/slog"
-	"time"
-
-	"github.com/tdrn-org/go-finance"
 )
 
+// Name of the Demo Provider.
 const Name string = "demo"
 
-type Config interface {
-	GetEnabled() bool
-}
-
-type StaticConfig struct {
-	Enabled bool
-}
-
-func (c *StaticConfig) GetEnabled() bool {
-	return c.Enabled
-}
-
+// API provides a Demo provider implementing
+//   - [finance.FX]
+//   - [finance.ListingProvider]
 type API struct {
 	enabled bool
 	logger  *slog.Logger
 }
 
+// NewAPI creates a new Demo provider instance using the given [Config].
 func NewAPI(config Config) (*API, error) {
 	logger := slog.With(slog.String("provider", Name))
 	api := &API{
@@ -52,67 +42,7 @@ func NewAPI(config Config) (*API, error) {
 	return api, nil
 }
 
+// See [finance.APIProvider.ProviderName]
 func (api *API) ProviderName() string {
 	return Name
-}
-
-func (api *API) QueryExchangeRate(ctx context.Context, base, quote finance.Currency) (*finance.ExchangeRate, error) {
-	if !api.enabled {
-		return nil, finance.ErrExchangeRateNotAvailable
-	}
-	now := time.Now()
-	exchangeRate := &finance.ExchangeRate{
-		Timestamp:       now,
-		Base:            base,
-		Quote:           quote,
-		Rate:            1.0 + float64(now.Minute())/100.0,
-		Source:          Name,
-		SourceTimestamp: now,
-	}
-	return exchangeRate, nil
-}
-
-var demoInstrument finance.Instrument = finance.Instrument{
-	ID: finance.NewInstrumentID(),
-	Identifiers: map[finance.InstrumentIdentifier]string{
-		finance.InstrumentIdentifierTicker: "AAPL",
-		finance.InstrumentIdentifierISIN:   "US0378331005",
-		finance.InstrumentIdentifierFIGI:   "BBG000B9Y5X2",
-	},
-	Name: "Apple Inc.",
-	MIC:  "XNGS",
-	Type: finance.InstrumentTypeEquity,
-}
-
-func (api *API) SearchInstruments(ctx context.Context, query string) ([]finance.Instrument, error) {
-	if !api.enabled {
-		return nil, finance.ErrInstrumentSearchRestricted
-	}
-	instruments := []finance.Instrument{demoInstrument}
-	return instruments, nil
-}
-
-func (api *API) ResolveInstruments(ctx context.Context, instruments []finance.Instrument) ([]finance.Instrument, error) {
-	return instruments, nil
-}
-
-func (api *API) QueryQuote(ctx context.Context, instrument *finance.Instrument) (*finance.Quote, error) {
-	if !api.enabled {
-		return nil, finance.ErrQuoteNotAvailable
-	}
-	now := time.Now()
-	quote := &finance.Quote{
-		Instrument:      instrument.Clone(),
-		Timestamp:       now,
-		Open:            101.0,
-		High:            102.0,
-		Low:             100.5,
-		Close:           100.0,
-		Price:           101.0 + float64(now.Minute())/100.0,
-		Volume:          int64(now.Hour()),
-		Currency:        finance.CurrencyUSD,
-		Source:          Name,
-		SourceTimestamp: now,
-	}
-	return quote, nil
 }

@@ -17,6 +17,8 @@
 package consorsbank
 
 import (
+	_ "embed"
+	"encoding/json"
 	"time"
 
 	"github.com/tdrn-org/go-finance"
@@ -50,58 +52,48 @@ func queryToSecurityCodes(query string) []*proto.SecurityCode {
 			Code:     query,
 			CodeType: proto.SecurityCodeType_WKN,
 		})
-		// } else if finance.IsTicker(query) {
-		// 	securityCodes = append(securityCodes, &proto.SecurityCode{
-		// 		Code:     query,
-		// 		CodeType: proto.SecurityCodeType_MNEMONIC_US,
-		// 	})
-		// 	securityCodes = append(securityCodes, &proto.SecurityCode{
-		// 		Code:     query,
-		// 		CodeType: proto.SecurityCodeType_MNEMONIC,
-		// 	})
 	}
 	return securityCodes
 }
 
-func instrumentToSecurityCode(instrument *finance.Instrument) *proto.SecurityCode {
-	if instrument.HasIdentifier(finance.InstrumentIdentifierISIN) {
-		isin, _ := instrument.Identifier(finance.InstrumentIdentifierISIN)
-		return &proto.SecurityCode{
-			Code:     isin,
-			CodeType: proto.SecurityCodeType_ISIN,
-		}
-	}
-	if instrument.HasIdentifier(finance.InstrumentIdentifierWKN) {
-		wkn, _ := instrument.Identifier(finance.InstrumentIdentifierISIN)
-		return &proto.SecurityCode{
-			Code:     wkn,
-			CodeType: proto.SecurityCodeType_WKN,
-		}
-	}
-	return nil
-}
+//go:embed securityClassMap.json
+var securityClassMapData []byte
 
-func securityInfoToInstrument(reply *proto.SecurityInfoReply, mic string) *finance.Instrument {
-	if reply == nil {
-		return nil
+var securityClassMap map[proto.SecurityClass]finance.InstrumentType = func() map[proto.SecurityClass]finance.InstrumentType {
+	var securityClassMap map[proto.SecurityClass]finance.InstrumentType
+	err := json.Unmarshal(securityClassMapData, &securityClassMap)
+	if err != nil {
+		panic(err)
 	}
-	instrument := finance.NewInstrument()
+	return securityClassMap
+}()
+
+func securityInfoToProviderListing(reply *proto.SecurityInfoReply, stockExchangeInfo *proto.SecurityStockExchangeInfo) (*finance.ProviderListing, error) {
+	if reply == nil {
+		return nil, nil
+	}
+	newListing := finance.NewProviderListing(Name).
+		InstrumentName(reply.Name).
+		InstrumentType(securityClassMap[reply.SecurityClass]).
+		Attribute(finance.ListingAttributeKeyExchange, stockExchangeInfo.StockExchange.Id)
 	for _, securityCode := range reply.GetSecurityCodes() {
 		switch securityCode.GetCodeType() {
 		case proto.SecurityCodeType_ISIN:
-			instrument.Identifiers[finance.InstrumentIdentifierISIN] = securityCode.GetCode()
+			newListing.Attribute(finance.ListingAttributeKeyISIN, securityCode.Code)
 		case proto.SecurityCodeType_WKN:
-			instrument.Identifiers[finance.InstrumentIdentifierWKN] = securityCode.GetCode()
+			newListing.Attribute(finance.ListingAttributeKeyWKN, securityCode.Code)
 		case proto.SecurityCodeType_MNEMONIC, proto.SecurityCodeType_MNEMONIC_US:
-			instrument.Identifiers[finance.InstrumentIdentifierTicker] = securityCode.GetCode()
+			newListing.Attribute(finance.ListingAttributeKeyTicker, securityCode.Code)
 		}
 	}
-	instrument.Name = reply.Name
-	instrument.MIC = mic
-	return instrument
+	listing, err := newListing.Build().Validate()
+	if err != nil {
+		return nil, err
+	}
+	return listing, nil
 }
 
-func securityMarketDataReplyToQuote(instrument *finance.Instrument, reply *proto.SecurityMarketDataReply) *finance.Quote {
+func securityMarketDataReplyToQuote(listing finance.ProviderListing, reply *proto.SecurityMarketDataReply) *finance.Quote {
 	if reply == nil {
 		return nil
 	}
@@ -111,7 +103,7 @@ func securityMarketDataReplyToQuote(instrument *finance.Instrument, reply *proto
 		timestamp = time.Unix(reply.LastDateTime.Seconds, int64(reply.LastDateTime.Nanos)).UTC()
 	}
 	return &finance.Quote{
-		Instrument:      instrument.Clone(),
+		Listing:         listing,
 		Timestamp:       timestamp,
 		Open:            reply.OpenPrice,
 		High:            reply.HighPrice,

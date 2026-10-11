@@ -14,8 +14,7 @@
  * limitations under the License.
  */
 
-// Package alphavantage utilizes the [Alpha Vantage API]
-// to provide FX, SymbolSearch and Equity service.
+// Package alphavantage integrates the [Alpha Vantage API].
 //
 // [Alpha Vantage API]: https://www.alphavantage.co/documentation/
 package alphavantage
@@ -27,18 +26,18 @@ import (
 	"net/http"
 	"net/url"
 
-	"github.com/tdrn-org/go-finance"
+	// For godoc
+	_ "github.com/tdrn-org/go-finance"
 )
 
-// Name defines the Alpha Vantage provider name.
+// Name of the Alpha Vantage Provider.
 const Name string = "alphavantage"
 
-const InstrumentIdentifierAlphaVantage finance.InstrumentIdentifier = "alphavantage:symbol"
+const searchMatchScore float64 = 0.5
 
 // API provides access to the [Alpha Vantage API] and implements
 //   - [finance.FX]
-//   - [[]finance.Instrumentearcher]
-//   - [finance.Equity]
+//   - [finance.ListingProvider]
 //
 // [Alpha Vantage API]: https://www.alphavantage.co/documentation/
 type API struct {
@@ -50,7 +49,6 @@ type API struct {
 
 // NewAPI creates a new Alpha Vantage provider instance using the given [Config].
 func NewAPI(config Config) (*API, error) {
-	logger := slog.With(slog.String("provider", Name))
 	baseURL, err := config.GetBaseURL()
 	if err != nil {
 		return nil, err
@@ -66,6 +64,7 @@ func NewAPI(config Config) (*API, error) {
 	if httpClient == nil {
 		httpClient = http.DefaultClient
 	}
+	logger := slog.With(slog.String("provider", Name), slog.Any("url", baseURL))
 	api := &API{
 		baseURL:    baseURL,
 		apiKey:     apiKey,
@@ -75,7 +74,7 @@ func NewAPI(config Config) (*API, error) {
 	return api, nil
 }
 
-// See [finance.APIProvider]
+// See [finance.APIProvider.ProviderName]
 func (api *API) ProviderName() string {
 	return Name
 }

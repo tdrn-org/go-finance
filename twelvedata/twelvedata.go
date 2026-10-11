@@ -14,6 +14,9 @@
  * limitations under the License.
  */
 
+// Package twelvedata integrates the [Twelve Data API].
+//
+// [Twelve Data API]: https://twelvedata.com/docs/
 package twelvedata
 
 import (
@@ -25,19 +28,25 @@ import (
 	"github.com/twelvedata/twelvedata-go/twelvedata"
 )
 
+// Name of the Twelve Data provider.
 const Name string = "twelvedata"
 
 const apiVersion string = "last"
 
+// API provides access to the [Twelve Data API] and implements
+//   - [finance.FX]
+//   - [finance.ListingProvider]
+//
+// [Twelve Data API]: https://twelvedata.com/docs/
 type API struct {
 	client                 *twelvedata.APIClient
-	mics                   []string
+	includeMICs            []string
 	includeInstrumentTypes []string
 	logger                 *slog.Logger
 }
 
+// NewAPI creates a new Twelve Data provider instance using the given [Config].
 func NewAPI(config Config) (*API, error) {
-	logger := slog.With(slog.String("provider", Name))
 	apiKey, err := config.GetAPIKey()
 	if err != nil {
 		return nil, err
@@ -46,7 +55,7 @@ func NewAPI(config Config) (*API, error) {
 	if err != nil {
 		return nil, err
 	}
-	mics, err := config.GetMICs()
+	includeMICs, err := config.GetIncludeMICs()
 	if err != nil {
 		return nil, err
 	}
@@ -61,15 +70,17 @@ func NewAPI(config Config) (*API, error) {
 		cfg.HTTPClient = httpClient
 	}
 	client := twelvedata.NewAPIClient(cfg)
+	logger := slog.With(slog.String("provider", Name))
 	api := &API{
 		client:                 client,
-		mics:                   mics,
+		includeMICs:            includeMICs,
 		includeInstrumentTypes: includeInstrumentTypes,
 		logger:                 logger,
 	}
 	return api, nil
 }
 
+// See [finance.APIProvider.ProviderName]
 func (api *API) ProviderName() string {
 	return Name
 }

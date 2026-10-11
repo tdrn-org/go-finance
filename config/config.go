@@ -28,19 +28,17 @@ import (
 )
 
 type Config struct {
-	FX             FXConfig                                        `toml:"fx"`
-	Symbols        SymbolsConfig                                   `toml:"symbols"`
-	Equity         EquityConfig                                    `toml:"equity"`
-	Demo           DemoConfig                                      `toml:"demo"`
-	AlphaVantage   AlphaVantageConfig                              `toml:"alphavantage"`
-	Consorsbank    ConsorsbankConfig                               `toml:"consorsbank"`
-	Frankfurter    FrankfurterConfig                               `toml:"frankfurter"`
-	OpenFIGI       OpenFIGIConfig                                  `toml:"openfigi"`
-	TwelveData     TwelveDataConfig                                `toml:"twelvedata"`
-	Cache          CacheConfig                                     `toml:"cache"`
-	fxFactory      apiFactory[finance.FX, *Config]                 `toml:"-"`
-	symbolsFactory apiFactory[finance.InstrumentProvider, *Config] `toml:"-"`
-	equityFactory  apiFactory[finance.QuoteProvider, *Config]      `toml:"-"`
+	FX             FXConfig                                     `toml:"fx"`
+	Listings       ListingsConfig                               `toml:"listings"`
+	Demo           DemoConfig                                   `toml:"demo"`
+	AlphaVantage   AlphaVantageConfig                           `toml:"alphavantage"`
+	Consorsbank    ConsorsbankConfig                            `toml:"consorsbank"`
+	Frankfurter    FrankfurterConfig                            `toml:"frankfurter"`
+	OpenFIGI       OpenFIGIConfig                               `toml:"openfigi"`
+	TwelveData     TwelveDataConfig                             `toml:"twelvedata"`
+	Cache          CacheConfig                                  `toml:"cache"`
+	fxFactory      apiFactory[finance.FX, *Config]              `toml:"-"`
+	listingFactory apiFactory[finance.ListingProvider, *Config] `toml:"-"`
 }
 
 //go:embed defaults.toml
@@ -72,7 +70,7 @@ func (c *Config) NewFXProvider() (finance.FX, error) {
 			case FXProviderNameTwelveData:
 				provider, err = c.TwelveData.NewAPI()
 			default:
-				err = fmt.Errorf("unrecognized FX provider name '%s'", providerName)
+				err = fmt.Errorf("unrecognized FX provider name %q", providerName)
 			}
 			if err != nil {
 				return nil, err
@@ -86,30 +84,29 @@ func (c *Config) NewFXProvider() (finance.FX, error) {
 		if err != nil {
 			return nil, err
 		}
-		return composite.NewCachedFXProvider(composite.NewFallbackFXProvider(providers[0], time.Duration(c.FX.Cooldown), providers[1:]...), cache), nil
+		fallbackProvider := composite.NewFallbackFXProvider(time.Duration(c.FX.Cooldown), providers...)
+		return composite.NewCachedFXProvider(fallbackProvider, cache), nil
 	}, c)
 	return c.fxFactory.api, c.fxFactory.err
 }
 
-func (c *Config) NewInstrumentProvider() (finance.InstrumentProvider, error) {
-	c.symbolsFactory.NewAPI(func(c *Config) (finance.InstrumentProvider, error) {
-		providers := make([]finance.InstrumentProvider, 0, len(c.Symbols.ProviderNames))
-		for _, providerName := range c.Symbols.ProviderNames {
-			var provider finance.InstrumentProvider
+func (c *Config) NewListingProvider() (finance.ListingProvider, error) {
+	c.listingFactory.NewAPI(func(c *Config) (finance.ListingProvider, error) {
+		providers := make([]finance.ListingProvider, 0, len(c.Listings.ProviderNames))
+		for _, providerName := range c.Listings.ProviderNames {
+			var provider finance.ListingProvider
 			var err error
 			switch providerName {
-			case SymbolsProviderNameDemo:
+			case ListingProviderNameDemo:
 				provider, err = c.Demo.NewAPI()
-			case SymbolsProviderNameAlphaVantage:
+			case ListingProviderNameAlphaVantage:
 				provider, err = c.AlphaVantage.NewAPI()
-			case SymbolsProviderNameConsorsbank:
+			case ListingProviderNameConsorsbank:
 				provider, err = c.Consorsbank.NewAPI()
-			case SymbolsProviderNameOpenFIGI:
-				provider, err = c.OpenFIGI.NewAPI()
-			case SymbolsProviderNameTwelveData:
+			case ListingProviderNameTwelveData:
 				provider, err = c.TwelveData.NewAPI()
 			default:
-				err = fmt.Errorf("unrecognized Symbols provider name '%s'", providerName)
+				err = fmt.Errorf("unrecognized Listing provider name %q", providerName)
 			}
 			if err != nil {
 				return nil, err
@@ -117,43 +114,20 @@ func (c *Config) NewInstrumentProvider() (finance.InstrumentProvider, error) {
 			providers = append(providers, provider)
 		}
 		if len(providers) == 0 {
-			return nil, fmt.Errorf("at least one Symbols provider must be defined")
+			return nil, fmt.Errorf("at least one Listing provider must be defined")
 		}
-		cache, err := c.Cache.NewInstrumentCache(time.Duration(c.Symbols.CacheTTL))
+		listingCache, err := c.Cache.NewListingCache(time.Duration(c.Listings.ListingCacheTTL))
 		if err != nil {
 			return nil, err
 		}
-		return composite.NewCachedInstrumentProvider(composite.NewMergeInstrumentProvider(providers[0], time.Duration(c.FX.Cooldown), providers[1:]...), cache), nil
+		quoteCache, err := c.Cache.NewQuoteCache(time.Duration(c.Listings.QuoteCacheTTL))
+		if err != nil {
+			return nil, err
+		}
+		cachedProviders := composite.NewCachedListingProviders(providers, listingCache, quoteCache)
+		return composite.NewCombinedListingProvider(time.Duration(c.Listings.Cooldown), cachedProviders...), nil
 	}, c)
-	return c.symbolsFactory.api, c.symbolsFactory.err
-}
-
-func (c *Config) NewQuoteProvider() (finance.QuoteProvider, error) {
-	c.equityFactory.NewAPI(func(c *Config) (finance.QuoteProvider, error) {
-		var provider finance.QuoteProvider
-		var err error
-		switch c.Equity.ProviderName {
-		case EquityProviderNameDemo:
-			provider, err = c.Demo.NewAPI()
-		case EquityProviderNameAlphaVantage:
-			provider, err = c.AlphaVantage.NewAPI()
-		case EquityProviderNameConsorsbank:
-			provider, err = c.Consorsbank.NewAPI()
-		case EquityProviderNameTwelveData:
-			provider, err = c.TwelveData.NewAPI()
-		default:
-			err = fmt.Errorf("unrecognized Equity provider name '%s'", c.Equity.ProviderName)
-		}
-		if err != nil {
-			return nil, err
-		}
-		cache, err := c.Cache.NewQuoteCache(time.Duration(c.Equity.CacheTTL))
-		if err != nil {
-			return nil, err
-		}
-		return composite.NewCachedEquityProvider(provider, cache), nil
-	}, c)
-	return c.equityFactory.api, c.equityFactory.err
+	return c.listingFactory.api, c.listingFactory.err
 }
 
 type apiFactory[A finance.APIProvider, C any] struct {

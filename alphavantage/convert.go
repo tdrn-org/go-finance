@@ -29,7 +29,7 @@ func stringToTimestamp(s, name string) (time.Time, error) {
 		timestamp, err = time.Parse(time.DateOnly, s)
 	}
 	if err != nil {
-		return time.Time{}, fmt.Errorf("failed to parse %s '%s' (cause: %w)", name, s, err)
+		return time.Time{}, fmt.Errorf("%s: failed to parse %s %q (cause: %w)", Name, name, s, err)
 	}
 	return timestamp, nil
 }
@@ -37,7 +37,7 @@ func stringToTimestamp(s, name string) (time.Time, error) {
 func stringToFloat64(s, name string) (float64, error) {
 	value, err := strconv.ParseFloat(s, 64)
 	if err != nil {
-		return 0.0, fmt.Errorf("failed to parse %s '%s' (cause: %w)", name, s, err)
+		return 0.0, fmt.Errorf("%s: failed to parse %s %q (cause: %w)", Name, name, s, err)
 	}
 	return value, nil
 }
@@ -45,7 +45,7 @@ func stringToFloat64(s, name string) (float64, error) {
 func stringToInt64(s, name string) (int64, error) {
 	value, err := strconv.ParseInt(s, 10, 64)
 	if err != nil {
-		return 0.0, fmt.Errorf("failed to parse %s '%s' (cause: %w)", name, s, err)
+		return 0.0, fmt.Errorf("%s: failed to parse %s %q (cause: %w)", Name, name, s, err)
 	}
 	return value, nil
 }

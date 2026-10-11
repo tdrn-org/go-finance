@@ -34,7 +34,7 @@ type CacheConfig struct {
 	Redis  RedisCacheConfig  `toml:"redis"`
 }
 
-const unrecognizedCacheTypeErrMessage string = "unrecognized cache type '%s'"
+const unrecognizedCacheTypeErrMessage string = "unrecognized cache type %q"
 
 func (c *CacheConfig) NewExchangeRateCache(ttl time.Duration) (composite.ExchangeRateCache, error) {
 	switch c.Type {
@@ -52,17 +52,17 @@ func (c *CacheConfig) NewExchangeRateCache(ttl time.Duration) (composite.Exchang
 	}
 }
 
-func (c *CacheConfig) NewInstrumentCache(ttl time.Duration) (composite.InstrumentCache, error) {
+func (c *CacheConfig) NewListingCache(ttl time.Duration) (composite.ListingCache, error) {
 	switch c.Type {
 	case CacheTypeMemory:
-		return memory.NewKeyValue(0, -ttl, cache.NotFound[string, []finance.Instrument]())
+		return memory.NewKeyValue(0, -ttl, cache.NotFound[string, []finance.ProviderListing]())
 	case CacheTypeRedis:
 		options := &redis.Options{
 			Addr:     c.Redis.Address,
 			Password: c.Redis.Password,
 			DB:       c.Redis.DB,
 		}
-		return redis.NewKeyValue(options, -ttl, redis.StringKey, cache.JSONSerializer[[]finance.Instrument]())
+		return redis.NewKeyValue(options, -ttl, redis.StringKey, cache.JSONSerializer[[]finance.ProviderListing]())
 	default:
 		return nil, fmt.Errorf(unrecognizedCacheTypeErrMessage, c.Type)
 	}

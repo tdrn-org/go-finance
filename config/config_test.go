@@ -21,6 +21,7 @@ import (
 
 	"github.com/stretchr/testify/require"
 	"github.com/tdrn-org/go-finance/config"
+	"github.com/tdrn-org/go-finance/openfigi"
 )
 
 func TestLoadConfig(t *testing.T) {
@@ -37,20 +38,20 @@ func TestNewFXProvider(t *testing.T) {
 	require.Equal(t, "cached:fallback:frankfurter|alphavantage|consorsbank|twelvedata", providerName)
 }
 
-func TestNewSymbolsProvider(t *testing.T) {
+func TestNewListingProvider(t *testing.T) {
 	config, err := config.Load("testdata/finance.toml", true)
 	require.NoError(t, err)
-	provider, err := config.NewInstrumentProvider()
+	provider, err := config.NewListingProvider()
 	require.NoError(t, err)
 	providerName := provider.ProviderName()
-	require.Equal(t, "cached:merge:openfigi|alphavantage|consorsbank|twelvedata", providerName)
+	require.Equal(t, "combined:cached:alphavantage|cached:consorsbank|cached:twelvedata", providerName)
 }
 
-func TestNewEquityProvider(t *testing.T) {
+func TestNewOpenFIGI(t *testing.T) {
 	config, err := config.Load("testdata/finance.toml", true)
 	require.NoError(t, err)
-	provider, err := config.NewQuoteProvider()
+	provider, err := config.OpenFIGI.NewAPI()
 	require.NoError(t, err)
 	providerName := provider.ProviderName()
-	require.Equal(t, "cached:consorsbank", providerName)
+	require.Equal(t, openfigi.Name, providerName)
 }

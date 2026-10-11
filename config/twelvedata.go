@@ -23,8 +23,10 @@ import (
 )
 
 type TwelveDataConfig struct {
-	APIKey  string                                         `toml:"api_key"`
-	factory apiFactory[*twelvedata.API, twelvedata.Config] `toml:"-"`
+	APIKey                 string                                         `toml:"api_key"`
+	IncludeMICs            []string                                       `toml:"include_mics"`
+	IncludeInstrumentTypes []string                                       `toml:"include_instrument_types"`
+	factory                apiFactory[*twelvedata.API, twelvedata.Config] `toml:"-"`
 }
 
 func (c *TwelveDataConfig) GetAPIKey() (string, error) {
@@ -35,14 +37,12 @@ func (c *TwelveDataConfig) GetHttpClient() (*http.Client, error) {
 	return nil, nil
 }
 
-func (c *TwelveDataConfig) GetMICs() ([]string, error) {
-	//TODO
-	return nil, nil
+func (c *TwelveDataConfig) GetIncludeMICs() ([]string, error) {
+	return c.IncludeMICs, nil
 }
 
 func (c *TwelveDataConfig) GetIncludeInstrumentTypes() ([]string, error) {
-	//TODO
-	return nil, nil
+	return c.IncludeInstrumentTypes, nil
 }
 
 func (c *TwelveDataConfig) NewAPI() (*twelvedata.API, error) {

@@ -14,32 +14,28 @@
  * limitations under the License.
  */
 
-package twelvedata
+package demo
 
 import (
 	"context"
-	"fmt"
+	"time"
 
 	"github.com/tdrn-org/go-finance"
 )
 
-// See [finance.QuoteProvider]
-func (api *API) QueryQuote(ctx context.Context, instrument *finance.Instrument) (*finance.Quote, error) {
-	ticker, ok := instrument.Identifier(finance.InstrumentIdentifierTicker)
-	if !ok {
-		return nil, finance.ErrQuoteNotAvailable
+// See [finance.FX.QueryExchangeRate]
+func (api *API) QueryExchangeRate(ctx context.Context, base, quote finance.Currency) (*finance.ExchangeRate, error) {
+	if !api.enabled {
+		return nil, finance.ErrExchangeRateNotAvailable
 	}
-	response, rsp, err := api.client.MarketDataAPI.
-		GetQuote(ctx).
-		Symbol(ticker).
-		MicCode(instrument.MIC).
-		Execute()
-	if err != nil {
-		return nil, fmt.Errorf("%s: query quote failure (cause: %w)", Name, err)
+	now := time.Now()
+	exchangeRate := &finance.ExchangeRate{
+		Timestamp:       now,
+		Base:            base,
+		Quote:           quote,
+		Rate:            1.0 + float64(now.Minute())/100.0,
+		Source:          Name,
+		SourceTimestamp: now,
 	}
-	err = api.checkHttpStatus(rsp)
-	if err != nil {
-		return nil, err
-	}
-	return getQuoteResponseToQuote(instrument, response)
+	return exchangeRate, nil
 }

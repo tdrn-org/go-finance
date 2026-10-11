@@ -20,7 +20,6 @@ import (
 	_ "embed"
 	"encoding/json"
 	"fmt"
-	"strings"
 	"time"
 
 	"github.com/tdrn-org/go-finance"
@@ -38,13 +37,13 @@ type statusResponse struct {
 
 func (r *statusResponse) CheckStatus() error {
 	if r.ErrorMessage != "" {
-		return fmt.Errorf("API call failure: '%s'", r.ErrorMessage)
+		return fmt.Errorf("%s: API call failure: %q", Name, r.ErrorMessage)
 	}
 	if r.Note != "" {
-		return fmt.Errorf("%w: %s", finance.ErrRateLimitReached, r.Note)
+		return fmt.Errorf("%s: %w: %s", Name, finance.ErrRateLimitReached, r.Note)
 	}
 	if r.Information != "" {
-		return fmt.Errorf("%w: %s", finance.ErrRateLimitReached, r.Information)
+		return fmt.Errorf("%s: %w: %s", Name, finance.ErrRateLimitReached, r.Information)
 	}
 	return nil
 }
@@ -106,18 +105,6 @@ func (r *bestMatchResponse) Match(minScore float64) (bool, error) {
 	return matchScore >= minScore, nil
 }
 
-//go:embed exchangeMap.json
-var exchangeMapData []byte
-
-var exchangeMap map[string]string = func() map[string]string {
-	var exchangeMap map[string]string
-	err := json.Unmarshal(exchangeMapData, &exchangeMap)
-	if err != nil {
-		panic(err)
-	}
-	return exchangeMap
-}()
-
 //go:embed typeMap.json
 var typeMapData []byte
 
@@ -130,17 +117,18 @@ var typeMap map[string]finance.InstrumentType = func() map[string]finance.Instru
 	return typeMap
 }()
 
-func (r *bestMatchResponse) ToInstrument() *finance.Instrument {
-	instrument := finance.NewInstrument()
-	ticker, exchange, _ := strings.Cut(r.Symbol, ".")
-	instrument.Identifiers[InstrumentIdentifierAlphaVantage] = r.Symbol
-	instrument.Identifiers[finance.InstrumentIdentifierTicker] = ticker
-	instrument.Name = r.Name
-	instrument.MIC = exchangeMap[exchange]
+func (r *bestMatchResponse) ToProviderListing() (*finance.ProviderListing, error) {
 	currency := finance.Currency(r.Currency)
-	instrument.Currency = &currency
-	instrument.Type = typeMap[r.Type]
-	return instrument
+	listing, err := finance.NewProviderListing(Name).
+		InstrumentName(r.Name).
+		InstrumentType(typeMap[r.Type]).
+		Attribute(finance.ListingAttributeKeySymbol, r.Symbol).
+		Currency(&currency).
+		Build().Validate()
+	if err != nil {
+		return nil, err
+	}
+	return listing, nil
 }
 
 type symbolSearchResponse struct {
@@ -161,9 +149,10 @@ type quoteResponse struct {
 	ChangePercent    string `json:"10. change percent"`
 }
 
-func (r *quoteResponse) ToQuote(instrument *finance.Instrument) (*finance.Quote, error) {
-	if instrument.Currency == nil {
-		return nil, fmt.Errorf("%s: unable to determine quote currency for instrument '%s'", Name, instrument)
+func (r *quoteResponse) ToQuote(listing finance.ProviderListing) (*finance.Quote, error) {
+	currency := listing.Currency()
+	if currency == nil {
+		return nil, fmt.Errorf("%s: no currency for listing %q", Name, listing.String())
 	}
 	timestamp, err := stringToTimestamp(r.LatestTradingDay, "latest trading day")
 	if err != nil {
@@ -194,7 +183,7 @@ func (r *quoteResponse) ToQuote(instrument *finance.Instrument) (*finance.Quote,
 		return nil, err
 	}
 	quote := &finance.Quote{
-		Instrument:      *instrument,
+		Listing:         listing,
 		Timestamp:       timestamp,
 		Open:            open,
 		High:            high,
@@ -202,7 +191,7 @@ func (r *quoteResponse) ToQuote(instrument *finance.Instrument) (*finance.Quote,
 		Close:           previousClose,
 		Price:           price,
 		Volume:          volume,
-		Currency:        *instrument.Currency,
+		Currency:        *currency,
 		Source:          Name,
 		SourceTimestamp: time.Now().UTC(),
 	}

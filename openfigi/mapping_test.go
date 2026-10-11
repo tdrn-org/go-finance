@@ -14,29 +14,24 @@
  * limitations under the License.
  */
 
-package consorsbank
+package openfigi_test
 
 import (
-	"context"
+	"testing"
 
+	"github.com/stretchr/testify/require"
 	"github.com/tdrn-org/go-finance"
 )
 
-func (api *API) QueryQuote(ctx context.Context, instrument *finance.Instrument) (*finance.Quote, error) {
-	if !instrument.HasIdentifier(finance.InstrumentIdentifierISIN) {
-		return nil, finance.ErrQuoteNotAvailable
-	}
+func TestOpenFIGIMapping(t *testing.T) {
+	api := newOpenFIGIAPI(t)
 
-	api.mutex.Lock()
-	defer api.mutex.Unlock()
-
-	subscription := api.getSecurityMarketDataSubscriptionLocked(instrument)
-	if subscription == nil {
-		var err error
-		subscription, err = api.startSecurityMarketDataSubscriptionLocked(ctx, instrument)
-		if err != nil {
-			return nil, err
-		}
+	listings := []finance.ProviderListing{
+		testListingISIN,
+		testListingWKN,
+		testListingTicker,
 	}
-	return subscription.LastReply()
+	mappings, err := api.MapListings(t.Context(), listings)
+	require.NoError(t, err)
+	require.Len(t, mappings, len(listings))
 }

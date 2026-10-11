@@ -14,6 +14,9 @@
  * limitations under the License.
  */
 
+// Package consorsbank integrates the [Consorsbank TAPI].
+//
+// [Consorsbank TAPI]: https://www.consorsbank.de/web/Wertpapierhandel/Trading-Software/ActiveTrader#API
 package consorsbank
 
 import (
@@ -23,7 +26,6 @@ import (
 	"fmt"
 	"io"
 	"log/slog"
-	"math"
 	"sync"
 	"time"
 
@@ -33,14 +35,20 @@ import (
 	"google.golang.org/grpc/credentials"
 )
 
+// Name of the Consorsbank Provider.
 const Name string = "consorsbank"
 
+// API provides access to the [Consorsbank TAPI] and implements
+//   - [finance.FX]
+//   - [finance.ListingProvider]
+//
+// [Consorsbank TAPI]: https://www.consorsbank.de/web/Wertpapierhandel/Trading-Software/ActiveTrader#API
 type API struct {
 	address                   string
 	tlsConfig                 *tls.Config
 	secret                    string
+	includeExchanges          []string
 	preferredCurrency         finance.Currency
-	preferredExchanges        []string
 	subscriptionTimeout       time.Duration
 	session                   *apiSession
 	exchangeRateSubscriptions map[string]*streamSubscription[proto.CurrencyRateReply, finance.ExchangeRate]
@@ -50,17 +58,8 @@ type API struct {
 	stoppedWG                 sync.WaitGroup
 }
 
-type apiSession struct {
-	grpcClient  *grpc.ClientConn
-	AccessToken string
-}
-
-func (s *apiSession) SecurityService() proto.SecurityServiceClient {
-	return proto.NewSecurityServiceClient(s.grpcClient)
-}
-
+// NewAPI creates a new Consorsbank provider instance using the given [Config].
 func NewAPI(config Config) (*API, error) {
-	logger := slog.With(slog.String("provider", Name))
 	address, err := config.GetAddress()
 	if err != nil {
 		return nil, err
@@ -76,27 +75,25 @@ func NewAPI(config Config) (*API, error) {
 	if err != nil {
 		return nil, err
 	}
+	includeExchanges, err := config.GetIncludeExchanges()
+	if err != nil {
+		return nil, err
+	}
 	preferredCurrency, err := config.GetPreferredCurrency()
 	if err != nil {
 		return nil, err
-	}
-	preferredExchanges, err := config.GetPreferredExchanges()
-	if err != nil {
-		return nil, err
-	}
-	if len(preferredExchanges) == 0 {
-		preferredExchanges = []string{DefaultExchange}
 	}
 	subscriptionTimeout, err := config.GetSubscriptionTimeout()
 	if err != nil {
 		return nil, err
 	}
+	logger := slog.With(slog.String("provider", Name), slog.String("address", address))
 	api := &API{
 		address:                   address,
 		tlsConfig:                 tlsConfig,
 		secret:                    secret,
+		includeExchanges:          includeExchanges,
 		preferredCurrency:         preferredCurrency,
-		preferredExchanges:        preferredExchanges,
 		subscriptionTimeout:       subscriptionTimeout,
 		exchangeRateSubscriptions: make(map[string]*streamSubscription[proto.CurrencyRateReply, finance.ExchangeRate]),
 		quoteSubscriptions:        make(map[string]*streamSubscription[proto.SecurityMarketDataReply, finance.Quote]),
@@ -105,6 +102,8 @@ func NewAPI(config Config) (*API, error) {
 	return api, nil
 }
 
+// Shutdown requests a Consorsbank provider shutdown by gracefully closing any
+// running session.
 func (api *API) Shutdown(ctx context.Context) error {
 	api.mutex.Lock()
 	defer api.mutex.Unlock()
@@ -112,6 +111,7 @@ func (api *API) Shutdown(ctx context.Context) error {
 	return errors.Join(api.shutdownSessionLocked(ctx), api.closeSessionLocked())
 }
 
+// Close closes any running session.
 func (api *API) Close() error {
 	api.mutex.Lock()
 	defer api.mutex.Unlock()
@@ -119,114 +119,28 @@ func (api *API) Close() error {
 	return api.closeSessionLocked()
 }
 
+// See [finance.APIProvider.ProviderName]
 func (api *API) ProviderName() string {
 	return Name
-}
-
-func (api *API) getSecurityInfo(ctx context.Context, session *apiSession, securityService proto.SecurityServiceClient, securityCode *proto.SecurityCode) (*proto.SecurityInfoReply, error) {
-	reply, err := securityService.GetSecurityInfo(ctx, &proto.SecurityInfoRequest{
-		AccessToken:  session.AccessToken,
-		SecurityCode: securityCode,
-	})
-	if err != nil {
-		api.invalidateSessionLocked()
-		return nil, fmt.Errorf("failed to query security info from Consorsbank TAPI (cause: %w)", err)
-	}
-	if tapiError := reply.GetError(); tapiError != nil {
-		return nil, fmt.Errorf("query security info error in Consorsbank TAPI call (code: %s, message: %s)",
-			tapiError.GetCode(), tapiError.GetMessage())
-	}
-	return reply, nil
-}
-
-func (api *API) getSecurityMarketDataSubscriptionLocked(instrument *finance.Instrument) *streamSubscription[proto.SecurityMarketDataReply, finance.Quote] {
-	subscriptionKey, _ := instrument.Identifier(finance.InstrumentIdentifierISIN)
-	subscription := api.quoteSubscriptions[subscriptionKey]
-	if subscription.IsClosed() {
-		return nil
-	}
-	return subscription
-}
-
-func (api *API) startSecurityMarketDataSubscriptionLocked(ctx context.Context, instrument *finance.Instrument) (*streamSubscription[proto.SecurityMarketDataReply, finance.Quote], error) {
-	session, err := api.getSessionLocked(ctx)
-	if err != nil {
-		return nil, err
-	}
-	securityService := session.SecurityService()
-	subscriptionKey, _ := instrument.Identifier(finance.InstrumentIdentifierISIN)
-	securityCode := &proto.SecurityCode{
-		Code:     subscriptionKey,
-		CodeType: proto.SecurityCodeType_ISIN,
-	}
-	securityInfoReply, err := api.getSecurityInfo(ctx, session, securityService, securityCode)
-	if err != nil {
-		return nil, err
-	}
-	if len(securityInfoReply.StockExchangeInfos) == 0 {
-		return nil, fmt.Errorf("unable to determine stock exchange for quote query (symbol: %s)", securityCode.Code)
-	}
-	preferredExchange, err := api.getPreferredExchange(subscriptionKey, securityInfoReply.StockExchangeInfos)
-	if err != nil {
-		return nil, err
-	}
-	subscriptionCtx, subscriptionCancel := context.WithCancel(context.Background())
-	client, err := securityService.StreamMarketData(subscriptionCtx, &proto.SecurityMarketDataRequest{
-		AccessToken: session.AccessToken,
-		SecurityWithStockexchange: &proto.SecurityWithStockExchange{
-			SecurityCode:  securityCode,
-			StockExchange: preferredExchange.StockExchange,
-		},
-		Currency: string(api.preferredCurrency),
-	})
-	if err != nil {
-		subscriptionCancel()
-		api.invalidateSessionLocked()
-		return nil, fmt.Errorf("failed to create security market data subscription (cause: %w)", err)
-	}
-	subscription := &streamSubscription[proto.SecurityMarketDataReply, finance.Quote]{
-		client:              client,
-		subscriptionTimeout: api.subscriptionTimeout,
-		recordReply: func(s *streamSubscription[proto.SecurityMarketDataReply, finance.Quote], reply *proto.SecurityMarketDataReply) {
-			recordSecurityMarketDataReply(s, instrument, reply)
-		},
-		ctx:    subscriptionCtx,
-		cancel: subscriptionCancel,
-		logger: api.logger.With(slog.String("securityMarketDataSubscription", subscriptionKey)),
-	}
-	api.quoteSubscriptions[subscriptionKey] = subscription
-	api.stoppedWG.Go(subscription.Run)
-	return subscription, nil
-}
-
-func (api *API) getPreferredExchange(isin string, exchangeInfos []*proto.SecurityStockExchangeInfo) (*proto.SecurityStockExchangeInfo, error) {
-	for _, preferredExchange := range api.preferredExchanges {
-		for _, exchangeInfo := range exchangeInfos {
-			if exchangeInfo.StockExchange.Id == preferredExchange {
-				return exchangeInfo, nil
-			}
-		}
-	}
-	return nil, fmt.Errorf("unable to determine preferred exchange for ISIN: %s", isin)
 }
 
 func (api *API) getSessionLocked(ctx context.Context) (*apiSession, error) {
 	if api.session != nil {
 		return api.session, nil
 	}
-	api.logger.Info("creating Consorsbank TAPI session...")
+	api.logger.Info("creating TAPI session...")
 	dialOptions := []grpc.DialOption{
 		grpc.WithTransportCredentials(credentials.NewTLS(api.tlsConfig)),
 	}
 	grpcClient, err := grpc.NewClient(api.address, dialOptions...)
 	if err != nil {
-		return nil, fmt.Errorf("failed to create gRPC client to Consorsbank TAPI at '%s' (cause: %w)", api.address, err)
+		return nil, fmt.Errorf("%s: failed to create gRPC client to TAPI at %q (cause: %w)", Name, api.address, err)
 	}
 	accessService := proto.NewAccessServiceClient(grpcClient)
 	loginReply, err := accessService.Login(ctx, &proto.LoginRequest{Secret: api.secret})
 	if err != nil {
 		grpcClient.Close()
-		return nil, fmt.Errorf("failed to login to Consorsbank TAPI (cause: %w)", err)
+		return nil, fmt.Errorf("%s: failed to login to TAPI at %q (cause: %w)", Name, api.address, err)
 	}
 	api.session = &apiSession{
 		grpcClient:  grpcClient,
@@ -253,7 +167,7 @@ func (api *API) shutdownSessionLocked(ctx context.Context) error {
 	accessService := proto.NewAccessServiceClient(api.session.grpcClient)
 	_, err := accessService.Logout(ctx, &proto.LogoutRequest{AccessToken: api.session.AccessToken})
 	if err != nil {
-		return fmt.Errorf("failed to send logout request to Consorsbank TAPI (cause: %w)", err)
+		return fmt.Errorf("%s: failed to send logout request to TAPI at %q (cause: %w)", Name, api.address, err)
 	}
 	return nil
 }
@@ -262,12 +176,22 @@ func (api *API) closeSessionLocked() error {
 	if api.session == nil {
 		return nil
 	}
+	api.logger.Info("closing TAPI session...")
 	err := api.session.grpcClient.Close()
 	api.session = nil
 	if err != nil {
-		return fmt.Errorf("failed to close Consorsbank TAPI gRPC client (cause: %w)", err)
+		return fmt.Errorf("%s: failed to close gRPC client to TAPI at %q (cause: %w)", Name, api.address, err)
 	}
 	return nil
+}
+
+type apiSession struct {
+	grpcClient  *grpc.ClientConn
+	AccessToken string
+}
+
+func (s *apiSession) SecurityService() proto.SecurityServiceClient {
+	return proto.NewSecurityServiceClient(s.grpcClient)
 }
 
 type streamSubscription[R, T any] struct {
@@ -329,7 +253,7 @@ func (s *streamSubscription[R, T]) timeoutReached() bool {
 	s.mutex.Lock()
 	defer s.mutex.Unlock()
 
-	if s.subscriptionTimeout == 0 {
+	if s.subscriptionTimeout <= 0 {
 		return false
 	}
 	now := time.Now()
@@ -347,38 +271,8 @@ func (s *streamSubscription[R, T]) LastReply() (*T, error) {
 	if s.lastReply == nil {
 		return nil, finance.ErrRequestPending
 	}
-	// Only start extending timeout after at least one reply has come
-	// to timeout disfunctional subscriptions.
+	// Only start extending timeout after at least one reply has has been
+	// received, to timeout dysfunctional subscriptions.
 	s.suscribeUntil = time.Now().Add(s.subscriptionTimeout)
 	return s.lastReply, nil
-}
-
-func recordCurrencyRateReply(s *streamSubscription[proto.CurrencyRateReply, finance.ExchangeRate], reply *proto.CurrencyRateReply) {
-	if reply.Error != nil {
-		s.logger.Debug("ignoring errornous currency rate reply", slog.Any("err", reply.Error))
-		return
-	}
-	if reply.CurrencyFrom == "" || reply.CurrencyTo == "" || math.IsNaN(reply.CurrencyRate) {
-		s.logger.Debug("ignoring empty currency rate reply")
-		return
-	}
-
-	s.mutex.Lock()
-	defer s.mutex.Unlock()
-
-	s.logger.Info("recording currency rate reply")
-	s.lastReply = currencyRateReplyToExchangeRate(reply)
-}
-
-func recordSecurityMarketDataReply(s *streamSubscription[proto.SecurityMarketDataReply, finance.Quote], instrument *finance.Instrument, reply *proto.SecurityMarketDataReply) {
-	if reply.Error != nil {
-		s.logger.Debug("ignoring errornous market data reply", slog.Any("err", reply.Error))
-		return
-	}
-
-	s.mutex.Lock()
-	defer s.mutex.Unlock()
-
-	s.logger.Info("recording security market data reply")
-	s.lastReply = securityMarketDataReplyToQuote(instrument, reply)
 }

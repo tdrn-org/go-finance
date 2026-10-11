@@ -25,8 +25,9 @@ import (
 	"github.com/tdrn-org/go-finance"
 )
 
-// See [finance.FX]
+// See [finance.FX.QueryExchangeRate]
 func (api *API) QueryExchangeRate(ctx context.Context, base, quote finance.Currency) (*finance.ExchangeRate, error) {
+	api.logger.Info("querying exchange rate...", slog.String("base", string(base)), slog.String("quote", string(quote)))
 	response, err := api.queryExchangeRate(ctx, base, quote)
 	if err != nil {
 		return nil, err
@@ -40,7 +41,6 @@ func (api *API) queryExchangeRate(ctx context.Context, base, quote finance.Curre
 	if err != nil {
 		return nil, fmt.Errorf("%s: failed create query exchange rate request (cause: %w)", Name, err)
 	}
-	api.logger.Debug("querying exchange rate", slog.Any("url", api.baseURL))
 	rsp, err := api.httpClient.Do(req)
 	if err != nil {
 		return nil, fmt.Errorf("%s: failed to send query exchange rate request (cause: %w)", Name, err)
@@ -51,6 +51,5 @@ func (api *API) queryExchangeRate(ctx context.Context, base, quote finance.Curre
 	if err != nil {
 		return nil, err
 	}
-	api.logger.Debug("found exchange rate", slog.String("date", response.RealtimeRate.LastRefreshed), slog.String("base", response.RealtimeRate.FromCurrencyCode), slog.String("quote", response.RealtimeRate.ToCurrencyCode), slog.String("rate", response.RealtimeRate.ExchangeRate))
 	return response, nil
 }

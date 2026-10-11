@@ -42,11 +42,11 @@ func TLSSkipVerify() *tls.Config {
 func TLSCAFromPEM(data []byte) (*tls.Config, error) {
 	block, rest := pem.Decode(data)
 	if block == nil || block.Type != "CERTIFICATE" || len(rest) > 0 {
-		return nil, fmt.Errorf("invalid certificate data")
+		return nil, fmt.Errorf("%s: invalid certificate data", Name)
 	}
 	root, err := x509.ParseCertificate(block.Bytes)
 	if err != nil {
-		return nil, fmt.Errorf("failed to parse certificate (cause: %w)", err)
+		return nil, fmt.Errorf("%s: failed to parse certificate (cause: %w)", Name, err)
 	}
 	roots := x509.NewCertPool()
 	roots.AddCert(root)
@@ -54,17 +54,17 @@ func TLSCAFromPEM(data []byte) (*tls.Config, error) {
 		InsecureSkipVerify: true, // #nosec G402 -- self-signed cert is pinned via VerifyPeerCertificate below
 		VerifyPeerCertificate: func(rawCerts [][]byte, verifiedChains [][]*x509.Certificate) error {
 			if len(rawCerts) != 1 {
-				return fmt.Errorf("unexpected raw certificate count %d", len(rawCerts))
+				return fmt.Errorf("%s: unexpected raw certificate count %d", Name, len(rawCerts))
 			}
 			peerCert, err := x509.ParseCertificate(rawCerts[0])
 			if err != nil {
-				return fmt.Errorf("failed to parse peer certificate (cause: %w)", err)
+				return fmt.Errorf("%s: failed to parse peer certificate (cause: %w)", Name, err)
 			}
 			verifyOpts := &x509.VerifyOptions{
 				Roots: roots,
 			}
 			if _, err := peerCert.Verify(*verifyOpts); err != nil {
-				return fmt.Errorf("failed to verify peer certificate (cause: %w)", err)
+				return fmt.Errorf("%s: failed to verify peer certificate (cause: %w)", Name, err)
 			}
 			return nil
 		},
@@ -74,7 +74,7 @@ func TLSCAFromPEM(data []byte) (*tls.Config, error) {
 func TLSCAFromFile(file string) (*tls.Config, error) {
 	data, err := os.ReadFile(file)
 	if err != nil {
-		return nil, fmt.Errorf("failed to read certificate file '%s' (cause: %w)", file, err)
+		return nil, fmt.Errorf("%s: failed to read certificate file %q (cause: %w)", Name, file, err)
 	}
 	return TLSCAFromPEM(data)
 }

@@ -14,8 +14,7 @@
  * limitations under the License.
  */
 
-// Package openfigi utilizes the [OpenFIGI API]
-// to provide InstrumentProvider service.
+// Package openfigi integrates the [OpenFIGI API].
 //
 // [OpenFIGI API]: https://www.openfigi.com/api
 package openfigi
@@ -32,7 +31,7 @@ import (
 	openfigiapi "github.com/tdrn-org/go-finance/openfigi/api"
 )
 
-// Name of OpenFIGI provider.
+// Name of OpenFIGI Provider.
 const Name string = "openfigi"
 
 const defaultBaseURLString string = "https://api.openfigi.com/v3"
@@ -50,13 +49,10 @@ var DefaultBaseURL *url.URL = func() *url.URL {
 //
 // [OpenFIGI API]: https://www.openfigi.com/api
 type API struct {
-	baseURL               *url.URL
-	apiKey                string
-	apiClient             openfigiapi.ClientWithResponsesInterface
-	mics                  []string
-	includeSecurityTypes  []string
-	includeSecurityTypes2 []string
-	logger                *slog.Logger
+	baseURL   *url.URL
+	apiKey    string
+	apiClient openfigiapi.ClientWithResponsesInterface
+	logger    *slog.Logger
 }
 
 func NewAPI(config Config) (*API, error) {
@@ -76,34 +72,19 @@ func NewAPI(config Config) (*API, error) {
 	if httpClient == nil {
 		httpClient = http.DefaultClient
 	}
-	mics, err := config.GetMICs()
-	if err != nil {
-		return nil, err
-	}
-	includeSecurityTypes, err := config.GetIncludeSecurityTypes()
-	if err != nil {
-		return nil, err
-	}
-	includeSecurityTypes2, err := config.GetIncludeSecurityTypes2()
-	if err != nil {
-		return nil, err
-	}
 	httpClientOption := func(apiClient *openfigiapi.Client) error {
 		apiClient.Client = httpClient
 		return nil
 	}
 	apiClient, err := openfigiapi.NewClientWithResponses(baseURL.String(), httpClientOption)
 	if err != nil {
-		return nil, fmt.Errorf("failed to create API client (cause: %w)", err)
+		return nil, fmt.Errorf("%s: failed to create API client (cause: %w)", Name, err)
 	}
 	api := &API{
-		baseURL:               baseURL,
-		apiKey:                apiKey,
-		apiClient:             apiClient,
-		mics:                  mics,
-		includeSecurityTypes:  includeSecurityTypes,
-		includeSecurityTypes2: includeSecurityTypes2,
-		logger:                logger,
+		baseURL:   baseURL,
+		apiKey:    apiKey,
+		apiClient: apiClient,
+		logger:    logger,
 	}
 	return api, nil
 }

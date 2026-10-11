@@ -26,46 +26,70 @@ import (
 // DefaultAddress defines the default address of the Consorsbank TAPI server.
 const DefaultAddress string = "localhost:40443"
 
-const DefaultExchange string = "TRG"
-
+// Config interface for Consorsbank TAPI Provider.
 type Config interface {
+	// GetAddress gets the address (host:port) the TAPI service is listening on.
+	// [DefaultAddress] is used if empty.
 	GetAddress() (string, error)
+	// GetTLSConfig gets the TLS config to use to connect to the TAPI service.
+	// Default [tls.Config] is used if nil.
 	GetTLSConfig() (*tls.Config, error)
+	// GetSecret gets the secret to use to connect to the TAPI service.
 	GetSecret() (string, error)
+	// GetIncludeExchanges get the TAPI exchange IDs to include during a search.
+	// If the array is empty, all exchange IDs are included.
+	GetIncludeExchanges() ([]string, error)
+	// GetPreferredCurrency gets the preferred currency for quote queries. If
+	// empty the listings default currency is used.
 	GetPreferredCurrency() (finance.Currency, error)
-	GetPreferredExchanges() ([]string, error)
+	// GetSubscriptionTimeout gets the duration after which a no longer
+	// accessed subscription is closed. If 0 is returned subscriptions
+	// will not closed at all.
 	GetSubscriptionTimeout() (time.Duration, error)
 }
 
+// StaticConfig implements [Config] via static attributes.
 type StaticConfig struct {
-	Address             string
-	TLSConfig           *tls.Config
-	Secret              string
-	PreferredCurrency   finance.Currency
-	PreferredExchanges  []string
+	// See [Config.GetAddress]
+	Address string
+	// See [Config.GetTLSConfig]
+	TLSConfig *tls.Config
+	// See [Config.GetSecret]
+	Secret string
+	// See [Config.GetIncludeExchanges]
+	IncludeExchanges []string
+	// See [Config.GetPreferredCurrency]
+	PreferredCurrency finance.Currency
+	// See [Config.GetSubscriptionTimeout]
 	SubscriptionTimeout time.Duration
 }
 
+// See [Config.GetAddress]
 func (c *StaticConfig) GetAddress() (string, error) {
 	return c.Address, nil
 }
 
+// See [Config.GetTLSConfig]
 func (c *StaticConfig) GetTLSConfig() (*tls.Config, error) {
 	return c.TLSConfig, nil
 }
 
+// See [Config.GetSecret]
 func (c *StaticConfig) GetSecret() (string, error) {
 	return c.Secret, nil
 }
 
+// See [Config.GetIncludeExchanges]
+func (c *StaticConfig) GetIncludeExchanges() ([]string, error) {
+	return c.IncludeExchanges, nil
+}
+
+// See [Config.GetPreferredCurrency]
 func (c *StaticConfig) GetPreferredCurrency() (finance.Currency, error) {
 	return c.PreferredCurrency, nil
 }
 
-func (c *StaticConfig) GetPreferredExchanges() ([]string, error) {
-	return c.PreferredExchanges, nil
-}
-
+// See [Config.GetSubscriptionTimeout]
 func (c *StaticConfig) GetSubscriptionTimeout() (time.Duration, error) {
 	return c.SubscriptionTimeout, nil
 }

@@ -34,7 +34,7 @@ func exchangeRateResponseToExchangeRate(response *twelvedata.GetExchangeRate200R
 	}
 	baseAndQuote := strings.Split(response.Symbol, "/")
 	if len(baseAndQuote) != 2 {
-		return nil, fmt.Errorf("unexepcted exchange rate symbol '%s'", response.Symbol)
+		return nil, fmt.Errorf("%s: unexepcted exchange rate symbol %q", Name, response.Symbol)
 	}
 	exchangeRate := &finance.ExchangeRate{
 		Timestamp:       time.Unix(response.Timestamp, 0).UTC(),
@@ -59,35 +59,26 @@ var instrumentTypeMap map[string]finance.InstrumentType = func() map[string]fina
 	return instrumentTypeMap
 }()
 
-func symbolSearchResponseItemToInstrument(responseItem *twelvedata.SymbolSearchResponseItem) *finance.Instrument {
+func symbolSearchResponseItemToProviderListing(responseItem *twelvedata.SymbolSearchResponseItem) (*finance.ProviderListing, error) {
 	if responseItem == nil {
-		return nil
+		return nil, nil
 	}
-	instrument := finance.NewInstrument()
-	instrument.Identifiers[finance.InstrumentIdentifierTicker] = responseItem.Symbol
-	instrument.Name = responseItem.InstrumentName
-	instrument.MIC = responseItem.MicCode
 	currency := finance.Currency(responseItem.Currency)
-	instrument.Currency = &currency
-	instrument.Type = instrumentTypeMap[responseItem.InstrumentType]
-	return instrument
+	listing, err := finance.NewProviderListing(Name).
+		InstrumentName(responseItem.InstrumentName).
+		InstrumentType(instrumentTypeMap[responseItem.InstrumentType]).
+		Attribute(finance.ListingAttributeKeyTicker, responseItem.Symbol).
+		Attribute(finance.ListingAttributeKeyExchange, responseItem.Exchange).
+		Attribute(finance.ListingAttributeKeyMIC, responseItem.MicCode).
+		Currency(&currency).
+		Build().Validate()
+	if err != nil {
+		return nil, err
+	}
+	return listing, nil
 }
 
-func instrumentToQuery(instrument *finance.Instrument) string {
-	if instrument == nil {
-		return ""
-	}
-	if instrument.HasIdentifier(finance.InstrumentIdentifierISIN) {
-		query, _ := instrument.Identifier(finance.InstrumentIdentifierISIN)
-		return query
-	} else if instrument.HasIdentifier(finance.InstrumentIdentifierFIGI) {
-		query, _ := instrument.Identifier(finance.InstrumentIdentifierFIGI)
-		return query
-	}
-	return ""
-}
-
-func getQuoteResponseToQuote(instrument *finance.Instrument, response *twelvedata.GetQuote200Response) (*finance.Quote, error) {
+func getQuoteResponseToQuote(listing finance.ProviderListing, response *twelvedata.GetQuote200Response) (*finance.Quote, error) {
 	if response == nil {
 		return nil, nil
 	}
@@ -122,16 +113,12 @@ func getQuoteResponseToQuote(instrument *finance.Instrument, response *twelvedat
 			return nil, err
 		}
 	}
-	var currency finance.Currency
-	if response.Currency != nil {
-		currency = finance.Currency(*response.Currency)
-	} else if instrument.Currency != nil {
-		currency = *instrument.Currency
-	} else {
-		return nil, fmt.Errorf("%s: unable to determine quote currency for instrument '%s'", Name, instrument)
+	if response.Currency == nil {
+		return nil, fmt.Errorf("%s: unable to determine quote currency for listing %q", Name, listing.String())
 	}
+	currency := finance.Currency(*response.Currency)
 	quote := &finance.Quote{
-		Instrument:      instrument.Clone(),
+		Listing:         listing,
 		Timestamp:       timestamp,
 		Open:            open,
 		High:            high,
@@ -149,7 +136,7 @@ func getQuoteResponseToQuote(instrument *finance.Instrument, response *twelvedat
 func stringToFloat64(s, name string) (float64, error) {
 	value, err := strconv.ParseFloat(s, 64)
 	if err != nil {
-		return 0.0, fmt.Errorf("%s: failed to parse %s '%s' (cause: %w)", Name, name, s, err)
+		return 0.0, fmt.Errorf("%s: failed to parse %s %q (cause: %w)", Name, name, s, err)
 	}
 	return value, nil
 }
@@ -157,7 +144,7 @@ func stringToFloat64(s, name string) (float64, error) {
 func stringToInt64(s, name string) (int64, error) {
 	value, err := strconv.ParseInt(s, 10, 64)
 	if err != nil {
-		return 0.0, fmt.Errorf("%s: failed to parse %s '%s' (cause: %w)", Name, name, s, err)
+		return 0.0, fmt.Errorf("%s: failed to parse %s %q (cause: %w)", Name, name, s, err)
 	}
 	return value, nil
 }

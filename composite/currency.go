@@ -72,9 +72,9 @@ type fallbackFXProvider struct {
 	queue *cooldownQueue[finance.FX]
 }
 
-func NewFallbackFXProvider(provider finance.FX, cooldown time.Duration, fallbacks ...finance.FX) finance.FX {
+func NewFallbackFXProvider(cooldown time.Duration, providers ...finance.FX) finance.FX {
 	return &fallbackFXProvider{
-		queue: newCooldownQueue(provider, cooldown, fallbacks...),
+		queue: newCooldownQueue(cooldown, providers...),
 	}
 }
 

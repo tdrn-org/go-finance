@@ -16,49 +16,49 @@ export PATH := $(GOBIN):$(PATH)
 #     every machine and CI produce identical output. protoc itself is deliberately
 #     NOT pinned: it only contributes a version comment.
 
-.PHONE: deps
+.PHONY: deps
 deps:
 	go mod download -x
 
-.PHONE: prototools
+.PHONY: prototools
 prototools:
 	go install google.golang.org/protobuf/cmd/protoc-gen-go
 	go install google.golang.org/grpc/cmd/protoc-gen-go-grpc
 
-.PHONE: linttools
+.PHONY: linttools
 linttools:
 	go install honnef.co/go/tools/cmd/staticcheck
 
-.PHONE: generate
+.PHONY: generate
 generate: deps prototools
 	@echo "==> protoc        $$(protoc --version)"
 	@echo "==> protoc-gen-go $$(protoc-gen-go --version)"
 	@echo "==> Generated files are tracked: commit the regenerated sources."
 	go generate ./...
 
-.PHONE: tidy
+.PHONY: tidy
 tidy:
 	go mod verify
 	go mod tidy
 
-.PHONE: vet
+.PHONY: vet
 vet:
 	go vet ./...
 
-.PHONE: staticcheck
+.PHONY: staticcheck
 staticcheck: linttools
 	$(GOBIN)/staticcheck ./...
 
-.PHONE: lint
+.PHONY: lint
 lint: vet staticcheck
 
-.PHONE: test
+.PHONY: test
 test:
 	go test -v -covermode=atomic -coverpkg=./... -coverprofile=coverage.out ./...
 
-.PHONE: check
+.PHONY: check
 check: test lint
 
-.PHONE: clean
+.PHONY: clean
 clean:
 	go clean ./...

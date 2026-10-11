@@ -19,12 +19,14 @@ package twelvedata
 import (
 	"context"
 	"fmt"
+	"log/slog"
 
 	"github.com/tdrn-org/go-finance"
 )
 
-// See [finance.FX]
+// See [finance.FX.QueryExchangeRate]
 func (api *API) QueryExchangeRate(ctx context.Context, base, quote finance.Currency) (*finance.ExchangeRate, error) {
+	api.logger.Info("querying exchange rate...", slog.String("base", string(base)), slog.String("quote", string(quote)))
 	response, rsp, err := api.client.CurrenciesAPI.
 		GetExchangeRate(ctx).
 		Symbol(fmt.Sprintf("%s/%s", base, quote)).

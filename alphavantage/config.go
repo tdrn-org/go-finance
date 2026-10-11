@@ -45,8 +45,11 @@ type Config interface {
 
 // StaticConfig implements [Config] via static attributes.
 type StaticConfig struct {
-	BaseURL    *url.URL
-	APIKey     string
+	// See [Config.GetBaseURL]
+	BaseURL *url.URL
+	// See [Config.GetAPIKey]
+	APIKey string
+	// See [Config.GetHttpClient]
 	HttpClient *http.Client
 }
 

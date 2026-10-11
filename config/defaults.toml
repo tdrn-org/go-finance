@@ -1,16 +1,13 @@
 [fx]
 providers = [ "demo" ]
 cooldown = "10m"
-cache_ttl = "6h"
+cache_ttl = "1h"
 
-[symbols]
+[listings]
 providers = [ "demo" ]
 cooldown = "10m"
-cache_ttl = "12h"
-
-[equity]
-provider = "demo"
-cache_ttl = "5m"
+listing_cache_ttl = "12h"
+quote_cache_ttl = "5m"
 
 [demo]
 enabled = true
@@ -24,8 +21,8 @@ address = "localhost:40443"
 skip_verify = false
 ca_file = "root.pem"
 secret = ""
+include_exchanges = []
 preferred_currency = ""
-preferred_exchanges = [ "TRG" ]
 subscription_timeout = "1h"
 
 [frankfurter]
@@ -37,6 +34,8 @@ api_key = ""
 
 [twelvedata]
 api_key = ""
+include_mics = []
+include_instrument_types = []
 
 [cache]
 type = "memory"

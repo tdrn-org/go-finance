@@ -2,13 +2,10 @@
 providers = [ "frankfurter", "alphavantage", "consorsbank", "twelvedata" ]
 cache_ttl = "6h"
 
-[symbols]
-providers = [ "openfigi", "alphavantage", "consorsbank", "twelvedata" ]
-cache_ttl = "6h"
-
-[equity]
-provider = "consorsbank"
-cache_ttl = "5m"
+[listings]
+providers = [ "alphavantage", "consorsbank", "twelvedata" ]
+listing_cache_ttl = "6h"
+quote_cache_ttl = "1h"
 
 [alphavantage]
 base_url = "https://www.alphavantage.co/query/"
@@ -20,7 +17,6 @@ skip_verify = true
 ca_file = "root.pem"
 secret = ""
 preferred_currency = ""
-preferred_exchanges = [ "TRG" ]
 subscription_timeout = "1h"
 
 [frankfurter]

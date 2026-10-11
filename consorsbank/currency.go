@@ -20,13 +20,16 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
+	"math"
 
 	"github.com/tdrn-org/go-finance"
 	"github.com/tdrn-org/go-finance/consorsbank/proto"
 )
 
-// See [finance.FX]
+// See [finance.FX.QueryExchangeRate]
 func (api *API) QueryExchangeRate(ctx context.Context, base, quote finance.Currency) (*finance.ExchangeRate, error) {
+	api.logger.Info("querying exchange rate...", slog.String("base", string(base)), slog.String("quote", string(quote)))
+
 	api.mutex.Lock()
 	defer api.mutex.Unlock()
 
@@ -79,4 +82,21 @@ func (api *API) startExchangeRateSubscriptionLocked(ctx context.Context, base, q
 	api.exchangeRateSubscriptions[subscriptionKey] = subscription
 	api.stoppedWG.Go(subscription.Run)
 	return subscription, nil
+}
+
+func recordCurrencyRateReply(s *streamSubscription[proto.CurrencyRateReply, finance.ExchangeRate], reply *proto.CurrencyRateReply) {
+	if reply.Error != nil {
+		s.logger.Warn("ignoring errornous currency rate reply", slog.Any("err", reply.Error))
+		return
+	}
+	if reply.CurrencyFrom == "" || reply.CurrencyTo == "" || math.IsNaN(reply.CurrencyRate) {
+		s.logger.Warn("ignoring empty currency rate reply")
+		return
+	}
+
+	s.mutex.Lock()
+	defer s.mutex.Unlock()
+
+	s.logger.Info("recording currency rate reply")
+	s.lastReply = currencyRateReplyToExchangeRate(reply)
 }

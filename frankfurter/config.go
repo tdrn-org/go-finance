@@ -21,6 +21,16 @@ import (
 	"net/url"
 )
 
+const defaultBaseURLString string = "https://api.frankfurter.dev/v2/"
+
+var DefaultBaseURL *url.URL = func() *url.URL {
+	defaultBaseURL, err := url.Parse(defaultBaseURLString)
+	if err != nil {
+		panic(err)
+	}
+	return defaultBaseURL
+}()
+
 type Config interface {
 	GetBaseURL() (*url.URL, error)
 	GetHttpClient() (*http.Client, error)

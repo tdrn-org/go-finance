@@ -25,18 +25,12 @@ type Config interface {
 	GetBaseURL() (*url.URL, error)
 	GetAPIKey() (string, error)
 	GetHttpClient() (*http.Client, error)
-	GetMICs() ([]string, error)
-	GetIncludeSecurityTypes() ([]string, error)
-	GetIncludeSecurityTypes2() ([]string, error)
 }
 
 type StaticConfig struct {
-	BaseURL               *url.URL
-	APIKey                string
-	HttpClient            *http.Client
-	MICs                  []string
-	IncludeSecurityTypes  []string
-	IncludeSecurityTypes2 []string
+	BaseURL    *url.URL
+	APIKey     string
+	HttpClient *http.Client
 }
 
 func (c *StaticConfig) GetBaseURL() (*url.URL, error) {
@@ -49,16 +43,4 @@ func (c *StaticConfig) GetAPIKey() (string, error) {
 
 func (c *StaticConfig) GetHttpClient() (*http.Client, error) {
 	return c.HttpClient, nil
-}
-
-func (c *StaticConfig) GetMICs() ([]string, error) {
-	return c.MICs, nil
-}
-
-func (c *StaticConfig) GetIncludeSecurityTypes() ([]string, error) {
-	return c.IncludeSecurityTypes, nil
-}
-
-func (c *StaticConfig) GetIncludeSecurityTypes2() ([]string, error) {
-	return c.IncludeSecurityTypes2, nil
 }

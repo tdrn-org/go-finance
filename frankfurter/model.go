@@ -33,7 +33,7 @@ type rateResponse struct {
 func (rate *rateResponse) ToExchangeRate() (*finance.ExchangeRate, error) {
 	timestamp, err := time.Parse(time.DateOnly, rate.Date)
 	if err != nil {
-		return nil, fmt.Errorf("failed to parse exchange rate date '%s' (cause: %w)", rate.Date, err)
+		return nil, fmt.Errorf("failed to parse exchange rate date %q (cause: %w)", rate.Date, err)
 	}
 	exchangeRate := &finance.ExchangeRate{
 		Timestamp:       timestamp,

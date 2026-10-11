@@ -26,17 +26,17 @@ import (
 	"github.com/twelvedata/twelvedata-go/twelvedata"
 )
 
-// See [finance.InstrumentProvider]
-func (api *API) SearchInstruments(ctx context.Context, query string) ([]finance.Instrument, error) {
-	instruments := make([]finance.Instrument, 0)
+// See [finance.ListingProvider.SearchListings]
+func (api *API) SearchListings(ctx context.Context, query string) ([]finance.ProviderListing, error) {
+	api.logger.Info("search listings...", slog.String("query", query))
+	listings := make([]finance.ProviderListing, 0)
 	err := api.executeSearch(ctx, query, func(responseItem *twelvedata.SymbolSearchResponseItem) error {
-		if !api.includeSymmbolSearchResponseItem(responseItem) {
+		if !api.includeSymbolSearchResponseItem(responseItem) {
 			return nil
 		}
-		instrument := symbolSearchResponseItemToInstrument(responseItem)
-		err := instrument.Validate()
+		listing, err := symbolSearchResponseItemToProviderListing(responseItem)
 		if err == nil {
-			instruments = append(instruments, *instrument)
+			listings = append(listings, *listing)
 		} else {
 			api.logger.Warn("ignoring invalid instrument", slog.Any("err", err))
 		}
@@ -45,44 +45,17 @@ func (api *API) SearchInstruments(ctx context.Context, query string) ([]finance.
 	if err != nil {
 		return nil, err
 	}
-	return instruments, nil
+	return listings, nil
 }
 
-func (api *API) includeSymmbolSearchResponseItem(responseItem *twelvedata.SymbolSearchResponseItem) bool {
-	if len(api.mics) > 0 && !slices.Contains(api.mics, responseItem.MicCode) {
+func (api *API) includeSymbolSearchResponseItem(responseItem *twelvedata.SymbolSearchResponseItem) bool {
+	if len(api.includeMICs) > 0 && !slices.Contains(api.includeMICs, responseItem.MicCode) {
 		return false
 	}
 	if len(api.includeInstrumentTypes) > 0 && !slices.Contains(api.includeInstrumentTypes, responseItem.InstrumentType) {
 		return false
 	}
 	return true
-}
-
-// See [finance.InstrumentProvider]
-func (api *API) ResolveInstruments(ctx context.Context, instruments []finance.Instrument) ([]finance.Instrument, error) {
-	resolved := make([]finance.Instrument, len(instruments))
-	copy(resolved, instruments)
-	for i, instrument := range instruments {
-		if instrument.HasIdentifier(finance.InstrumentIdentifierTicker) {
-			continue
-		}
-		query := instrumentToQuery(&instrument)
-		if query == "" {
-			continue
-		}
-		err := api.executeSearch(ctx, query, func(responseItem *twelvedata.SymbolSearchResponseItem) error {
-			if responseItem.MicCode != instrument.MIC {
-				return nil
-			}
-			instrument.Merge(symbolSearchResponseItemToInstrument(responseItem))
-			resolved[i] = instrument
-			return nil
-		})
-		if err != nil {
-			return nil, err
-		}
-	}
-	return resolved, nil
 }
 
 func (api *API) executeSearch(ctx context.Context, query string, collect func(*twelvedata.SymbolSearchResponseItem) error) error {
@@ -104,4 +77,34 @@ func (api *API) executeSearch(ctx context.Context, query string, collect func(*t
 		}
 	}
 	return nil
+}
+
+// See [finance.ListingProvider.QueryQuote]
+func (api *API) QueryQuote(ctx context.Context, listing finance.ProviderListing) (*finance.Quote, error) {
+	err := listing.CheckProvider(Name)
+	if err != nil {
+		return nil, err
+	}
+	api.logger.Info("querying quote...", slog.Any("listing", listing))
+	ticker, err := listing.MustAttribute(finance.ListingAttributeKeyTicker)
+	if err != nil {
+		return nil, err
+	}
+	mic, err := listing.MustAttribute(finance.ListingAttributeKeyMIC)
+	if err != nil {
+		return nil, err
+	}
+	response, rsp, err := api.client.MarketDataAPI.
+		GetQuote(ctx).
+		Symbol(ticker).
+		MicCode(mic).
+		Execute()
+	if err != nil {
+		return nil, fmt.Errorf("%s: query quote failure (cause: %w)", Name, err)
+	}
+	err = api.checkHttpStatus(rsp)
+	if err != nil {
+		return nil, err
+	}
+	return getQuoteResponseToQuote(listing, response)
 }

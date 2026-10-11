@@ -17,7 +17,6 @@
 package finance
 
 import (
-	"context"
 	"errors"
 	"strconv"
 	"strings"
@@ -34,7 +33,7 @@ var (
 // Quote represents a single price data point for an [Instrument].
 type Quote struct {
 	// Instrument the financial instrument this quote is for.
-	Instrument Instrument `json:"instrument"`
+	Listing ProviderListing `json:"listing"`
 	// Timestamp gives the point in time this quote was current
 	// according to the sourcing provider.
 	Timestamp time.Time `json:"timestamp"`
@@ -63,7 +62,7 @@ type Quote struct {
 // String formats this Quote.
 func (q *Quote) String() string {
 	buffer := &strings.Builder{}
-	buffer.WriteString(q.Instrument.String())
+	buffer.WriteString(q.Listing.String())
 	buffer.WriteString("|timestamp:")
 	buffer.WriteString(q.Timestamp.UTC().Format(time.RFC3339Nano))
 	buffer.WriteString("|price:")
@@ -75,11 +74,4 @@ func (q *Quote) String() string {
 	buffer.WriteString("|queried:")
 	buffer.WriteString(q.SourceTimestamp.UTC().Format(time.RFC3339Nano))
 	return buffer.String()
-}
-
-// QuoteProvider queries quotes for instruments.
-type QuoteProvider interface {
-	APIProvider
-	// QueryQuote returns the latest quote for the given instrument.
-	QueryQuote(ctx context.Context, instrument *Instrument) (*Quote, error)
 }
