@@ -18,6 +18,7 @@ package finance
 
 import (
 	"context"
+	"database/sql/driver"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -268,16 +269,28 @@ func (l *ProviderListing) UnmarshalJSON(data []byte) error {
 	return nil
 }
 
-func (l *ProviderListing) MarshalString() (string, error) {
-	encoded, err := l.MarshalJSON()
+func (l *ProviderListing) Value() (driver.Value, error) {
+	data, err := l.MarshalJSON()
 	if err != nil {
 		return "", err
 	}
-	return string(encoded), nil
+	return string(data), nil
 }
 
-func (l *ProviderListing) UnmarshalString(s string) error {
-	return l.UnmarshalJSON([]byte(s))
+func (l *ProviderListing) Scan(value any) error {
+	if value == nil {
+		l.data = &providerListingData{}
+		l.resetString()
+		return nil
+	}
+	switch v := value.(type) {
+	case string:
+		return l.UnmarshalJSON([]byte(v))
+	case []byte:
+		return l.UnmarshalJSON(v)
+	default:
+		return fmt.Errorf("unsupported type for ProviderListing: %T", value)
+	}
 }
 
 // ProviderListingBuilder implements the builder pattern to create
