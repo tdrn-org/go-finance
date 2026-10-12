@@ -26,6 +26,11 @@ import (
 	"github.com/tdrn-org/go-finance/consorsbank/proto"
 )
 
+// See [finance.ListingProvider.SameListing]
+func (api *API) SameListing(listing1, listing2 finance.ProviderListing) bool {
+	return finance.SameListing(listing1, listing2, Name, finance.ListingAttributeKeyISIN, finance.ListingAttributeKeyExchange)
+}
+
 // See [finance.ListingProvider.SearchListings]
 func (api *API) SearchListings(ctx context.Context, query string) ([]finance.ProviderListing, error) {
 	api.logger.Info("search listings...", slog.String("query", query))
@@ -123,13 +128,13 @@ func (api *API) startSecurityMarketDataSubscriptionLocked(ctx context.Context, l
 	if err != nil {
 		return nil, err
 	}
-	securityService := session.SecurityService()
-	subscriptionKey := listing.String()
+	isin, err := listing.MustAttribute(finance.ListingAttributeKeyISIN)
 	if err != nil {
 		return nil, err
 	}
+	securityService := session.SecurityService()
 	securityCode := &proto.SecurityCode{
-		Code:     subscriptionKey,
+		Code:     isin,
 		CodeType: proto.SecurityCodeType_ISIN,
 	}
 	securityInfoReply, err := api.getSecurityInfo(ctx, session, securityService, securityCode)
@@ -158,6 +163,7 @@ func (api *API) startSecurityMarketDataSubscriptionLocked(ctx context.Context, l
 		api.invalidateSessionLocked()
 		return nil, fmt.Errorf("%s: failed to create security market data subscription (cause: %w)", Name, err)
 	}
+	subscriptionKey := listing.String()
 	subscription := &streamSubscription[proto.SecurityMarketDataReply, finance.Quote]{
 		client:              client,
 		subscriptionTimeout: api.subscriptionTimeout,

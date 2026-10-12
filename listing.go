@@ -341,8 +341,34 @@ func (b *ProviderListingBuilder) Build() ProviderListing {
 	return b.listing
 }
 
+// SameListing reports whether both listings identify the same tradable
+// instrument according to this provider's semantics.
+func SameListing(listing1, listing2 ProviderListing, provider string, keys ...ListingAttributeKey) bool {
+	if listing1.Provider() != provider || listing2.Provider() != provider {
+		return false
+	}
+	for _, key := range keys {
+		attribute1, ok := listing1.Attribute(key)
+		if !ok {
+			return false
+		}
+		attribute2, ok := listing2.Attribute(key)
+		if !ok {
+			return false
+		}
+		if attribute1 != attribute2 {
+			return false
+		}
+	}
+	return true
+}
+
 type ListingProvider interface {
 	APIProvider
+
+	// SameListing reports whether both listings identify the same tradable
+	// instrument according to this provider's semantics.
+	SameListing(listing1, listing2 ProviderListing) bool
 
 	// SearchListings searches for listings matching the given query.
 	SearchListings(ctx context.Context, query string) ([]ProviderListing, error)

@@ -53,6 +53,7 @@ func NewCachedListingProviders(providers []finance.ListingProvider, listingCache
 	return cachedProviders
 }
 
+// See [finance.APIProvider.ProviderName]
 func (p *cachedListingProvider) ProviderName() string {
 	buffer := &strings.Builder{}
 	buffer.WriteString("cached:")
@@ -60,6 +61,12 @@ func (p *cachedListingProvider) ProviderName() string {
 	return buffer.String()
 }
 
+// See [finance.ListingProvider.SameListing]
+func (p *cachedListingProvider) SameListing(listing1, listing2 finance.ProviderListing) bool {
+	return p.provider.SameListing(listing1, listing2)
+}
+
+// See [finance.ListingProvider.SearchListings]
 func (p *cachedListingProvider) SearchListings(ctx context.Context, query string) ([]finance.ProviderListing, error) {
 	key := p.listingCacheKey(query)
 	cachedInstruments, err := p.listingCache.Get(ctx, key)
@@ -79,6 +86,7 @@ func (p *cachedListingProvider) listingCacheKey(query string) string {
 	return fmt.Sprintf("finance:listings:%s", strings.ToUpper(query))
 }
 
+// See [finance.ListingProvider.QueryQuote]
 func (p *cachedListingProvider) QueryQuote(ctx context.Context, listing finance.ProviderListing) (*finance.Quote, error) {
 	key := p.quoteCacheKey(listing)
 	cachedQuote, err := p.quoteCache.Get(ctx, key)
@@ -124,6 +132,20 @@ func (p *combinedListingProvider) ProviderName() string {
 	return buffer.String()
 }
 
+// See [finance.ListingProvider.SameListing]
+func (p *combinedListingProvider) SameListing(listing1, listing2 finance.ProviderListing) bool {
+	// fail fast if provider do not match
+	if listing1.Provider() != listing2.Provider() {
+		return false
+	}
+	same := false
+	p.queue.ForEach(func(provider finance.ListingProvider) {
+		same = same || provider.SameListing(listing1, listing2)
+	})
+	return same
+}
+
+// See [finance.ListingProvider.SearchListings]
 func (p *combinedListingProvider) SearchListings(ctx context.Context, query string) ([]finance.ProviderListing, error) {
 	availableProviders := p.queue.GetAvailableProviders()
 	listings := make([]finance.ProviderListing, 0)
@@ -141,6 +163,7 @@ func (p *combinedListingProvider) SearchListings(ctx context.Context, query stri
 	return listings, nil
 }
 
+// See [finance.ListingProvider.QueryQuote]
 func (p *combinedListingProvider) QueryQuote(ctx context.Context, listing finance.ProviderListing) (*finance.Quote, error) {
 	for _, availableProvider := range p.queue.GetAvailableProviders() {
 		err := listing.CheckProvider(availableProvider.ProviderName())

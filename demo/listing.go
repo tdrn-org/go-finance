@@ -30,6 +30,11 @@ var demoProviderListing finance.ProviderListing = finance.NewProviderListing(Nam
 	Attribute(finance.ListingAttributeKeyMIC, "XNGS").
 	Build()
 
+// See [finance.ListingProvider.SameListing]
+func (api *API) SameListing(listing1, listing2 finance.ProviderListing) bool {
+	return finance.SameListing(listing1, listing2, Name, finance.ListingAttributeKeyTicker, finance.ListingAttributeKeyMIC)
+}
+
 // See [finance.ListingProvider.SearchListings]
 func (api *API) SearchListings(ctx context.Context, query string) ([]finance.ProviderListing, error) {
 	if !api.enabled {
