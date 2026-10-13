@@ -25,11 +25,6 @@ import (
 	"github.com/tdrn-org/go-finance"
 )
 
-// See [finance.ListingProvider.SameListing]
-func (api *API) SameListing(listing1, listing2 finance.ProviderListing) bool {
-	return finance.SameListing(listing1, listing2, Name, finance.ListingAttributeKeySymbol)
-}
-
 // See [finance.ListingProvider.SearchListings]
 func (api *API) SearchListings(ctx context.Context, query string) ([]finance.ProviderListing, error) {
 	api.logger.Info("search listings...", slog.String("query", query))

@@ -72,7 +72,7 @@ func securityInfoToProviderListing(reply *proto.SecurityInfoReply, stockExchange
 	if reply == nil {
 		return nil, nil
 	}
-	newListing := finance.NewProviderListing(Name).
+	newListing := finance.NewProviderListing(Name, finance.ListingAttributeKeyISIN, finance.ListingAttributeKeyExchange).
 		InstrumentName(reply.Name).
 		InstrumentType(securityClassMap[reply.SecurityClass]).
 		Attribute(finance.ListingAttributeKeyExchange, stockExchangeInfo.StockExchange.Id)

@@ -98,7 +98,8 @@ func validateListingAttribute(key ListingAttributeKey, value string) error {
 	return nil
 }
 
-var listingAttributeKeys []ListingAttributeKey = []ListingAttributeKey{
+// ListingAttributeKeys contains all defined listing attribute keys.
+var ListingAttributeKeys []ListingAttributeKey = []ListingAttributeKey{
 	ListingAttributeKeySymbol,
 	ListingAttributeKeyTicker,
 	ListingAttributeKeyISIN,
@@ -129,11 +130,13 @@ var listingAttributeKeys []ListingAttributeKey = []ListingAttributeKey{
 //     information.
 type ProviderListing struct {
 	data *providerListingData
+	id   string
 	s    string
 }
 
 type providerListingData struct {
 	Provider       string                         `json:"provider"`
+	IDKeys         []ListingAttributeKey          `json:"id_keys"`
 	InstrumentName string                         `json:"instrument_name"`
 	InstrumentType InstrumentType                 `json:"instrument_type"`
 	Attributes     map[ListingAttributeKey]string `json:"attributes"`
@@ -143,6 +146,11 @@ type providerListingData struct {
 // Provider gets the provider who issued this [ProviderListing].
 func (l *ProviderListing) Provider() string {
 	return l.data.Provider
+}
+
+// ID gets the unique ID for this [ProviderListing].
+func (l *ProviderListing) ID() string {
+	return l.id
 }
 
 // CheckProvider checks whether the given provider name matches
@@ -191,15 +199,29 @@ func (l *ProviderListing) Currency() *Currency {
 	return &currency
 }
 
-func (l *ProviderListing) resetString() {
+func (l *ProviderListing) reset() {
 	buffer := &strings.Builder{}
+
+	// Reset id
+	buffer.WriteString(l.data.Provider)
+	for _, idKey := range l.data.IDKeys {
+		buffer.WriteRune(':')
+		buffer.WriteString(string(idKey))
+		buffer.WriteRune('=')
+		buffer.WriteString(l.data.Attributes[idKey])
+	}
+	l.id = buffer.String()
+
+	buffer.Reset()
+
+	// Reset s
 	buffer.WriteString("provider:")
 	buffer.WriteString(l.data.Provider)
 	buffer.WriteString("|instrument_name:")
 	buffer.WriteString(l.data.InstrumentName)
 	buffer.WriteString("|instrument_type:")
 	buffer.WriteString(string(l.data.InstrumentType))
-	for _, key := range listingAttributeKeys {
+	for _, key := range ListingAttributeKeys {
 		value, ok := l.data.Attributes[key]
 		if !ok {
 			continue
@@ -226,6 +248,9 @@ func (l ProviderListing) Validate() (*ProviderListing, error) {
 	errs := make([]error, 0)
 	if l.data.Provider == "" {
 		errs = append(errs, errors.New("no listing provider"))
+	}
+	if len(l.data.IDKeys) == 0 {
+		errs = append(errs, errors.New("no id keys"))
 	}
 	if l.data.InstrumentName == "" {
 		errs = append(errs, errors.New("no listing instrument name"))
@@ -265,7 +290,7 @@ func (l *ProviderListing) UnmarshalJSON(data []byte) error {
 	if err != nil {
 		return err
 	}
-	l.resetString()
+	l.reset()
 	return nil
 }
 
@@ -280,7 +305,7 @@ func (l *ProviderListing) Value() (driver.Value, error) {
 func (l *ProviderListing) Scan(value any) error {
 	if value == nil {
 		l.data = &providerListingData{}
-		l.resetString()
+		l.reset()
 		return nil
 	}
 	switch v := value.(type) {
@@ -300,11 +325,12 @@ type ProviderListingBuilder struct {
 }
 
 // NewProviderListing
-func NewProviderListing(provider string) *ProviderListingBuilder {
+func NewProviderListing(provider string, idKeys ...ListingAttributeKey) *ProviderListingBuilder {
 	return &ProviderListingBuilder{
 		listing: ProviderListing{
 			data: &providerListingData{
 				Provider:   provider,
+				IDKeys:     idKeys,
 				Attributes: make(map[ListingAttributeKey]string),
 			},
 		},
@@ -337,38 +363,12 @@ func (b *ProviderListingBuilder) Currency(currency *Currency) *ProviderListingBu
 }
 
 func (b *ProviderListingBuilder) Build() ProviderListing {
-	b.listing.resetString()
+	b.listing.reset()
 	return b.listing
-}
-
-// SameListing reports whether both listings identify the same tradable
-// instrument according to this provider's semantics.
-func SameListing(listing1, listing2 ProviderListing, provider string, keys ...ListingAttributeKey) bool {
-	if listing1.Provider() != provider || listing2.Provider() != provider {
-		return false
-	}
-	for _, key := range keys {
-		attribute1, ok := listing1.Attribute(key)
-		if !ok {
-			return false
-		}
-		attribute2, ok := listing2.Attribute(key)
-		if !ok {
-			return false
-		}
-		if attribute1 != attribute2 {
-			return false
-		}
-	}
-	return true
 }
 
 type ListingProvider interface {
 	APIProvider
-
-	// SameListing reports whether both listings identify the same tradable
-	// instrument according to this provider's semantics.
-	SameListing(listing1, listing2 ProviderListing) bool
 
 	// SearchListings searches for listings matching the given query.
 	SearchListings(ctx context.Context, query string) ([]ProviderListing, error)

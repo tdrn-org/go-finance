@@ -23,17 +23,12 @@ import (
 	"github.com/tdrn-org/go-finance"
 )
 
-var demoProviderListing finance.ProviderListing = finance.NewProviderListing(Name).
+var demoProviderListing finance.ProviderListing = *finance.NewProviderListing(Name, finance.ListingAttributeKeyTicker, finance.ListingAttributeKeyMIC).
 	InstrumentName("Apple Inc.").
 	InstrumentType(finance.InstrumentTypeEquity).
 	Attribute(finance.ListingAttributeKeyTicker, "AAPL").
 	Attribute(finance.ListingAttributeKeyMIC, "XNGS").
-	Build()
-
-// See [finance.ListingProvider.SameListing]
-func (api *API) SameListing(listing1, listing2 finance.ProviderListing) bool {
-	return finance.SameListing(listing1, listing2, Name, finance.ListingAttributeKeyTicker, finance.ListingAttributeKeyMIC)
-}
+	Build().MustValidate()
 
 // See [finance.ListingProvider.SearchListings]
 func (api *API) SearchListings(ctx context.Context, query string) ([]finance.ProviderListing, error) {

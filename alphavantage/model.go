@@ -119,7 +119,7 @@ var typeMap map[string]finance.InstrumentType = func() map[string]finance.Instru
 
 func (r *bestMatchResponse) ToProviderListing() (*finance.ProviderListing, error) {
 	currency := finance.Currency(r.Currency)
-	listing, err := finance.NewProviderListing(Name).
+	listing, err := finance.NewProviderListing(Name, finance.ListingAttributeKeySymbol).
 		InstrumentName(r.Name).
 		InstrumentType(typeMap[r.Type]).
 		Attribute(finance.ListingAttributeKeySymbol, r.Symbol).

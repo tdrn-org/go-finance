@@ -64,7 +64,7 @@ func symbolSearchResponseItemToProviderListing(responseItem *twelvedata.SymbolSe
 		return nil, nil
 	}
 	currency := finance.Currency(responseItem.Currency)
-	listing, err := finance.NewProviderListing(Name).
+	listing, err := finance.NewProviderListing(Name, finance.ListingAttributeKeyTicker, finance.ListingAttributeKeyMIC).
 		InstrumentName(responseItem.InstrumentName).
 		InstrumentType(instrumentTypeMap[responseItem.InstrumentType]).
 		Attribute(finance.ListingAttributeKeyTicker, responseItem.Symbol).
