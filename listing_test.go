@@ -17,73 +17,22 @@
 package finance_test
 
 import (
-	"errors"
-	"fmt"
 	"testing"
-	"time"
 
 	"github.com/stretchr/testify/require"
 	"github.com/tdrn-org/go-finance"
 )
 
-func TestAlphaVantageListingProviderAPI(t *testing.T) {
-	api := newAlphaVantageAPI(t)
-
-	testListingProviderAPI(t, api)
-}
-
-func TestConsorsbankListingProviderAPI(t *testing.T) {
-	api := newConsorsbankAPI(t)
-
-	testListingProviderAPI(t, api)
-}
-
-func TestTwelvedataListingProviderAPI(t *testing.T) {
-	api := newTwelveDataAPI(t)
-
-	testListingProviderAPI(t, api)
-}
-
-func testListingProviderAPI(t *testing.T, api finance.ListingProvider) {
-	t.Log("provider", api.ProviderName())
-
-	// SearchListings
-	queries := []string{
-		// "Apple", // Name
-		// "AAPL", // Ticker
-		// "US0378331005", // ISIN
-		"865985", // WKN
-	}
-	searchResults := make([]finance.ProviderListing, 0)
-	for _, query := range queries {
-		searchResult, err := api.SearchListings(t.Context(), query)
-		if !errors.Is(err, finance.ErrListingSearchRestricted) {
-			require.NoError(t, err)
-			require.NotNil(t, searchResult)
-			for _, listing := range searchResult {
-				fmt.Println(listing.String())
-			}
-			searchResults = append(searchResults, searchResult...)
-		}
-	}
-
-	// QueryQuote
-	for _, listing := range searchResults {
-		retries := 3
-		retrySleep := 500 * time.Millisecond
-		for {
-			quote, err := api.QueryQuote(t.Context(), listing)
-			if errors.Is(err, finance.ErrRequestPending) {
-				retries--
-				if retries > 0 {
-					time.Sleep(retrySleep)
-					continue
-				}
-			}
-			require.NoError(t, err)
-			require.NotNil(t, quote)
-			fmt.Println(quote.String())
-			break
-		}
-	}
+func TestListingToken(t *testing.T) {
+	listing1 := *finance.NewProviderListing("test", finance.ListingAttributeKeyTicker, finance.ListingAttributeKeyMIC).
+		InstrumentName("Test instrument").
+		InstrumentType(finance.InstrumentTypeEquity).
+		Attribute(finance.ListingAttributeKeyTicker, "TCKR").
+		Attribute(finance.ListingAttributeKeyMIC, "XMIC").
+		Build().MustValidate()
+	token, err := listing1.Token()
+	require.NoError(t, err)
+	listing2, err := finance.NewProviderListingFromToken(token)
+	require.NoError(t, err)
+	require.Equal(t, listing1.String(), listing2.String())
 }

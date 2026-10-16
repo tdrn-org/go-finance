@@ -17,11 +17,15 @@
 package finance
 
 import (
+	"bytes"
+	"compress/flate"
 	"context"
 	"database/sql/driver"
+	"encoding/base64"
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"strings"
 )
 
@@ -316,6 +320,69 @@ func (l *ProviderListing) Scan(value any) error {
 	default:
 		return fmt.Errorf("unsupported type for ProviderListing: %T", value)
 	}
+}
+
+var listingTokenDict []byte = []byte(`
+"provider":
+,"id_keys":
+,"instrument_name":
+,"insturment_type":"equity"
+,"insturment_type":"etf"
+,"insturment_type":"fund"
+,"insturment_type":"bond"
+,"insturment_type":"index"
+,"insturment_type":"forex"
+,"insturment_type":"crypto"
+,"insturment_type":"option"
+,"insturment_type":"future"
+,"insturment_type":"certificate"
+,"attributes":
+,"currency":
+"symbol"
+"ticker"
+"isin"
+"wkn"
+"exchange"
+"mic"`)
+
+func (l *ProviderListing) Token() (string, error) {
+	encoded1, err := l.MarshalJSON()
+	if err != nil {
+		return "", err
+	}
+	encoded2 := &bytes.Buffer{}
+	encoder2, err := flate.NewWriterDict(encoded2, flate.BestCompression, listingTokenDict)
+	if err != nil {
+		return "", err
+	}
+	_, err = encoder2.Write(encoded1)
+	if err != nil {
+		return "", err
+	}
+	err = encoder2.Close()
+	if err != nil {
+		return "", err
+	}
+	token := base64.RawURLEncoding.EncodeToString(encoded2.Bytes())
+	return token, nil
+}
+
+func NewProviderListingFromToken(token string) (*ProviderListing, error) {
+	decoded2, err := base64.RawURLEncoding.DecodeString(token)
+	if err != nil {
+		return nil, err
+	}
+	decoder1 := flate.NewReaderDict(bytes.NewReader(decoded2), listingTokenDict)
+	decoded1, err := io.ReadAll(decoder1)
+	if err != nil {
+		return nil, err
+	}
+	l := &ProviderListing{}
+	err = l.UnmarshalJSON(decoded1)
+	if err != nil {
+		return nil, err
+	}
+	return l, nil
 }
 
 // ProviderListingBuilder implements the builder pattern to create
