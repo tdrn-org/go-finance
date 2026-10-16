@@ -17,22 +17,30 @@
 package finance_test
 
 import (
+	"encoding/json"
 	"testing"
 
 	"github.com/stretchr/testify/require"
 	"github.com/tdrn-org/go-finance"
 )
 
-func TestListingToken(t *testing.T) {
-	listing1 := *finance.NewProviderListing("test", finance.ListingAttributeKeyTicker, finance.ListingAttributeKeyMIC).
-		InstrumentName("Test instrument").
-		InstrumentType(finance.InstrumentTypeEquity).
-		Attribute(finance.ListingAttributeKeyTicker, "TCKR").
-		Attribute(finance.ListingAttributeKeyMIC, "XMIC").
-		Build().MustValidate()
-	token, err := listing1.Token()
+type listingStruct struct {
+	Listing finance.ProviderListing `json:"listing"`
+}
+
+func TestJSONMarshaling(t *testing.T) {
+	s1 := &listingStruct{
+		Listing: *finance.NewProviderListing("test", finance.ListingAttributeKeyTicker, finance.ListingAttributeKeyMIC).
+			InstrumentName("Test instrument").
+			InstrumentType(finance.InstrumentTypeEquity).
+			Attribute(finance.ListingAttributeKeyTicker, "TCKR").
+			Attribute(finance.ListingAttributeKeyMIC, "XMIC").
+			Build().MustValidate(),
+	}
+	encoded, err := json.Marshal(s1)
 	require.NoError(t, err)
-	listing2, err := finance.NewProviderListingFromToken(token)
+	s2 := &listingStruct{}
+	err = json.Unmarshal(encoded, s2)
 	require.NoError(t, err)
-	require.Equal(t, listing1.String(), listing2.String())
+	require.Equal(t, s1.Listing.String(), s2.Listing.String())
 }

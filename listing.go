@@ -147,6 +147,63 @@ type providerListingData struct {
 	Currency       *Currency                      `json:"currency,omitempty"`
 }
 
+var listingTokenDict []byte = []byte(`
+"provider":
+,"id_keys":
+,"instrument_name":
+,"insturment_type":"equity"
+,"insturment_type":"etf"
+,"insturment_type":"fund"
+,"insturment_type":"bond"
+,"insturment_type":"index"
+,"insturment_type":"forex"
+,"insturment_type":"crypto"
+,"insturment_type":"option"
+,"insturment_type":"future"
+,"insturment_type":"certificate"
+,"attributes":
+,"currency":
+"symbol"
+"ticker"
+"isin"
+"wkn"
+"exchange"
+"mic"`)
+
+func (d *providerListingData) marshalText() ([]byte, error) {
+	encoded1, err := json.Marshal(d)
+	if err != nil {
+		return nil, err
+	}
+	encoded2 := &bytes.Buffer{}
+	encoder2, err := flate.NewWriterDict(encoded2, flate.BestCompression, listingTokenDict)
+	if err != nil {
+		return nil, err
+	}
+	_, err = encoder2.Write(encoded1)
+	if err != nil {
+		return nil, err
+	}
+	err = encoder2.Close()
+	if err != nil {
+		return nil, err
+	}
+	return []byte(base64.RawURLEncoding.EncodeToString(encoded2.Bytes())), nil
+}
+
+func (d *providerListingData) unmarshalText(text []byte) error {
+	decoded2, err := base64.RawURLEncoding.DecodeString(string(text))
+	if err != nil {
+		return err
+	}
+	decoder1 := flate.NewReaderDict(bytes.NewReader(decoded2), listingTokenDict)
+	decoded1, err := io.ReadAll(decoder1)
+	if err != nil {
+		return err
+	}
+	return json.Unmarshal(decoded1, d)
+}
+
 // Provider gets the provider who issued this [ProviderListing].
 func (l *ProviderListing) Provider() string {
 	return l.data.Provider
@@ -285,12 +342,22 @@ func (l ProviderListing) MustValidate() *ProviderListing {
 }
 
 func (l *ProviderListing) MarshalJSON() ([]byte, error) {
-	return json.Marshal(l.data)
+	text, err := l.data.marshalText()
+	if err != nil {
+		return nil, err
+	}
+	return json.Marshal(string(text))
 }
 
 func (l *ProviderListing) UnmarshalJSON(data []byte) error {
 	l.data = &providerListingData{}
-	err := json.Unmarshal(data, l.data)
+	l.reset()
+	var text string
+	err := json.Unmarshal(data, &text)
+	if err != nil {
+		return err
+	}
+	err = l.data.unmarshalText([]byte(text))
 	if err != nil {
 		return err
 	}
@@ -307,9 +374,9 @@ func (l *ProviderListing) Value() (driver.Value, error) {
 }
 
 func (l *ProviderListing) Scan(value any) error {
+	l.data = &providerListingData{}
+	l.reset()
 	if value == nil {
-		l.data = &providerListingData{}
-		l.reset()
 		return nil
 	}
 	switch v := value.(type) {
@@ -320,69 +387,6 @@ func (l *ProviderListing) Scan(value any) error {
 	default:
 		return fmt.Errorf("unsupported type for ProviderListing: %T", value)
 	}
-}
-
-var listingTokenDict []byte = []byte(`
-"provider":
-,"id_keys":
-,"instrument_name":
-,"insturment_type":"equity"
-,"insturment_type":"etf"
-,"insturment_type":"fund"
-,"insturment_type":"bond"
-,"insturment_type":"index"
-,"insturment_type":"forex"
-,"insturment_type":"crypto"
-,"insturment_type":"option"
-,"insturment_type":"future"
-,"insturment_type":"certificate"
-,"attributes":
-,"currency":
-"symbol"
-"ticker"
-"isin"
-"wkn"
-"exchange"
-"mic"`)
-
-func (l *ProviderListing) Token() (string, error) {
-	encoded1, err := l.MarshalJSON()
-	if err != nil {
-		return "", err
-	}
-	encoded2 := &bytes.Buffer{}
-	encoder2, err := flate.NewWriterDict(encoded2, flate.BestCompression, listingTokenDict)
-	if err != nil {
-		return "", err
-	}
-	_, err = encoder2.Write(encoded1)
-	if err != nil {
-		return "", err
-	}
-	err = encoder2.Close()
-	if err != nil {
-		return "", err
-	}
-	token := base64.RawURLEncoding.EncodeToString(encoded2.Bytes())
-	return token, nil
-}
-
-func NewProviderListingFromToken(token string) (*ProviderListing, error) {
-	decoded2, err := base64.RawURLEncoding.DecodeString(token)
-	if err != nil {
-		return nil, err
-	}
-	decoder1 := flate.NewReaderDict(bytes.NewReader(decoded2), listingTokenDict)
-	decoded1, err := io.ReadAll(decoder1)
-	if err != nil {
-		return nil, err
-	}
-	l := &ProviderListing{}
-	err = l.UnmarshalJSON(decoded1)
-	if err != nil {
-		return nil, err
-	}
-	return l, nil
 }
 
 // ProviderListingBuilder implements the builder pattern to create
