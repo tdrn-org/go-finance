@@ -30,12 +30,22 @@ import (
 func (api *API) SearchListings(ctx context.Context, query string) ([]finance.Listing, error) {
 	api.logger.Info("search listings...", slog.String("query", query))
 	listings := make([]finance.Listing, 0)
+	unknownTypes := make(map[string]bool)
 	err := api.executeSearch(ctx, query, func(responseItem *twelvedata.SymbolSearchResponseItem) error {
 		if !api.includeSymbolSearchResponseItem(responseItem) {
 			return nil
 		}
 		listing, err := symbolSearchResponseItemToListing(responseItem)
 		if err == nil {
+			// A raw type that is missing from instrumentTypeMap silently produces a
+			// listing without an instrument type — which then also cannot be selected
+			// via include_instrument_types. Report it once per search so a new provider
+			// type does not go unnoticed.
+			rawType := responseItem.InstrumentType
+			if rawType != "" && listing.InstrumentType() == finance.InstrumentTypeUnknown && !unknownTypes[rawType] {
+				unknownTypes[rawType] = true
+				api.logger.Warn("unmapped instrument type, listing without type", slog.String("instrument_type", rawType))
+			}
 			listings = append(listings, *listing)
 		} else {
 			api.logger.Warn("ignoring invalid instrument", slog.Any("err", err))

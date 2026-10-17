@@ -1,6 +1,8 @@
 {
     "Common Stock": "equity",
     "American Depositary Receipt": "equity",
+    "Depositary Receipt": "equity",
+    "REIT": "equity",
     "ETF": "etf",
     "Mutual Fund": "fund",
     "Bond Fund": "fund",
@@ -11,6 +13,7 @@
     "Digital Currency": "crypto",
     "Cryptocurrency": "crypto",
     "Option": "option",
+    "Warrant": "option",
     "Future": "future",
     "Certificate": "certificate"
 }
