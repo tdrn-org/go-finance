@@ -444,6 +444,8 @@ type ListingPrice struct {
 	// Timestamp gives the point in time this quote was current
 	// according to the sourcing provider.
 	Timestamp time.Time `json:"timestamp"`
+	// Currency gives the currency the given values.
+	Currency Currency `json:"currency"`
 	// Price gives the current price at the trading day identified by Timestamp.
 	Price float64 `json:"price"`
 }
@@ -461,8 +463,6 @@ type Quote struct {
 	Close float64 `json:"close"`
 	// Volume gives the order volume at the trading day identified by Timestamp.
 	Volume int64 `json:"volume"`
-	// Currency gives the currency the given values.
-	Currency Currency `json:"currency"`
 	// Sources defines the provider this quote has been
 	// queried from.
 	Source string `json:"source"`
