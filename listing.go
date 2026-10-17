@@ -32,6 +32,8 @@ import (
 )
 
 var (
+	// ErrEmptyListing indicates a [Listing] is empty is therefore invalid.
+	ErrEmptyListing error = errors.New("empty listing")
 	// ErrListingSearchRestricted indicates a search request could not be
 	// fullfilled, as the provider does not support the given kind of query
 	// (e.g. only ID searches are supported, but no free-text searches).
@@ -121,32 +123,6 @@ var ListingAttributeKeys []ListingAttributeKey = []ListingAttributeKey{
 	ListingAttributeKeyMIC,
 }
 
-// Listing is an opaque representation of a concrete listing
-// of an financial instrument at an specific exchange. A Listing
-// is issued by a specific provider and can only handled by the
-// issueing provider.
-//
-// A Listing contains the following informaiton:
-//   - Provider: The provider issueing this Listing. While a
-//     Listing can be inspected from the outside (e.g.
-//     [Listing.InstrumentName]), actual operations (e.g.
-//     [ListingProvider.QueryQuote]) can only be peformed
-//     by the issueing provider. [ErrListingProviderMismatch] indicates
-//     indicates a failure in this regard.
-//   - InstrumentName: The name of the financial instrument this
-//     Listing is related to.
-//   - InstrumentType: The type of the financial instrument this
-//     Listing is related to.
-//   - Attributes: A provider specific set of listing attributes,
-//     used by the provider to identify the listing (see [ListingAttributeKey]).
-//   - Currency: The currency used for this listing. This is an optional
-//     information.
-type Listing struct {
-	data *listingData
-	id   string
-	s    string
-}
-
 type listingData struct {
 	Provider       string                         `json:"provider"`
 	IDKeys         []ListingAttributeKey          `json:"id_keys"`
@@ -213,8 +189,37 @@ func (d *listingData) unmarshalText(text []byte) error {
 	return json.Unmarshal(decoded1, d)
 }
 
+// Listing is an opaque representation of a concrete listing
+// of an financial instrument at an specific exchange. A Listing
+// is issued by a specific provider and can only handled by the
+// issueing provider.
+//
+// A Listing contains the following informaiton:
+//   - Provider: The provider issueing this Listing. While a
+//     Listing can be inspected from the outside (e.g.
+//     [Listing.InstrumentName]), actual operations (e.g.
+//     [ListingProvider.QueryQuote]) can only be peformed
+//     by the issueing provider. [ErrListingProviderMismatch] indicates
+//     indicates a failure in this regard.
+//   - InstrumentName: The name of the financial instrument this
+//     Listing is related to.
+//   - InstrumentType: The type of the financial instrument this
+//     Listing is related to.
+//   - Attributes: A provider specific set of listing attributes,
+//     used by the provider to identify the listing (see [ListingAttributeKey]).
+//   - Currency: The currency used for this listing. This is an optional
+//     information.
+type Listing struct {
+	data *listingData
+	id   string
+	s    string
+}
+
 // Provider gets the provider who issued this [Listing].
 func (l *Listing) Provider() string {
+	if l.data == nil {
+		return ""
+	}
 	return l.data.Provider
 }
 
@@ -227,6 +232,9 @@ func (l *Listing) ID() string {
 // the issueing provider of this [Listing].
 // If not matching, [ErrListingProviderMismatch] is returned.
 func (l *Listing) CheckProvider(name string) error {
+	if l.data == nil {
+		return ErrEmptyListing
+	}
 	if l.data.Provider != name {
 		return ErrListingProviderMismatch
 	}
@@ -235,17 +243,26 @@ func (l *Listing) CheckProvider(name string) error {
 
 // Provider gets the instrument name for this [Listing].
 func (l *Listing) InstrumentName() string {
+	if l.data == nil {
+		return ""
+	}
 	return l.data.InstrumentName
 }
 
 // Provider gets the instrument type for this [Listing].
 func (l *Listing) InstrumentType() InstrumentType {
+	if l.data == nil {
+		return InstrumentTypeUnknown
+	}
 	return l.data.InstrumentType
 }
 
 // Attributes gets the given attribute value for this [Listing].
 // The returned bool indicates whether the attribute is available at al.
 func (l *Listing) Attribute(key ListingAttributeKey) (string, bool) {
+	if l.data == nil {
+		return "", false
+	}
 	value, ok := l.data.Attributes[key]
 	return value, ok
 }
@@ -253,6 +270,9 @@ func (l *Listing) Attribute(key ListingAttributeKey) (string, bool) {
 // MustAttribute gets the given attribute value for this [Listing].
 // If the attribute is not set, an error is returned.
 func (l *Listing) MustAttribute(key ListingAttributeKey) (string, error) {
+	if l.data == nil {
+		return "", ErrEmptyListing
+	}
 	value, ok := l.data.Attributes[key]
 	if !ok {
 		return "", fmt.Errorf("attribute %s not set", key)
@@ -262,6 +282,9 @@ func (l *Listing) MustAttribute(key ListingAttributeKey) (string, error) {
 
 // Provider gets the currency type for this [Listing] (if available).
 func (l *Listing) Currency() *Currency {
+	if l.data == nil {
+		return nil
+	}
 	if l.data.Currency == nil {
 		return nil
 	}
@@ -309,6 +332,9 @@ func (l *Listing) String() string {
 }
 
 func (l Listing) Validate() (*Listing, error) {
+	if l.data == nil {
+		return &l, ErrEmptyListing
+	}
 	errs := make([]error, 0)
 	if l.data.Provider == "" {
 		errs = append(errs, errors.New("no listing provider"))
@@ -345,6 +371,9 @@ func (l Listing) MustValidate() *Listing {
 }
 
 func (l *Listing) MarshalJSON() ([]byte, error) {
+	if l.data == nil {
+		return nil, ErrEmptyListing
+	}
 	text, err := l.data.marshalText()
 	if err != nil {
 		return nil, err
