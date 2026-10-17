@@ -442,15 +442,38 @@ func (b *ListingBuilder) Build() Listing {
 }
 
 type ListingPrice struct {
-	// Instrument the financial instrument this quote is for.
+	// Instrument the financial instrument this price is for.
 	Listing Listing `json:"listing"`
-	// Timestamp gives the point in time this quote was current
+	// Timestamp gives the point in time this price was current
 	// according to the sourcing provider.
 	Timestamp time.Time `json:"timestamp"`
-	// Currency gives the currency the given values.
+	// Currency gives the currency for the given values.
 	Currency Currency `json:"currency"`
 	// Price gives the current price at the trading day identified by Timestamp.
 	Price float64 `json:"price"`
+	// Sources defines the provider this price has been
+	// queried from.
+	Source string `json:"source"`
+	// SourceTimestamp defines the time this price has
+	// been queried.
+	SourceTimestamp time.Time `json:"source_timestamp"`
+}
+
+// String formats this Quote.
+func (q *ListingPrice) String() string {
+	buffer := &strings.Builder{}
+	buffer.WriteString(q.Listing.String())
+	buffer.WriteString("|timestamp:")
+	buffer.WriteString(q.Timestamp.UTC().Format(time.RFC3339Nano))
+	buffer.WriteString("|price:")
+	buffer.WriteString(strconv.FormatFloat(q.Price, 'g', -1, 64))
+	buffer.WriteString("|currency:")
+	buffer.WriteString(string(q.Currency))
+	buffer.WriteString("|source:")
+	buffer.WriteString(q.Source)
+	buffer.WriteString("|queried:")
+	buffer.WriteString(q.SourceTimestamp.UTC().Format(time.RFC3339Nano))
+	return buffer.String()
 }
 
 // Quote represents a single full price data point for a [Listing].
@@ -466,29 +489,6 @@ type Quote struct {
 	Close float64 `json:"close"`
 	// Volume gives the order volume at the trading day identified by Timestamp.
 	Volume int64 `json:"volume"`
-	// Sources defines the provider this quote has been
-	// queried from.
-	Source string `json:"source"`
-	// SourceTimestamp defines the time this quote has
-	// been queried.
-	SourceTimestamp time.Time `json:"source_timestamp"`
-}
-
-// String formats this Quote.
-func (q *Quote) String() string {
-	buffer := &strings.Builder{}
-	buffer.WriteString(q.Listing.String())
-	buffer.WriteString("|timestamp:")
-	buffer.WriteString(q.Timestamp.UTC().Format(time.RFC3339Nano))
-	buffer.WriteString("|price:")
-	buffer.WriteString(strconv.FormatFloat(q.Price, 'g', -1, 64))
-	buffer.WriteString("|currency:")
-	buffer.WriteString(string(q.Currency))
-	buffer.WriteString("|source:")
-	buffer.WriteString(q.Source)
-	buffer.WriteString("|queried:")
-	buffer.WriteString(q.SourceTimestamp.UTC().Format(time.RFC3339Nano))
-	return buffer.String()
 }
 
 type ListingProvider interface {
