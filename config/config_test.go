@@ -35,7 +35,7 @@ func TestNewFXProvider(t *testing.T) {
 	provider, err := config.NewFXProvider()
 	require.NoError(t, err)
 	providerName := provider.ProviderName()
-	require.Equal(t, "cached:fallback:frankfurter|alphavantage|consorsbank|twelvedata", providerName)
+	require.Equal(t, "fallback:frankfurter|alphavantage|consorsbank|twelvedata", providerName)
 }
 
 func TestNewListingProvider(t *testing.T) {
@@ -44,7 +44,7 @@ func TestNewListingProvider(t *testing.T) {
 	provider, err := config.NewListingProvider()
 	require.NoError(t, err)
 	providerName := provider.ProviderName()
-	require.Equal(t, "combined:cached:alphavantage|cached:consorsbank|cached:twelvedata", providerName)
+	require.Equal(t, "combined:alphavantage|consorsbank|twelvedata", providerName)
 }
 
 func TestNewOpenFIGI(t *testing.T) {
