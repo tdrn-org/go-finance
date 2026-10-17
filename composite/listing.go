@@ -55,10 +55,7 @@ func NewCachedListingProviders(providers []finance.ListingProvider, listingCache
 
 // See [finance.APIProvider.ProviderName]
 func (p *cachedListingProvider) ProviderName() string {
-	buffer := &strings.Builder{}
-	buffer.WriteString("cached:")
-	buffer.WriteString(p.provider.ProviderName())
-	return buffer.String()
+	return p.provider.ProviderName()
 }
 
 // See [finance.ListingProvider.SearchListings]

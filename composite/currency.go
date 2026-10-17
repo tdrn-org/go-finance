@@ -43,10 +43,7 @@ func NewCachedFXProvider(provider finance.FX, cache ExchangeRateCache) finance.F
 }
 
 func (p *cachedFXProvider) ProviderName() string {
-	buffer := &strings.Builder{}
-	buffer.WriteString("cached:")
-	buffer.WriteString(p.provider.ProviderName())
-	return buffer.String()
+	return p.provider.ProviderName()
 }
 
 func (p *cachedFXProvider) QueryExchangeRate(ctx context.Context, base, quote finance.Currency) (*finance.ExchangeRate, error) {
