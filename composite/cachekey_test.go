@@ -66,21 +66,19 @@ func TestListingCacheKeyIsProviderScoped(t *testing.T) {
 	}
 }
 
-// TestFXCacheKeyIsProviderScoped guards the same for exchange rates. An ECB
-// reference rate and a streaming live rate must never occupy the same entry: the
-// caller would get either value depending on who filled the cache first, while the
-// source field of the returned rate would claim the other provider.
-func TestFXCacheKeyIsProviderScoped(t *testing.T) {
+// TestFXCacheKeyIsShared guards the opposite property of the listing cache: the FX
+// providers form a fallback chain that yields exactly one authoritative rate, so
+// they must share one cache entry. A provider-scoped key would let each provider
+// cache its own rate and the caller would see the rate flip between sources
+// (ECB reference rate on one call, streaming rate on the next).
+func TestFXCacheKeyIsShared(t *testing.T) {
 	providerA := &cachedFXProvider{provider: &stubFXProvider{name: "frankfurter"}}
 	providerB := &cachedFXProvider{provider: &stubFXProvider{name: "consorsbank"}}
 
 	keyA := providerA.cacheKey(finance.CurrencyUSD, finance.CurrencyEUR)
 	keyB := providerB.cacheKey(finance.CurrencyUSD, finance.CurrencyEUR)
-	if keyA == keyB {
-		t.Fatalf("cache key is not provider scoped, both providers use %q", keyA)
-	}
-	if providerA.cacheKey(finance.CurrencyUSD, finance.CurrencyEUR) != keyA {
-		t.Errorf("cache key is not deterministic")
+	if keyA != keyB {
+		t.Errorf("cache key is provider scoped (%q vs %q) — FX providers must share one authoritative rate", keyA, keyB)
 	}
 	if providerA.cacheKey(finance.CurrencyEUR, finance.CurrencyUSD) == keyA {
 		t.Errorf("cache key does not distinguish base from quote")

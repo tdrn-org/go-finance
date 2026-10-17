@@ -62,12 +62,13 @@ func (p *cachedFXProvider) QueryExchangeRate(ctx context.Context, base, quote fi
 }
 
 func (p *cachedFXProvider) cacheKey(base, quote finance.Currency) string {
-	// The provider name is part of the key because all cached FX providers share one
-	// cache instance. Without it an ECB reference rate (frankfurter) and a live
-	// streaming rate (consorsbank) would overwrite each other, and a caller would
-	// get whichever provider happened to fill the cache first — with the source
-	// field claiming something else entirely.
-	return fmt.Sprintf("finance:exchangeRate:%s:%s/%s", p.provider.ProviderName(), strings.ToUpper(string(base)), strings.ToUpper(string(quote)))
+	// Deliberately NOT provider scoped, unlike the listing cache: the FX providers
+	// form a fallback chain that is supposed to yield exactly one authoritative
+	// rate. With a per-provider key each provider would cache its own rate, so a
+	// caller would get the ECB rate on one call and the streaming rate on the next,
+	// depending on which provider happened to answer. Provenance stays correct
+	// either way — the cached ExchangeRate carries its own Source.
+	return fmt.Sprintf("finance:exchangeRate:%s/%s", strings.ToUpper(string(base)), strings.ToUpper(string(quote)))
 }
 
 type fallbackFXProvider struct {
