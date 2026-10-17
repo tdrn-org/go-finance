@@ -17,15 +17,11 @@
 package finance
 
 import (
-	"bytes"
-	"compress/flate"
 	"context"
 	"database/sql/driver"
-	"encoding/base64"
 	"encoding/json"
 	"errors"
 	"fmt"
-	"io"
 	"strconv"
 	"strings"
 	"time"
@@ -87,8 +83,14 @@ func validateListingAttribute(key ListingAttributeKey, value string) error {
 		return fmt.Errorf("empty attribute %s", key)
 	}
 	switch key {
-	case ListingAttributeKeySymbol:
-		// No special validation
+	case ListingAttributeKeySymbol, ListingAttributeKeyExchange:
+		// Symbols and exchange names are provider specific and have no standard
+		// format, but they become segments of the listing ID. The ID separators
+		// are therefore rejected: a separator inside a value would split one
+		// segment into two and let a caller forge an identity.
+		if strings.ContainsRune(value, ':') || strings.ContainsRune(value, '=') {
+			return fmt.Errorf("invalid %s attribute: %q must not contain ':' or '='", key, value)
+		}
 	case ListingAttributeKeyTicker:
 		if !IsTicker(value) {
 			return fmt.Errorf("invalid Ticker attribute: %q", value)
@@ -101,8 +103,6 @@ func validateListingAttribute(key ListingAttributeKey, value string) error {
 		if !IsWKN(value) {
 			return fmt.Errorf("invalid WKN attribute: %q", value)
 		}
-	case ListingAttributeKeyExchange:
-		// No special validation
 	case ListingAttributeKeyMIC:
 		if !IsMIC(value) {
 			return fmt.Errorf("invalid MIC attribute: %q", value)
@@ -123,6 +123,14 @@ var ListingAttributeKeys []ListingAttributeKey = []ListingAttributeKey{
 	ListingAttributeKeyMIC,
 }
 
+// listingData is the internal representation of a [Listing] and, at the same
+// time, its persisted form.
+//
+// The JSON tags below are the storage format written by [Listing.Value] and read
+// by [Listing.Scan]. They are deliberately plain keys and values: a stored
+// listing must stay readable with nothing but a JSON parser, because whoever
+// inspects the database later has no access to this code. Renaming a tag
+// therefore requires a migration, not just a refactoring.
 type listingData struct {
 	Provider       string                         `json:"provider"`
 	IDKeys         []ListingAttributeKey          `json:"id_keys"`
@@ -132,61 +140,36 @@ type listingData struct {
 	Currency       *Currency                      `json:"currency,omitempty"`
 }
 
-var listingTokenDict []byte = []byte(`
-"provider":
-,"id_keys":
-,"instrument_name":
-,"insturment_type":"equity"
-,"insturment_type":"etf"
-,"insturment_type":"fund"
-,"insturment_type":"bond"
-,"insturment_type":"index"
-,"insturment_type":"forex"
-,"insturment_type":"crypto"
-,"insturment_type":"option"
-,"insturment_type":"future"
-,"insturment_type":"certificate"
-,"attributes":
-,"currency":
-"symbol"
-"ticker"
-"isin"
-"wkn"
-"exchange"
-"mic"`)
-
-func (d *listingData) marshalText() ([]byte, error) {
-	encoded1, err := json.Marshal(d)
-	if err != nil {
-		return nil, err
+// ParseListingID reconstructs the identity carried by a listing ID.
+//
+// A listing ID has the form <provider>[:<key>=<value>]*, with one segment per id
+// key in the order given to [NewListing], e.g.
+// "twelvedata:ticker=AAPL:mic=XNGS".
+//
+// The returned listing carries the identity but no description: instrument name
+// and type are not part of an ID, so [Listing.Validate] does not accept such a
+// listing as complete. It is enough to identify an instrument, not to describe
+// one - use it to resolve an ID against the store, not to render it.
+func ParseListingID(id string) (Listing, error) {
+	listing := Listing{data: &listingData{Attributes: make(map[ListingAttributeKey]string)}}
+	segments := strings.Split(id, ":")
+	listing.data.Provider = segments[0]
+	if listing.data.Provider == "" {
+		return listing, fmt.Errorf("invalid listing ID %q: no provider", id)
 	}
-	encoded2 := &bytes.Buffer{}
-	encoder2, err := flate.NewWriterDict(encoded2, flate.BestCompression, listingTokenDict)
-	if err != nil {
-		return nil, err
+	for _, segment := range segments[1:] {
+		key, value, found := strings.Cut(segment, "=")
+		if !found || key == "" {
+			return listing, fmt.Errorf("invalid listing ID %q: malformed segment %q", id, segment)
+		}
+		listing.data.IDKeys = append(listing.data.IDKeys, ListingAttributeKey(key))
+		listing.data.Attributes[ListingAttributeKey(key)] = value
 	}
-	_, err = encoder2.Write(encoded1)
-	if err != nil {
-		return nil, err
+	if len(listing.data.IDKeys) == 0 {
+		return listing, fmt.Errorf("invalid listing ID %q: no id attributes", id)
 	}
-	err = encoder2.Close()
-	if err != nil {
-		return nil, err
-	}
-	return []byte(base64.RawURLEncoding.EncodeToString(encoded2.Bytes())), nil
-}
-
-func (d *listingData) unmarshalText(text []byte) error {
-	decoded2, err := base64.RawURLEncoding.DecodeString(string(text))
-	if err != nil {
-		return err
-	}
-	decoder1 := flate.NewReaderDict(bytes.NewReader(decoded2), listingTokenDict)
-	decoded1, err := io.ReadAll(decoder1)
-	if err != nil {
-		return err
-	}
-	return json.Unmarshal(decoded1, d)
+	listing.reset()
+	return listing, nil
 }
 
 // Listing is an opaque representation of a concrete listing
@@ -327,7 +310,12 @@ func (l *Listing) reset() {
 	l.s = buffer.String()
 }
 
-func (l *Listing) String() string {
+// String renders the listing for logs and error messages.
+//
+// A value receiver on purpose: a Listing is passed around by value (position
+// fields, response payloads), and a pointer-only Stringer would silently fall
+// back to the raw struct for those.
+func (l Listing) String() string {
 	return l.s
 }
 
@@ -355,6 +343,22 @@ func (l Listing) Validate() (*Listing, error) {
 			}
 		}
 	}
+	// Every id key must carry a value. The ID is built from exactly those
+	// attributes, so a missing one yields an ID with an empty segment - a
+	// well-formed key for a different instrument, which would silently collide
+	// with it in the store. An id key that is not a known attribute key can be
+	// neither validated nor looked up and is rejected for the same reason.
+	seenIDKeys := make(map[ListingAttributeKey]bool, len(l.data.IDKeys))
+	for _, idKey := range l.data.IDKeys {
+		if seenIDKeys[idKey] {
+			errs = append(errs, fmt.Errorf("duplicate id key %s", idKey))
+			continue
+		}
+		seenIDKeys[idKey] = true
+		if value, ok := l.data.Attributes[idKey]; !ok || value == "" {
+			errs = append(errs, fmt.Errorf("no value for id attribute %s", idKey))
+		}
+	}
 	err := errors.Join(errs...)
 	if err != nil {
 		return nil, err
@@ -370,55 +374,92 @@ func (l Listing) MustValidate() *Listing {
 	return &l
 }
 
-func (l *Listing) MarshalJSON() ([]byte, error) {
-	if l.data == nil {
-		return nil, ErrEmptyListing
-	}
-	text, err := l.data.marshalText()
-	if err != nil {
-		return nil, err
-	}
-	return json.Marshal(string(text))
+// MarshalJSON encodes the listing as its ID.
+//
+// The wire form carries the identity only - it is the key a caller hands back to
+// reach the same instrument again. Instrument name and type are deliberately not
+// part of it: they are description, not identity, and the store is the only
+// trustworthy source for them. Use [ParseListingID] to read the identity back.
+//
+// A value receiver on purpose: a Listing embedded in a struct that is marshalled
+// by value is not addressable, and encoding/json silently ignores a pointer-only
+// Marshaler in that case - the listing would render as an empty object on the
+// wire instead of an ID.
+//
+// Rendering never fails on a broken listing. A marshal error aborts the whole
+// payload, so one unusable instrument would hide every other field from the
+// client; an empty string is visible, and [ParseListingID] rejects it on the way
+// back. Persisting is the opposite - see [Listing.Value], which refuses to store
+// what cannot be identified.
+func (l Listing) MarshalJSON() ([]byte, error) {
+	return json.Marshal(l.id)
 }
 
+// UnmarshalJSON reads a listing ID, see [ParseListingID].
+//
+// The result carries the identity only and therefore does not pass
+// [Listing.Validate]. Resolve it against the store to get the full listing.
 func (l *Listing) UnmarshalJSON(data []byte) error {
-	l.data = &listingData{}
-	l.reset()
-	var text string
-	err := json.Unmarshal(data, &text)
+	var id string
+	err := json.Unmarshal(data, &id)
 	if err != nil {
 		return err
 	}
-	err = l.data.unmarshalText([]byte(text))
+	parsed, err := ParseListingID(id)
 	if err != nil {
 		return err
 	}
-	l.reset()
+	*l = parsed
 	return nil
 }
 
-func (l *Listing) Value() (driver.Value, error) {
-	data, err := l.MarshalJSON()
+// Value returns the persisted form of the listing: its plain JSON representation.
+//
+// Storage must stand on its own. A stored listing has to remain readable after
+// the wire format or any encoding detail changed, and it has to be readable by
+// someone who has nothing but a database client - hence plain JSON and not the
+// ID, which cannot be rendered into a description.
+//
+// A value receiver on purpose: database/sql only honours driver.Valuer when the
+// type implements it, and a Listing passed by value would otherwise reach the
+// driver as a struct.
+func (l Listing) Value() (driver.Value, error) {
+	if l.data == nil {
+		return nil, ErrEmptyListing
+	}
+	data, err := json.Marshal(l.data)
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 	return string(data), nil
 }
 
+// Scan reads the persisted form written by [Listing.Value].
 func (l *Listing) Scan(value any) error {
-	l.data = &listingData{}
-	l.reset()
 	if value == nil {
+		*l = Listing{}
 		return nil
 	}
+	var data []byte
 	switch v := value.(type) {
 	case string:
-		return l.UnmarshalJSON([]byte(v))
+		data = []byte(v)
 	case []byte:
-		return l.UnmarshalJSON(v)
+		data = v
 	default:
 		return fmt.Errorf("unsupported type for Listing: %T", value)
 	}
+	scanned := listingData{}
+	err := json.Unmarshal(data, &scanned)
+	if err != nil {
+		return err
+	}
+	if scanned.Attributes == nil {
+		scanned.Attributes = make(map[ListingAttributeKey]string)
+	}
+	*l = Listing{data: &scanned}
+	l.reset()
+	return nil
 }
 
 // ListingBuilder implements the builder pattern to create
