@@ -150,8 +150,11 @@ func (api *API) startSecurityMarketDataSubscriptionLocked(ctx context.Context, l
 			SecurityCode:  securityCode,
 			StockExchange: listingExchange.StockExchange,
 		},
-		//		Currency: string(api.preferredCurrency),
-		Currency: "USD",
+		// The TAPI converts into the requested currency, so a US instrument can be
+		// quoted in EUR directly — no exchange rate conversion needed downstream. An
+		// empty value leaves the field unset and the TAPI answers in the instrument's
+		// default currency.
+		Currency: string(api.preferredCurrency),
 	})
 	if err != nil {
 		subscriptionCancel()
