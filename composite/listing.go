@@ -75,7 +75,11 @@ func (p *cachedListingProvider) SearchListings(ctx context.Context, query string
 }
 
 func (p *cachedListingProvider) listingCacheKey(query string) string {
-	return fmt.Sprintf("finance:listings:%s", strings.ToUpper(query))
+	// The provider name is part of the key because all cached providers share one
+	// cache instance. Without it two providers would return each other's results:
+	// the second provider overwrites the entry, and from then on both answer with
+	// the same list (visible as every instrument appearing twice).
+	return fmt.Sprintf("finance:listings:%s:%s", p.provider.ProviderName(), strings.ToUpper(query))
 }
 
 // See [finance.ListingProvider.QueryQuote]
@@ -151,8 +155,15 @@ func (p *combinedListingProvider) QueryQuote(ctx context.Context, listing financ
 		}
 		quote, err := availableProvider.QueryQuote(ctx, listing)
 		if err != nil {
-			slog.Warn("marking listing provider as failed", slog.String("provider", availableProvider.ProviderName()), slog.Any("err", err))
-			p.queue.MarkProviderFailed(availableProvider)
+			// ErrRequestPending is a regular state, not a provider failure: a streaming
+			// provider answers it until its subscription has warmed up. Penalizing it
+			// with a cooldown locks the provider out for the whole cooldown period, and
+			// every following request then fails with ErrListingProviderMismatch because
+			// no provider is available any more — so the quote never arrives.
+			if !errors.Is(err, finance.ErrRequestPending) {
+				slog.Warn("marking listing provider as failed", slog.String("provider", availableProvider.ProviderName()), slog.Any("err", err))
+				p.queue.MarkProviderFailed(availableProvider)
+			}
 		}
 		return quote, err
 	}
