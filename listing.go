@@ -36,14 +36,17 @@ var (
 	// fullfilled, as the provider does not support the given kind of query
 	// (e.g. only ID searches are supported, but no free-text searches).
 	ErrListingSearchRestricted error = errors.New("listing search restricted")
-	// ErrListingProviderMismatch indicates a listing cannot be processed
-	// by the current provider, as the listing has been issued by a different
-	// provider.
+	// ErrListingProviderMismatch indicates a [Listing] cannot be processed
+	// by the current provider, as it has been issued by another provider.
 	ErrListingProviderMismatch error = errors.New("listing provider mismatch")
 	// ErrQuoteNotAvailable indicates a provider is not able to
-	// provide a quote for the given [Instrument]. This is a
+	// provide a quote for a given [Listing]. This is a
 	// permanent error.
 	ErrQuoteNotAvailable error = errors.New("quote not available")
+	// ErrHistoryNotAvailable indicates a provider is not able to
+	// provide a price history for a given [Listing]. This is a
+	// permanent error.
+	ErrHistoryNotAvailable error = errors.New("history not available")
 )
 
 // ListingAttributeKey is the key type for listing attributes.
