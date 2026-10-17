@@ -59,12 +59,12 @@ var instrumentTypeMap map[string]finance.InstrumentType = func() map[string]fina
 	return instrumentTypeMap
 }()
 
-func symbolSearchResponseItemToProviderListing(responseItem *twelvedata.SymbolSearchResponseItem) (*finance.ProviderListing, error) {
+func symbolSearchResponseItemToListing(responseItem *twelvedata.SymbolSearchResponseItem) (*finance.Listing, error) {
 	if responseItem == nil {
 		return nil, nil
 	}
 	currency := finance.Currency(responseItem.Currency)
-	listing, err := finance.NewProviderListing(Name, finance.ListingAttributeKeyTicker, finance.ListingAttributeKeyMIC).
+	listing, err := finance.NewListing(Name, finance.ListingAttributeKeyTicker, finance.ListingAttributeKeyMIC).
 		InstrumentName(responseItem.InstrumentName).
 		InstrumentType(instrumentTypeMap[responseItem.InstrumentType]).
 		Attribute(finance.ListingAttributeKeyTicker, responseItem.Symbol).
@@ -77,7 +77,7 @@ func symbolSearchResponseItemToProviderListing(responseItem *twelvedata.SymbolSe
 	return listing, nil
 }
 
-func getQuoteResponseToQuote(listing finance.ProviderListing, response *twelvedata.GetQuote200Response) (*finance.Quote, error) {
+func getQuoteResponseToQuote(listing finance.Listing, response *twelvedata.GetQuote200Response) (*finance.Quote, error) {
 	if response == nil {
 		return nil, nil
 	}

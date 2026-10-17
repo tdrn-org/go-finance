@@ -50,11 +50,11 @@ func testListingProviderAPI(t *testing.T, api finance.ListingProvider) {
 	// SearchListings
 	queries := []string{
 		// "Apple", // Name
-		// "AAPL", // Ticker
+		"AAPL", // Ticker
 		// "US0378331005", // ISIN
-		"865985", // WKN
+		// "865985", // WKN
 	}
-	searchResults := make([]finance.ProviderListing, 0)
+	searchResults := make([]finance.Listing, 0)
 	for _, query := range queries {
 		searchResult, err := api.SearchListings(t.Context(), query)
 		if !errors.Is(err, finance.ErrListingSearchRestricted) {

@@ -55,14 +55,14 @@ func (c *CacheConfig) NewExchangeRateCache(ttl time.Duration) (composite.Exchang
 func (c *CacheConfig) NewListingCache(ttl time.Duration) (composite.ListingCache, error) {
 	switch c.Type {
 	case CacheTypeMemory:
-		return memory.NewKeyValue(0, -ttl, cache.NotFound[string, []finance.ProviderListing]())
+		return memory.NewKeyValue(0, -ttl, cache.NotFound[string, []finance.Listing]())
 	case CacheTypeRedis:
 		options := &redis.Options{
 			Addr:     c.Redis.Address,
 			Password: c.Redis.Password,
 			DB:       c.Redis.DB,
 		}
-		return redis.NewKeyValue(options, -ttl, redis.StringKey, cache.JSONSerializer[[]finance.ProviderListing]())
+		return redis.NewKeyValue(options, -ttl, redis.StringKey, cache.JSONSerializer[[]finance.Listing]())
 	default:
 		return nil, fmt.Errorf(unrecognizedCacheTypeErrMessage, c.Type)
 	}

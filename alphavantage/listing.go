@@ -26,11 +26,11 @@ import (
 )
 
 // See [finance.ListingProvider.SearchListings]
-func (api *API) SearchListings(ctx context.Context, query string) ([]finance.ProviderListing, error) {
+func (api *API) SearchListings(ctx context.Context, query string) ([]finance.Listing, error) {
 	api.logger.Info("search listings...", slog.String("query", query))
-	listings := make([]finance.ProviderListing, 0)
+	listings := make([]finance.Listing, 0)
 	err := api.runSymbolSearch(ctx, query, searchMatchScore, func(bestMatch *bestMatchResponse) error {
-		listing, err := bestMatch.ToProviderListing()
+		listing, err := bestMatch.ToListing()
 		if err == nil {
 			listings = append(listings, *listing)
 		} else {
@@ -45,7 +45,7 @@ func (api *API) SearchListings(ctx context.Context, query string) ([]finance.Pro
 }
 
 // See [finance.ListingProvider.QueryQuote]
-func (api *API) QueryQuote(ctx context.Context, listing finance.ProviderListing) (*finance.Quote, error) {
+func (api *API) QueryQuote(ctx context.Context, listing finance.Listing) (*finance.Quote, error) {
 	err := listing.CheckProvider(Name)
 	if err != nil {
 		return nil, err

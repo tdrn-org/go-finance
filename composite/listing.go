@@ -28,7 +28,7 @@ import (
 	"github.com/tdrn-org/go-finance"
 )
 
-type ListingCache cache.KeyValue[string, []finance.ProviderListing]
+type ListingCache cache.KeyValue[string, []finance.Listing]
 type QuoteCache cache.KeyValue[string, *finance.Quote]
 
 type cachedListingProvider struct {
@@ -62,7 +62,7 @@ func (p *cachedListingProvider) ProviderName() string {
 }
 
 // See [finance.ListingProvider.SearchListings]
-func (p *cachedListingProvider) SearchListings(ctx context.Context, query string) ([]finance.ProviderListing, error) {
+func (p *cachedListingProvider) SearchListings(ctx context.Context, query string) ([]finance.Listing, error) {
 	key := p.listingCacheKey(query)
 	cachedInstruments, err := p.listingCache.Get(ctx, key)
 	if errors.Is(err, cache.ErrNotFound) {
@@ -82,7 +82,7 @@ func (p *cachedListingProvider) listingCacheKey(query string) string {
 }
 
 // See [finance.ListingProvider.QueryQuote]
-func (p *cachedListingProvider) QueryQuote(ctx context.Context, listing finance.ProviderListing) (*finance.Quote, error) {
+func (p *cachedListingProvider) QueryQuote(ctx context.Context, listing finance.Listing) (*finance.Quote, error) {
 	key := p.quoteCacheKey(listing)
 	cachedQuote, err := p.quoteCache.Get(ctx, key)
 	if errors.Is(err, cache.ErrNotFound) {
@@ -97,7 +97,7 @@ func (p *cachedListingProvider) QueryQuote(ctx context.Context, listing finance.
 	return cachedQuote, nil
 }
 
-func (p *cachedListingProvider) quoteCacheKey(listing finance.ProviderListing) string {
+func (p *cachedListingProvider) quoteCacheKey(listing finance.Listing) string {
 	buffer := &strings.Builder{}
 	buffer.WriteString("finance:quote:")
 	buffer.WriteString(listing.String())
@@ -128,9 +128,9 @@ func (p *combinedListingProvider) ProviderName() string {
 }
 
 // See [finance.ListingProvider.SearchListings]
-func (p *combinedListingProvider) SearchListings(ctx context.Context, query string) ([]finance.ProviderListing, error) {
+func (p *combinedListingProvider) SearchListings(ctx context.Context, query string) ([]finance.Listing, error) {
 	availableProviders := p.queue.GetAvailableProviders()
-	listings := make([]finance.ProviderListing, 0)
+	listings := make([]finance.Listing, 0)
 	for _, availableProvider := range availableProviders {
 		foundListings, err := availableProvider.SearchListings(ctx, query)
 		if errors.Is(err, finance.ErrListingSearchRestricted) {
@@ -146,7 +146,7 @@ func (p *combinedListingProvider) SearchListings(ctx context.Context, query stri
 }
 
 // See [finance.ListingProvider.QueryQuote]
-func (p *combinedListingProvider) QueryQuote(ctx context.Context, listing finance.ProviderListing) (*finance.Quote, error) {
+func (p *combinedListingProvider) QueryQuote(ctx context.Context, listing finance.Listing) (*finance.Quote, error) {
 	for _, availableProvider := range p.queue.GetAvailableProviders() {
 		err := listing.CheckProvider(availableProvider.ProviderName())
 		if err != nil {

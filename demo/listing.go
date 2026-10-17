@@ -23,7 +23,7 @@ import (
 	"github.com/tdrn-org/go-finance"
 )
 
-var demoProviderListing finance.ProviderListing = *finance.NewProviderListing(Name, finance.ListingAttributeKeyTicker, finance.ListingAttributeKeyMIC).
+var demoListing finance.Listing = *finance.NewListing(Name, finance.ListingAttributeKeyTicker, finance.ListingAttributeKeyMIC).
 	InstrumentName("Apple Inc.").
 	InstrumentType(finance.InstrumentTypeEquity).
 	Attribute(finance.ListingAttributeKeyTicker, "AAPL").
@@ -31,16 +31,16 @@ var demoProviderListing finance.ProviderListing = *finance.NewProviderListing(Na
 	Build().MustValidate()
 
 // See [finance.ListingProvider.SearchListings]
-func (api *API) SearchListings(ctx context.Context, query string) ([]finance.ProviderListing, error) {
+func (api *API) SearchListings(ctx context.Context, query string) ([]finance.Listing, error) {
 	if !api.enabled {
 		return nil, finance.ErrListingSearchRestricted
 	}
-	listings := []finance.ProviderListing{demoProviderListing}
+	listings := []finance.Listing{demoListing}
 	return listings, nil
 }
 
 // See [finance.ListingProvider.QueryQuote]
-func (api *API) QueryQuote(ctx context.Context, listing finance.ProviderListing) (*finance.Quote, error) {
+func (api *API) QueryQuote(ctx context.Context, listing finance.Listing) (*finance.Quote, error) {
 	if !api.enabled {
 		return nil, finance.ErrQuoteNotAvailable
 	}

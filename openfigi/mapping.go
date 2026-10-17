@@ -24,7 +24,7 @@ import (
 	openfigiapi "github.com/tdrn-org/go-finance/openfigi/api"
 )
 
-func (api *API) MapListings(ctx context.Context, listings []finance.ProviderListing) (any, error) {
+func (api *API) MapListings(ctx context.Context, listings []finance.Listing) (any, error) {
 	listingsLen := len(listings)
 	mappings := make([][]openfigiapi.FigiResult, listingsLen)
 	requestLimit := 5

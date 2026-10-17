@@ -25,12 +25,12 @@ import (
 )
 
 type listingStruct struct {
-	Listing finance.ProviderListing `json:"listing"`
+	Listing finance.Listing `json:"listing"`
 }
 
 func TestJSONMarshaling(t *testing.T) {
 	s1 := &listingStruct{
-		Listing: *finance.NewProviderListing("test", finance.ListingAttributeKeyTicker, finance.ListingAttributeKeyMIC).
+		Listing: *finance.NewListing("test", finance.ListingAttributeKeyTicker, finance.ListingAttributeKeyMIC).
 			InstrumentName("Test instrument").
 			InstrumentType(finance.InstrumentTypeEquity).
 			Attribute(finance.ListingAttributeKeyTicker, "TCKR").

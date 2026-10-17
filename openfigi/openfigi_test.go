@@ -25,19 +25,19 @@ import (
 	"github.com/tdrn-org/go-finance/openfigi"
 )
 
-var testListingISIN finance.ProviderListing = *finance.NewProviderListing(openfigi.Name, finance.ListingAttributeKeyISIN, finance.ListingAttributeKeyMIC).
+var testListingISIN finance.Listing = *finance.NewListing(openfigi.Name, finance.ListingAttributeKeyISIN, finance.ListingAttributeKeyMIC).
 	InstrumentName("APPLE INC").
 	InstrumentType(finance.InstrumentTypeEquity).
 	Attribute(finance.ListingAttributeKeyISIN, "US0378331005").
 	Attribute(finance.ListingAttributeKeyMIC, "XNGS").
 	Build().MustValidate()
-var testListingWKN finance.ProviderListing = *finance.NewProviderListing(openfigi.Name, finance.ListingAttributeKeyWKN, finance.ListingAttributeKeyMIC).
+var testListingWKN finance.Listing = *finance.NewListing(openfigi.Name, finance.ListingAttributeKeyWKN, finance.ListingAttributeKeyMIC).
 	InstrumentName("Siemens AG").
 	InstrumentType(finance.InstrumentTypeEquity).
 	Attribute(finance.ListingAttributeKeyWKN, "723610").
 	Attribute(finance.ListingAttributeKeyMIC, "XFRA").
 	Build().MustValidate()
-var testListingTicker finance.ProviderListing = *finance.NewProviderListing(openfigi.Name, finance.ListingAttributeKeyTicker, finance.ListingAttributeKeyMIC).
+var testListingTicker finance.Listing = *finance.NewListing(openfigi.Name, finance.ListingAttributeKeyTicker, finance.ListingAttributeKeyMIC).
 	InstrumentName("INTL BUSINESS MACHINES CORP").
 	InstrumentType(finance.InstrumentTypeEquity).
 	Attribute(finance.ListingAttributeKeyTicker, "IBM").

@@ -27,7 +27,7 @@ import (
 )
 
 // See [finance.ListingProvider.SearchListings]
-func (api *API) SearchListings(ctx context.Context, query string) ([]finance.ProviderListing, error) {
+func (api *API) SearchListings(ctx context.Context, query string) ([]finance.Listing, error) {
 	api.logger.Info("search listings...", slog.String("query", query))
 
 	api.mutex.Lock()
@@ -42,7 +42,7 @@ func (api *API) SearchListings(ctx context.Context, query string) ([]finance.Pro
 	if len(securityCodes) == 0 {
 		return nil, finance.ErrListingSearchRestricted
 	}
-	listings := make([]finance.ProviderListing, 0)
+	listings := make([]finance.Listing, 0)
 	for _, securityCode := range securityCodes {
 		reply, err := api.getSecurityInfo(ctx, session, securityService, securityCode)
 		if err != nil {
@@ -52,7 +52,7 @@ func (api *API) SearchListings(ctx context.Context, query string) ([]finance.Pro
 			if !api.includeSecurityStockExchange(stockExchangeInfo) {
 				continue
 			}
-			listing, err := securityInfoToProviderListing(reply, stockExchangeInfo)
+			listing, err := securityInfoToListing(reply, stockExchangeInfo)
 			if err == nil {
 				listings = append(listings, *listing)
 			} else {
@@ -71,7 +71,7 @@ func (api *API) includeSecurityStockExchange(stockExchangeInfo *proto.SecuritySt
 }
 
 // See [finance.ListingProvider.QueryQuote]
-func (api *API) QueryQuote(ctx context.Context, listing finance.ProviderListing) (*finance.Quote, error) {
+func (api *API) QueryQuote(ctx context.Context, listing finance.Listing) (*finance.Quote, error) {
 	err := listing.CheckProvider(Name)
 	if err != nil {
 		return nil, err
@@ -109,7 +109,7 @@ func (api *API) getSecurityInfo(ctx context.Context, session *apiSession, securi
 	return reply, nil
 }
 
-func (api *API) getSecurityMarketDataSubscriptionLocked(listing finance.ProviderListing) *streamSubscription[proto.SecurityMarketDataReply, finance.Quote] {
+func (api *API) getSecurityMarketDataSubscriptionLocked(listing finance.Listing) *streamSubscription[proto.SecurityMarketDataReply, finance.Quote] {
 	subscriptionKey := listing.String()
 	subscription := api.quoteSubscriptions[subscriptionKey]
 	if subscription.IsClosed() {
@@ -118,7 +118,7 @@ func (api *API) getSecurityMarketDataSubscriptionLocked(listing finance.Provider
 	return subscription
 }
 
-func (api *API) startSecurityMarketDataSubscriptionLocked(ctx context.Context, listing finance.ProviderListing) (*streamSubscription[proto.SecurityMarketDataReply, finance.Quote], error) {
+func (api *API) startSecurityMarketDataSubscriptionLocked(ctx context.Context, listing finance.Listing) (*streamSubscription[proto.SecurityMarketDataReply, finance.Quote], error) {
 	session, err := api.getSessionLocked(ctx)
 	if err != nil {
 		return nil, err
@@ -174,7 +174,7 @@ func (api *API) startSecurityMarketDataSubscriptionLocked(ctx context.Context, l
 	return subscription, nil
 }
 
-func (api *API) getListingExchange(listing finance.ProviderListing, exchangeInfos []*proto.SecurityStockExchangeInfo) (*proto.SecurityStockExchangeInfo, error) {
+func (api *API) getListingExchange(listing finance.Listing, exchangeInfos []*proto.SecurityStockExchangeInfo) (*proto.SecurityStockExchangeInfo, error) {
 	exchange, err := listing.MustAttribute(finance.ListingAttributeKeyExchange)
 	if err != nil {
 		return nil, err
@@ -187,7 +187,7 @@ func (api *API) getListingExchange(listing finance.ProviderListing, exchangeInfo
 	return nil, fmt.Errorf("%s: unable to determine exchange for listing: %s", Name, listing.String())
 }
 
-func recordSecurityMarketDataReply(s *streamSubscription[proto.SecurityMarketDataReply, finance.Quote], listing finance.ProviderListing, reply *proto.SecurityMarketDataReply) {
+func recordSecurityMarketDataReply(s *streamSubscription[proto.SecurityMarketDataReply, finance.Quote], listing finance.Listing, reply *proto.SecurityMarketDataReply) {
 	if reply.Error != nil {
 		s.logger.Warn("ignoring errornous market data reply", slog.Any("err", reply.Error))
 		return

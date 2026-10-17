@@ -68,11 +68,11 @@ var securityClassMap map[proto.SecurityClass]finance.InstrumentType = func() map
 	return securityClassMap
 }()
 
-func securityInfoToProviderListing(reply *proto.SecurityInfoReply, stockExchangeInfo *proto.SecurityStockExchangeInfo) (*finance.ProviderListing, error) {
+func securityInfoToListing(reply *proto.SecurityInfoReply, stockExchangeInfo *proto.SecurityStockExchangeInfo) (*finance.Listing, error) {
 	if reply == nil {
 		return nil, nil
 	}
-	newListing := finance.NewProviderListing(Name, finance.ListingAttributeKeyISIN, finance.ListingAttributeKeyExchange).
+	newListing := finance.NewListing(Name, finance.ListingAttributeKeyISIN, finance.ListingAttributeKeyExchange).
 		InstrumentName(reply.Name).
 		InstrumentType(securityClassMap[reply.SecurityClass]).
 		Attribute(finance.ListingAttributeKeyExchange, stockExchangeInfo.StockExchange.Id)
@@ -93,7 +93,7 @@ func securityInfoToProviderListing(reply *proto.SecurityInfoReply, stockExchange
 	return listing, nil
 }
 
-func securityMarketDataReplyToQuote(listing finance.ProviderListing, reply *proto.SecurityMarketDataReply) *finance.Quote {
+func securityMarketDataReplyToQuote(listing finance.Listing, reply *proto.SecurityMarketDataReply) *finance.Quote {
 	if reply == nil {
 		return nil
 	}

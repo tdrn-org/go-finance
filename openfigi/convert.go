@@ -23,7 +23,7 @@ import (
 	"github.com/tdrn-org/go-finance/openfigi/api"
 )
 
-func listingToMappingJob(listing finance.ProviderListing) *api.MappingJob {
+func listingToMappingJob(listing finance.Listing) *api.MappingJob {
 	var idType api.MappingJobIdType
 	idValue := api.MappingJob_IdValue{}
 	var micCode *string

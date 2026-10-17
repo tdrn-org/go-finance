@@ -117,9 +117,9 @@ var typeMap map[string]finance.InstrumentType = func() map[string]finance.Instru
 	return typeMap
 }()
 
-func (r *bestMatchResponse) ToProviderListing() (*finance.ProviderListing, error) {
+func (r *bestMatchResponse) ToListing() (*finance.Listing, error) {
 	currency := finance.Currency(r.Currency)
-	listing, err := finance.NewProviderListing(Name, finance.ListingAttributeKeySymbol).
+	listing, err := finance.NewListing(Name, finance.ListingAttributeKeySymbol).
 		InstrumentName(r.Name).
 		InstrumentType(typeMap[r.Type]).
 		Attribute(finance.ListingAttributeKeySymbol, r.Symbol).
@@ -149,7 +149,7 @@ type quoteResponse struct {
 	ChangePercent    string `json:"10. change percent"`
 }
 
-func (r *quoteResponse) ToQuote(listing finance.ProviderListing) (*finance.Quote, error) {
+func (r *quoteResponse) ToQuote(listing finance.Listing) (*finance.Quote, error) {
 	currency := listing.Currency()
 	if currency == nil {
 		return nil, fmt.Errorf("%s: no currency for listing %q", Name, listing.String())
