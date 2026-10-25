@@ -29,8 +29,9 @@ func (api *API) QueryExchangeRate(ctx context.Context, base, quote finance.Curre
 		return nil, finance.ErrExchangeRateNotAvailable
 	}
 	now := time.Now()
+	timestamp := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, time.UTC)
 	exchangeRate := &finance.ExchangeRate{
-		Timestamp:       now,
+		Timestamp:       timestamp,
 		Base:            base,
 		Quote:           quote,
 		Rate:            1.0 + float64(now.Minute())/100.0,

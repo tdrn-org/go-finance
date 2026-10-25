@@ -1,11 +1,15 @@
 [fx]
-providers = [ "demo" ]
 cooldown = "10m"
+
+[[fx.provider]]
+name = "demo"
 cache_ttl = "1h"
 
 [listings]
-providers = [ "demo" ]
 cooldown = "10m"
+
+[[listings.provider]]
+name = "demo"
 listing_cache_ttl = "12h"
 quote_cache_ttl = "5m"
 

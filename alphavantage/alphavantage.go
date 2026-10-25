@@ -14,26 +14,34 @@
  * limitations under the License.
  */
 
-// Package alphavantage integrates the [Alpha Vantage API].
+// Package alphavantage provides access to the [Alpha Vantage API].
 //
 // [Alpha Vantage API]: https://www.alphavantage.co/documentation/
 package alphavantage
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"log/slog"
 	"net/http"
 	"net/url"
 
-	// For godoc
-	_ "github.com/tdrn-org/go-finance"
+	"github.com/tdrn-org/go-finance"
+	_ "github.com/tdrn-org/go-finance" // For godoc
+	tracehelper "github.com/tdrn-org/go-finance/internal/trace"
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/trace"
 )
 
 // Name of the Alpha Vantage Provider.
 const Name string = "alphavantage"
 
-const searchMatchScore float64 = 0.5
+var idKeys []finance.ListingAttributeKey = []finance.ListingAttributeKey{
+	finance.ListingAttributeKeySymbol,
+}
+
+var defaultLogger *slog.Logger = slog.With(slog.String("provider", Name))
 
 // API provides access to the [Alpha Vantage API] and implements
 //   - [finance.FX]
@@ -45,6 +53,7 @@ type API struct {
 	apiKey     string
 	httpClient *http.Client
 	logger     *slog.Logger
+	tracer     *tracehelper.Tracer
 }
 
 // NewAPI creates a new Alpha Vantage provider instance using the given [Config].
@@ -64,19 +73,30 @@ func NewAPI(config Config) (*API, error) {
 	if httpClient == nil {
 		httpClient = http.DefaultClient
 	}
-	logger := slog.With(slog.String("provider", Name), slog.Any("url", baseURL))
 	api := &API{
 		baseURL:    baseURL,
 		apiKey:     apiKey,
 		httpClient: httpClient,
-		logger:     logger,
+		logger:     defaultLogger.With(slog.Any("url", baseURL)),
+		tracer:     tracehelper.NewTracer[API](trace.WithInstrumentationAttributes(attribute.String("provider", Name))),
 	}
+	api.logger.Info("provider enabled")
 	return api, nil
 }
 
 // See [finance.APIProvider.ProviderName]
 func (api *API) ProviderName() string {
 	return Name
+}
+
+// See [finance.APIProvider.Shutdown]
+func (api *API) Shutdown(_ context.Context) error {
+	return nil
+}
+
+// See [finance.APIProvider.Close]
+func (api *API) Close() error {
+	return nil
 }
 
 func (api *API) url(args ...string) *url.URL {
@@ -90,7 +110,8 @@ func (api *API) url(args ...string) *url.URL {
 	return &apiURL
 }
 
-func (api *API) decodeAndCheckResponse(rsp *http.Response, decoded any) error {
+func (api *API) decodeAndCheckResponse(ctx context.Context, rsp *http.Response, decoded any) error {
+	tracehelper.SetHttpResponse(trace.SpanFromContext(ctx), rsp)
 	if rsp.StatusCode != http.StatusOK {
 		return fmt.Errorf("%s: service failure (status: %s)", Name, rsp.Status)
 	}

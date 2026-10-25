@@ -35,6 +35,7 @@ type cachedListingProvider struct {
 	provider     finance.ListingProvider
 	listingCache ListingCache
 	quoteCache   QuoteCache
+	logger       *slog.Logger
 }
 
 func NewCachedListingProvider(provider finance.ListingProvider, listingCache ListingCache, quoteCache QuoteCache) finance.ListingProvider {
@@ -42,15 +43,8 @@ func NewCachedListingProvider(provider finance.ListingProvider, listingCache Lis
 		provider:     provider,
 		listingCache: listingCache,
 		quoteCache:   quoteCache,
+		logger:       slog.With(slog.String("provider", provider.ProviderName())),
 	}
-}
-
-func NewCachedListingProviders(providers []finance.ListingProvider, listingCache ListingCache, quoteCache QuoteCache) []finance.ListingProvider {
-	cachedProviders := make([]finance.ListingProvider, 0, len(providers))
-	for _, provider := range providers {
-		cachedProviders = append(cachedProviders, NewCachedListingProvider(provider, listingCache, quoteCache))
-	}
-	return cachedProviders
 }
 
 // See [finance.APIProvider.ProviderName]
@@ -58,20 +52,37 @@ func (p *cachedListingProvider) ProviderName() string {
 	return p.provider.ProviderName()
 }
 
+// See [finance.APIProvider.Shutdown]
+func (p *cachedListingProvider) Shutdown(ctx context.Context) error {
+	return p.provider.Shutdown(ctx)
+}
+
+// See [finance.APIProvider.Close]
+func (p *cachedListingProvider) Close() error {
+	return p.provider.Close()
+}
+
 // See [finance.ListingProvider.SearchListings]
 func (p *cachedListingProvider) SearchListings(ctx context.Context, query string) ([]finance.Listing, error) {
 	key := p.listingCacheKey(query)
-	cachedInstruments, err := p.listingCache.Get(ctx, key)
+	cachedListings, err := p.listingCache.Get(ctx, key)
 	if errors.Is(err, cache.ErrNotFound) {
-		cachedInstruments, err = p.provider.SearchListings(ctx, query)
+		cachedListings, err = p.provider.SearchListings(ctx, query)
 		if err != nil {
 			return nil, err
 		}
-		p.listingCache.Put(ctx, key, cachedInstruments)
+		p.listingCache.Put(ctx, key, cachedListings)
 	} else if err != nil {
 		return nil, err
+	} else {
+		p.logger.Info("using cached listings", slog.Any("listings", cachedListings))
 	}
-	return cachedInstruments, nil
+	return cachedListings, nil
+}
+
+// See [finance.ListingProvider.QueryQuoteHistory]
+func (p *cachedListingProvider) QueryQuoteHistory(ctx context.Context, listing finance.Listing, from, to time.Time) ([]finance.Quote, error) {
+	return nil, nil
 }
 
 func (p *cachedListingProvider) listingCacheKey(query string) string {
@@ -94,15 +105,14 @@ func (p *cachedListingProvider) QueryQuote(ctx context.Context, listing finance.
 		p.quoteCache.Put(ctx, key, cachedQuote)
 	} else if err != nil {
 		return nil, err
+	} else {
+		p.logger.Info("using cached quote", slog.Any("quote", cachedQuote))
 	}
 	return cachedQuote, nil
 }
 
 func (p *cachedListingProvider) quoteCacheKey(listing finance.Listing) string {
-	buffer := &strings.Builder{}
-	buffer.WriteString("finance:quote:")
-	buffer.WriteString(listing.String())
-	return buffer.String()
+	return fmt.Sprintf("finance:quote:%s:%s", p.provider.ProviderName(), listing.ID())
 }
 
 type combinedListingProvider struct {
@@ -115,6 +125,7 @@ func NewCombinedListingProvider(cooldown time.Duration, providers ...finance.Lis
 	}
 }
 
+// See [finance.APIProvider.ProviderName]
 func (p *combinedListingProvider) ProviderName() string {
 	buffer := &strings.Builder{}
 	buffer.WriteString("combined:")
@@ -126,6 +137,30 @@ func (p *combinedListingProvider) ProviderName() string {
 		buffer.WriteString(provider.ProviderName())
 	})
 	return buffer.String()
+}
+
+// See [finance.APIProvider.Shutdown]
+func (p *combinedListingProvider) Shutdown(ctx context.Context) error {
+	errs := make([]error, 0)
+	p.queue.ForEach(func(provider finance.ListingProvider) {
+		err := provider.Shutdown(ctx)
+		if err != nil {
+			errs = append(errs, err)
+		}
+	})
+	return errors.Join(errs...)
+}
+
+// See [finance.APIProvider.Close]
+func (p *combinedListingProvider) Close() error {
+	errs := make([]error, 0)
+	p.queue.ForEach(func(provider finance.ListingProvider) {
+		err := provider.Close()
+		if err != nil {
+			errs = append(errs, err)
+		}
+	})
+	return errors.Join(errs...)
 }
 
 // See [finance.ListingProvider.SearchListings]
@@ -154,18 +189,20 @@ func (p *combinedListingProvider) QueryQuote(ctx context.Context, listing financ
 			continue
 		}
 		quote, err := availableProvider.QueryQuote(ctx, listing)
-		if err != nil {
-			// ErrRequestPending is a regular state, not a provider failure: a streaming
-			// provider answers it until its subscription has warmed up. Penalizing it
-			// with a cooldown locks the provider out for the whole cooldown period, and
-			// every following request then fails with ErrListingProviderMismatch because
-			// no provider is available any more — so the quote never arrives.
-			if !errors.Is(err, finance.ErrRequestPending) {
-				slog.Warn("marking listing provider as failed", slog.String("provider", availableProvider.ProviderName()), slog.Any("err", err))
-				p.queue.MarkProviderFailed(availableProvider)
-			}
+		if errors.Is(err, finance.ErrListingProviderMismatch) {
+			continue
+		} else if errors.Is(err, finance.ErrRequestPending) {
+			return nil, err
+		} else if err != nil {
+			slog.Warn("marking listing provider as failed", slog.String("provider", availableProvider.ProviderName()), slog.Any("err", err))
+			p.queue.MarkProviderFailed(availableProvider)
 		}
 		return quote, err
 	}
 	return nil, finance.ErrListingProviderMismatch
+}
+
+// See [finance.ListingProvider.QueryQuoteHistory]
+func (p *combinedListingProvider) QueryQuoteHistory(ctx context.Context, listing finance.Listing, from, to time.Time) ([]finance.Quote, error) {
+	return nil, nil
 }

@@ -19,6 +19,7 @@ package consorsbank
 import (
 	_ "embed"
 	"encoding/json"
+	"log/slog"
 	"time"
 
 	"github.com/tdrn-org/go-finance"
@@ -26,12 +27,10 @@ import (
 )
 
 func currencyRateReplyToExchangeRate(reply *proto.CurrencyRateReply) *finance.ExchangeRate {
-	if reply == nil {
-		return nil
-	}
 	now := time.Now().UTC()
+	timestamp := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, time.UTC)
 	return &finance.ExchangeRate{
-		Timestamp:       now,
+		Timestamp:       timestamp,
 		Base:            finance.Currency(reply.CurrencyFrom),
 		Quote:           finance.Currency(reply.CurrencyTo),
 		Rate:            reply.CurrencyRate,
@@ -68,13 +67,19 @@ var securityClassMap map[proto.SecurityClass]finance.InstrumentType = func() map
 	return securityClassMap
 }()
 
-func securityInfoToListing(reply *proto.SecurityInfoReply, stockExchangeInfo *proto.SecurityStockExchangeInfo) (*finance.Listing, error) {
-	if reply == nil {
-		return nil, nil
+func securityClassToInstrumentType(securityClass proto.SecurityClass) finance.InstrumentType {
+	mapped, ok := securityClassMap[securityClass]
+	if !ok {
+		defaultLogger.Warn("missing SecurityClass mapping", slog.Any("securityClass", securityClass))
+		return finance.InstrumentTypeUnknown
 	}
-	newListing := finance.NewListing(Name, finance.ListingAttributeKeyISIN, finance.ListingAttributeKeyExchange).
+	return mapped
+}
+
+func securityInfoToListing(reply *proto.SecurityInfoReply, stockExchangeInfo *proto.SecurityStockExchangeInfo) (*finance.Listing, error) {
+	newListing := finance.NewListing(Name, idKeys...).
 		InstrumentName(reply.Name).
-		InstrumentType(securityClassMap[reply.SecurityClass]).
+		InstrumentType(securityClassToInstrumentType(reply.SecurityClass)).
 		Attribute(finance.ListingAttributeKeyExchange, stockExchangeInfo.StockExchange.Id)
 	for _, securityCode := range reply.GetSecurityCodes() {
 		switch securityCode.GetCodeType() {
@@ -94,9 +99,6 @@ func securityInfoToListing(reply *proto.SecurityInfoReply, stockExchangeInfo *pr
 }
 
 func securityMarketDataReplyToQuote(listing finance.Listing, reply *proto.SecurityMarketDataReply) *finance.Quote {
-	if reply == nil {
-		return nil
-	}
 	now := time.Now().UTC()
 	timestamp := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, time.UTC)
 	if reply.LastDateTime != nil {
@@ -108,7 +110,7 @@ func securityMarketDataReplyToQuote(listing finance.Listing, reply *proto.Securi
 		Open:            reply.OpenPrice,
 		High:            reply.HighPrice,
 		Low:             reply.LowPrice,
-		Close:           reply.PreviousPrice,
+		PreviousClose:   reply.PreviousPrice,
 		Price:           reply.LastPrice,
 		Volume:          int64(reply.TodayVolume),
 		Currency:        finance.Currency(reply.Currency),

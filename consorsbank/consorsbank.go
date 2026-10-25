@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-// Package consorsbank integrates the [Consorsbank TAPI].
+// Package consorsbank provides access to the [Consorsbank TAPI].
 //
 // [Consorsbank TAPI]: https://www.consorsbank.de/web/Wertpapierhandel/Trading-Software/ActiveTrader#API
 package consorsbank
@@ -24,19 +24,28 @@ import (
 	"crypto/tls"
 	"errors"
 	"fmt"
-	"io"
 	"log/slog"
 	"sync"
 	"time"
 
 	"github.com/tdrn-org/go-finance"
 	"github.com/tdrn-org/go-finance/consorsbank/proto"
+	tracehelper "github.com/tdrn-org/go-finance/internal/trace"
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/trace"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
 )
 
 // Name of the Consorsbank Provider.
 const Name string = "consorsbank"
+
+var idKeys []finance.ListingAttributeKey = []finance.ListingAttributeKey{
+	finance.ListingAttributeKeyISIN,
+	finance.ListingAttributeKeyExchange,
+}
+
+var defaultLogger *slog.Logger = slog.With(slog.String("provider", Name))
 
 // API provides access to the [Consorsbank TAPI] and implements
 //   - [finance.FX]
@@ -54,6 +63,7 @@ type API struct {
 	exchangeRateSubscriptions map[string]*streamSubscription[proto.CurrencyRateReply, finance.ExchangeRate]
 	quoteSubscriptions        map[string]*streamSubscription[proto.SecurityMarketDataReply, finance.Quote]
 	logger                    *slog.Logger
+	tracer                    *tracehelper.Tracer
 	mutex                     sync.Mutex
 	stoppedWG                 sync.WaitGroup
 }
@@ -87,7 +97,6 @@ func NewAPI(config Config) (*API, error) {
 	if err != nil {
 		return nil, err
 	}
-	logger := slog.With(slog.String("provider", Name), slog.String("address", address))
 	api := &API{
 		address:                   address,
 		tlsConfig:                 tlsConfig,
@@ -97,31 +106,34 @@ func NewAPI(config Config) (*API, error) {
 		subscriptionTimeout:       subscriptionTimeout,
 		exchangeRateSubscriptions: make(map[string]*streamSubscription[proto.CurrencyRateReply, finance.ExchangeRate]),
 		quoteSubscriptions:        make(map[string]*streamSubscription[proto.SecurityMarketDataReply, finance.Quote]),
-		logger:                    logger,
+		logger:                    defaultLogger.With(slog.String("address", address)),
+		tracer:                    tracehelper.NewTracer[API](trace.WithInstrumentationAttributes(attribute.String("provider", Name))),
 	}
+	api.logger.Info("provider enabled")
 	return api, nil
-}
-
-// Shutdown requests a Consorsbank provider shutdown by gracefully closing any
-// running session.
-func (api *API) Shutdown(ctx context.Context) error {
-	api.mutex.Lock()
-	defer api.mutex.Unlock()
-
-	return errors.Join(api.shutdownSessionLocked(ctx), api.closeSessionLocked())
-}
-
-// Close closes any running session.
-func (api *API) Close() error {
-	api.mutex.Lock()
-	defer api.mutex.Unlock()
-
-	return api.closeSessionLocked()
 }
 
 // See [finance.APIProvider.ProviderName]
 func (api *API) ProviderName() string {
 	return Name
+}
+
+// See [finance.APIProvider.Shutdown]
+func (api *API) Shutdown(ctx context.Context) error {
+	api.mutex.Lock()
+	defer api.mutex.Unlock()
+
+	api.logger.Info("shutting down...")
+	return errors.Join(api.shutdownSessionLocked(ctx), api.closeSessionLocked())
+}
+
+// See [finance.APIProvider.Close]
+func (api *API) Close() error {
+	api.mutex.Lock()
+	defer api.mutex.Unlock()
+
+	api.logger.Info("closing...")
+	return api.closeSessionLocked()
 }
 
 func (api *API) getSessionLocked(ctx context.Context) (*apiSession, error) {
@@ -134,13 +146,13 @@ func (api *API) getSessionLocked(ctx context.Context) (*apiSession, error) {
 	}
 	grpcClient, err := grpc.NewClient(api.address, dialOptions...)
 	if err != nil {
-		return nil, fmt.Errorf("%s: failed to create gRPC client to TAPI at %q (cause: %w)", Name, api.address, err)
+		return nil, fmt.Errorf("%s: failed to create gRPC client (cause: %w)", Name, err)
 	}
 	accessService := proto.NewAccessServiceClient(grpcClient)
 	loginReply, err := accessService.Login(ctx, &proto.LoginRequest{Secret: api.secret})
 	if err != nil {
 		grpcClient.Close()
-		return nil, fmt.Errorf("%s: failed to login to TAPI at %q (cause: %w)", Name, api.address, err)
+		return nil, fmt.Errorf("%s: failed to login (cause: %w)", Name, err)
 	}
 	api.session = &apiSession{
 		grpcClient:  grpcClient,
@@ -167,7 +179,7 @@ func (api *API) shutdownSessionLocked(ctx context.Context) error {
 	accessService := proto.NewAccessServiceClient(api.session.grpcClient)
 	_, err := accessService.Logout(ctx, &proto.LogoutRequest{AccessToken: api.session.AccessToken})
 	if err != nil {
-		return fmt.Errorf("%s: failed to send logout request to TAPI at %q (cause: %w)", Name, api.address, err)
+		return fmt.Errorf("%s: failed to logout (cause: %w)", Name, err)
 	}
 	return nil
 }
@@ -180,7 +192,7 @@ func (api *API) closeSessionLocked() error {
 	err := api.session.grpcClient.Close()
 	api.session = nil
 	if err != nil {
-		return fmt.Errorf("%s: failed to close gRPC client to TAPI at %q (cause: %w)", Name, api.address, err)
+		return fmt.Errorf("%s: failed to close gRPC client (cause: %w)", Name, err)
 	}
 	return nil
 }
@@ -192,87 +204,4 @@ type apiSession struct {
 
 func (s *apiSession) SecurityService() proto.SecurityServiceClient {
 	return proto.NewSecurityServiceClient(s.grpcClient)
-}
-
-type streamSubscription[R, T any] struct {
-	client              grpc.ServerStreamingClient[R]
-	subscriptionTimeout time.Duration
-	suscribeUntil       time.Time
-	lastReply           *T
-	recordReply         func(*streamSubscription[R, T], *R)
-	ctx                 context.Context
-	cancel              context.CancelFunc
-	closed              bool
-	logger              *slog.Logger
-	mutex               sync.Mutex
-}
-
-func (s *streamSubscription[R, T]) IsClosed() bool {
-	if s == nil {
-		return true
-	}
-
-	s.mutex.Lock()
-	defer s.mutex.Unlock()
-
-	return s.closed
-}
-
-func (s *streamSubscription[R, T]) markClosed() {
-	s.mutex.Lock()
-	defer s.mutex.Unlock()
-
-	s.closed = true
-}
-
-func (s *streamSubscription[R, T]) Run() {
-	s.logger.Info("subscription running...")
-	for {
-		if s.timeoutReached() {
-			s.logger.Info("closing subscription; timeout reached")
-			s.markClosed()
-			return
-		}
-		reply, err := s.client.Recv()
-		if err != nil {
-			s.markClosed()
-			if errors.Is(err, io.EOF) {
-				s.logger.Info("closing subscription; server closed connection")
-			} else if s.ctx.Err() != nil || s.client.Context().Err() != nil {
-				s.logger.Info("closing subscription; client is disconnecting")
-			} else {
-				s.logger.Info("closing subscription; recv failure", slog.Any("err", err))
-			}
-			return
-		}
-		s.recordReply(s, reply)
-	}
-}
-
-func (s *streamSubscription[R, T]) timeoutReached() bool {
-	s.mutex.Lock()
-	defer s.mutex.Unlock()
-
-	if s.subscriptionTimeout <= 0 {
-		return false
-	}
-	now := time.Now()
-	if s.suscribeUntil.IsZero() {
-		s.suscribeUntil = now.Add(s.subscriptionTimeout)
-		return false
-	}
-	return now.After(s.suscribeUntil)
-}
-
-func (s *streamSubscription[R, T]) LastReply() (*T, error) {
-	s.mutex.Lock()
-	defer s.mutex.Unlock()
-
-	if s.lastReply == nil {
-		return nil, finance.ErrRequestPending
-	}
-	// Only start extending timeout after at least one reply has has been
-	// received, to timeout dysfunctional subscriptions.
-	s.suscribeUntil = time.Now().Add(s.subscriptionTimeout)
-	return s.lastReply, nil
 }

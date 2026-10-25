@@ -41,9 +41,15 @@ func (api *API) SearchListings(ctx context.Context, query string) ([]finance.Lis
 
 // See [finance.ListingProvider.QueryQuote]
 func (api *API) QueryQuote(ctx context.Context, listing finance.Listing) (*finance.Quote, error) {
+	err := listing.CheckProvider(Name)
+	if err != nil {
+		return nil, err
+	}
+
 	if !api.enabled {
 		return nil, finance.ErrQuoteNotAvailable
 	}
+
 	now := time.Now()
 	quote := &finance.Quote{
 		Listing:         listing,
@@ -51,7 +57,7 @@ func (api *API) QueryQuote(ctx context.Context, listing finance.Listing) (*finan
 		Open:            101.0,
 		High:            102.0,
 		Low:             100.5,
-		Close:           100.0,
+		PreviousClose:   100.0,
 		Price:           101.0 + float64(now.Minute())/100.0,
 		Volume:          int64(now.Hour()),
 		Currency:        finance.CurrencyUSD,
@@ -59,4 +65,9 @@ func (api *API) QueryQuote(ctx context.Context, listing finance.Listing) (*finan
 		SourceTimestamp: now,
 	}
 	return quote, nil
+}
+
+// See [finance.ListingProvider.QueryQuoteHistory]
+func (api *API) QueryQuoteHistory(ctx context.Context, listing finance.Listing, from, to time.Time) ([]finance.Quote, error) {
+	return nil, nil
 }

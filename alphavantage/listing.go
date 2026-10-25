@@ -21,13 +21,32 @@ import (
 	"fmt"
 	"log/slog"
 	"net/http"
+	"time"
 
 	"github.com/tdrn-org/go-finance"
+	tracehelper "github.com/tdrn-org/go-finance/internal/trace"
+	"go.opentelemetry.io/otel/attribute"
 )
+
+const searchMatchScore float64 = 0.5
 
 // See [finance.ListingProvider.SearchListings]
 func (api *API) SearchListings(ctx context.Context, query string) ([]finance.Listing, error) {
-	api.logger.Info("search listings...", slog.String("query", query))
+	logger := api.logger.With(slog.String("query", query))
+	logger.Info("search listings...")
+	traceCtx, span := api.tracer.StartConsuming(ctx, attribute.String("query", query))
+	defer span.End()
+
+	listings, err := api.searchListings(traceCtx, query)
+	if err != nil {
+		logger.Warn("search listings failure", slog.Any("err", err))
+	} else {
+		logger.Info("listings received", slog.Int("len", len(listings)))
+	}
+	return listings, tracehelper.SetStatus(span, err)
+}
+
+func (api *API) searchListings(ctx context.Context, query string) ([]finance.Listing, error) {
 	listings := make([]finance.Listing, 0)
 	err := api.runSymbolSearch(ctx, query, searchMatchScore, func(bestMatch *bestMatchResponse) error {
 		listing, err := bestMatch.ToListing()
@@ -42,28 +61,6 @@ func (api *API) SearchListings(ctx context.Context, query string) ([]finance.Lis
 		return nil, err
 	}
 	return listings, nil
-}
-
-// See [finance.ListingProvider.QueryQuote]
-func (api *API) QueryQuote(ctx context.Context, listing finance.Listing) (*finance.Quote, error) {
-	err := listing.CheckProvider(Name)
-	if err != nil {
-		return nil, err
-	}
-	api.logger.Info("querying quote...", slog.Any("listing", listing))
-	err = listing.CheckProvider(Name)
-	if err != nil {
-		return nil, err
-	}
-	symbol, err := listing.MustAttribute(finance.ListingAttributeKeySymbol)
-	if err != nil {
-		return nil, err
-	}
-	quoteResponse, err := api.getGlobalQuote(ctx, symbol)
-	if err != nil {
-		return nil, err
-	}
-	return quoteResponse.ToQuote(listing)
 }
 
 func (api *API) runSymbolSearch(ctx context.Context, query string, minScore float64, collect func(*bestMatchResponse) error) error {
@@ -99,11 +96,44 @@ func (api *API) getSymbolSearch(ctx context.Context, query string) (*symbolSearc
 	}
 	defer rsp.Body.Close()
 	response := &symbolSearchResponse{}
-	err = api.decodeAndCheckResponse(rsp, response)
+	err = api.decodeAndCheckResponse(ctx, rsp, response)
 	if err != nil {
 		return nil, err
 	}
 	return response, nil
+}
+
+// See [finance.ListingProvider.QueryQuote]
+func (api *API) QueryQuote(ctx context.Context, listing finance.Listing) (*finance.Quote, error) {
+	err := listing.CheckProvider(Name)
+	if err != nil {
+		return nil, err
+	}
+
+	logger := api.logger.With(slog.String("listing", listing.ID()))
+	logger.Info("querying quote...")
+	traceCtx, span := api.tracer.StartConsuming(ctx, attribute.Stringer("listing", listing))
+	defer span.End()
+
+	quote, err := api.queryQuote(traceCtx, listing)
+	if err != nil {
+		logger.Warn("query quote failure", slog.Any("err", err))
+	} else {
+		logger.Info("quote received", slog.Float64("price", quote.Price), slog.String("currency", string(quote.Currency)))
+	}
+	return quote, tracehelper.SetStatus(span, err)
+}
+
+func (api *API) queryQuote(ctx context.Context, listing finance.Listing) (*finance.Quote, error) {
+	symbol, err := listing.MustAttribute(finance.ListingAttributeKeySymbol)
+	if err != nil {
+		return nil, err
+	}
+	quoteResponse, err := api.getGlobalQuote(ctx, symbol)
+	if err != nil {
+		return nil, err
+	}
+	return quoteResponse.ToQuote(listing)
 }
 
 func (api *API) getGlobalQuote(ctx context.Context, symbol string) (*quoteResponse, error) {
@@ -118,9 +148,14 @@ func (api *API) getGlobalQuote(ctx context.Context, symbol string) (*quoteRespon
 	}
 	defer rsp.Body.Close()
 	response := &globalQuoteResponse{}
-	err = api.decodeAndCheckResponse(rsp, response)
+	err = api.decodeAndCheckResponse(ctx, rsp, response)
 	if err != nil {
 		return nil, err
 	}
 	return &response.GlobalQuote, nil
+}
+
+// See [finance.ListingProvider.QueryQuoteHistory]
+func (api *API) QueryQuoteHistory(ctx context.Context, listing finance.Listing, from, to time.Time) ([]finance.Quote, error) {
+	return nil, nil
 }

@@ -23,19 +23,34 @@ import (
 	"net/http"
 
 	"github.com/tdrn-org/go-finance"
+	tracehelper "github.com/tdrn-org/go-finance/internal/trace"
 )
 
 // See [finance.FX.QueryExchangeRate]
 func (api *API) QueryExchangeRate(ctx context.Context, base, quote finance.Currency) (*finance.ExchangeRate, error) {
-	api.logger.Info("querying exchange rate...", slog.String("base", string(base)), slog.String("quote", string(quote)))
-	response, err := api.queryExchangeRate(ctx, base, quote)
+	logger := api.logger.With(slog.String("base", string(base)), slog.String("quote", string(quote)))
+	logger.Info("querying exchange rate...")
+	traceCtx, span := api.tracer.StartConsuming(ctx)
+	defer span.End()
+
+	rate, err := api.queryExchangeRate(traceCtx, base, quote)
+	if err != nil {
+		logger.Warn("query exchange rate failure", slog.Any("err", err))
+	} else {
+		logger.Info("exchange rate received", slog.Float64("rate", rate.Rate))
+	}
+	return rate, tracehelper.SetStatus(span, err)
+}
+
+func (api *API) queryExchangeRate(ctx context.Context, base, quote finance.Currency) (*finance.ExchangeRate, error) {
+	response, err := api.getCurrencyExchangeRate(ctx, base, quote)
 	if err != nil {
 		return nil, err
 	}
 	return response.ToExchangeRate()
 }
 
-func (api *API) queryExchangeRate(ctx context.Context, base, quote finance.Currency) (*currencyExchangeRateResponse, error) {
+func (api *API) getCurrencyExchangeRate(ctx context.Context, base, quote finance.Currency) (*currencyExchangeRateResponse, error) {
 	apiURL := api.url("function", "CURRENCY_EXCHANGE_RATE", "from_currency", string(base), "to_currency", string(quote))
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, apiURL.String(), nil)
 	if err != nil {
@@ -47,7 +62,7 @@ func (api *API) queryExchangeRate(ctx context.Context, base, quote finance.Curre
 	}
 	defer rsp.Body.Close()
 	response := &currencyExchangeRateResponse{}
-	err = api.decodeAndCheckResponse(rsp, response)
+	err = api.decodeAndCheckResponse(ctx, rsp, response)
 	if err != nil {
 		return nil, err
 	}

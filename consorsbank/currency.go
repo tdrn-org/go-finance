@@ -18,21 +18,38 @@ package consorsbank
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"log/slog"
 	"math"
 
 	"github.com/tdrn-org/go-finance"
 	"github.com/tdrn-org/go-finance/consorsbank/proto"
+	tracehelper "github.com/tdrn-org/go-finance/internal/trace"
 )
 
 // See [finance.FX.QueryExchangeRate]
 func (api *API) QueryExchangeRate(ctx context.Context, base, quote finance.Currency) (*finance.ExchangeRate, error) {
-	api.logger.Info("querying exchange rate...", slog.String("base", string(base)), slog.String("quote", string(quote)))
+	logger := api.logger.With(slog.String("base", string(base)), slog.String("quote", string(quote)))
+	logger.Info("querying exchange rate...")
+	traceCtx, span := api.tracer.StartConsuming(ctx)
+	defer span.End()
 
 	api.mutex.Lock()
 	defer api.mutex.Unlock()
 
+	rate, err := api.queryExchangeRateLocked(traceCtx, base, quote)
+	if errors.Is(err, finance.ErrRequestPending) {
+		logger.Info("exchange rate request pending")
+	} else if err != nil {
+		logger.Info("query exchange rate failure", slog.Any("err", err))
+	} else {
+		logger.Info("exchange rate received", slog.Float64("rate", rate.Rate))
+	}
+	return rate, tracehelper.SetStatus(span, err)
+}
+
+func (api *API) queryExchangeRateLocked(ctx context.Context, base, quote finance.Currency) (*finance.ExchangeRate, error) {
 	subscription := api.getExchangeRateSubscriptionLocked(base, quote)
 	if subscription == nil {
 		var err error
@@ -45,7 +62,7 @@ func (api *API) QueryExchangeRate(ctx context.Context, base, quote finance.Curre
 }
 
 func (api *API) getExchangeRateSubscriptionLocked(base, quote finance.Currency) *streamSubscription[proto.CurrencyRateReply, finance.ExchangeRate] {
-	subscriptionKey := fmt.Sprintf("%s/%s", base, quote)
+	subscriptionKey := api.exchangeRateSubscriptionKey(base, quote)
 	subscription := api.exchangeRateSubscriptions[subscriptionKey]
 	if subscription.IsClosed() {
 		return nil
@@ -59,7 +76,7 @@ func (api *API) startExchangeRateSubscriptionLocked(ctx context.Context, base, q
 		return nil, err
 	}
 	securityService := session.SecurityService()
-	subscriptionKey := fmt.Sprintf("%s/%s", base, quote)
+	subscriptionKey := api.exchangeRateSubscriptionKey(base, quote)
 	subscriptionCtx, subscriptionCancel := context.WithCancel(context.Background())
 	client, err := securityService.StreamCurrencyRate(subscriptionCtx, &proto.CurrencyRateRequest{
 		AccessToken:  session.AccessToken,
@@ -69,12 +86,12 @@ func (api *API) startExchangeRateSubscriptionLocked(ctx context.Context, base, q
 	if err != nil {
 		subscriptionCancel()
 		api.invalidateSessionLocked()
-		return nil, fmt.Errorf("failed to create exchange rate subscription (cause: %w)", err)
+		return nil, fmt.Errorf("%s: failed to create exchange rate subscription (cause: %w)", Name, err)
 	}
 	subscription := &streamSubscription[proto.CurrencyRateReply, finance.ExchangeRate]{
 		client:              client,
 		subscriptionTimeout: api.subscriptionTimeout,
-		recordReply:         recordCurrencyRateReply,
+		processReply:        api.processCurrencyRateReply,
 		ctx:                 subscriptionCtx,
 		cancel:              subscriptionCancel,
 		logger:              api.logger.With(slog.String("currencyRateSubscription", subscriptionKey)),
@@ -84,19 +101,20 @@ func (api *API) startExchangeRateSubscriptionLocked(ctx context.Context, base, q
 	return subscription, nil
 }
 
-func recordCurrencyRateReply(s *streamSubscription[proto.CurrencyRateReply, finance.ExchangeRate], reply *proto.CurrencyRateReply) {
+func (api *API) processCurrencyRateReply(s *streamSubscription[proto.CurrencyRateReply, finance.ExchangeRate], reply *proto.CurrencyRateReply) {
 	if reply.Error != nil {
-		s.logger.Warn("ignoring errornous currency rate reply", slog.Any("err", reply.Error))
+		api.logger.Warn("ignoring errornous currency rate reply; closing stream", slog.Any("err", reply.Error))
+		s.MarkClosed()
 		return
 	}
 	if reply.CurrencyFrom == "" || reply.CurrencyTo == "" || math.IsNaN(reply.CurrencyRate) {
-		s.logger.Warn("ignoring empty currency rate reply")
+		api.logger.Warn("ignoring empty currency rate reply; closing stream")
+		s.MarkClosed()
 		return
 	}
+	s.RecordReply(currencyRateReplyToExchangeRate(reply))
+}
 
-	s.mutex.Lock()
-	defer s.mutex.Unlock()
-
-	s.logger.Info("recording currency rate reply")
-	s.lastReply = currencyRateReplyToExchangeRate(reply)
+func (api *API) exchangeRateSubscriptionKey(base, quote finance.Currency) string {
+	return fmt.Sprintf("%s/%s", base, quote)
 }

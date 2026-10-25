@@ -27,6 +27,7 @@ func TestOpenFIGIMapping(t *testing.T) {
 	api := newOpenFIGIAPI(t)
 
 	listings := []finance.Listing{
+		testListingSymbol,
 		testListingISIN,
 		testListingWKN,
 		testListingTicker,

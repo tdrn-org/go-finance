@@ -18,10 +18,35 @@ package alphavantage
 
 import (
 	_ "embed"
+	"encoding/json"
 	"fmt"
+	"log/slog"
 	"strconv"
 	"time"
+
+	"github.com/tdrn-org/go-finance"
 )
+
+//go:embed typeMap.json
+var typeMapData []byte
+
+var typeMap map[string]finance.InstrumentType = func() map[string]finance.InstrumentType {
+	var typeMap map[string]finance.InstrumentType
+	err := json.Unmarshal(typeMapData, &typeMap)
+	if err != nil {
+		panic(err)
+	}
+	return typeMap
+}()
+
+func typeToInstrumentType(typ string) finance.InstrumentType {
+	mapped, ok := typeMap[typ]
+	if !ok {
+		defaultLogger.Warn("missing Type mapping", slog.String("type", typ))
+		return finance.InstrumentTypeUnknown
+	}
+	return mapped
+}
 
 func stringToTimestamp(s, name string) (time.Time, error) {
 	timestamp, err := time.Parse(time.DateTime, s)

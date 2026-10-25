@@ -22,11 +22,26 @@ import (
 	"log/slog"
 
 	"github.com/tdrn-org/go-finance"
+	tracehelper "github.com/tdrn-org/go-finance/internal/trace"
 )
 
 // See [finance.FX.QueryExchangeRate]
 func (api *API) QueryExchangeRate(ctx context.Context, base, quote finance.Currency) (*finance.ExchangeRate, error) {
-	api.logger.Info("querying exchange rate...", slog.String("base", string(base)), slog.String("quote", string(quote)))
+	logger := api.logger.With(slog.String("base", string(base)), slog.String("quote", string(quote)))
+	logger.Info("querying exchange rate...")
+	traceCtx, span := api.tracer.StartConsuming(ctx)
+	defer span.End()
+
+	rate, err := api.queryExchangeRate(traceCtx, base, quote)
+	if err != nil {
+		logger.Info("query exchange rate failure", slog.Any("err", err))
+	} else {
+		logger.Info("exchange rate received", slog.Float64("rate", rate.Rate))
+	}
+	return rate, tracehelper.SetStatus(span, err)
+}
+
+func (api *API) queryExchangeRate(ctx context.Context, base, quote finance.Currency) (*finance.ExchangeRate, error) {
 	response, rsp, err := api.client.CurrenciesAPI.
 		GetExchangeRate(ctx).
 		Symbol(fmt.Sprintf("%s/%s", base, quote)).
@@ -34,7 +49,7 @@ func (api *API) QueryExchangeRate(ctx context.Context, base, quote finance.Curre
 	if err != nil {
 		return nil, fmt.Errorf("%s: query exchange rate failure (cause: %w)", Name, err)
 	}
-	err = api.checkHttpStatus(rsp)
+	err = api.checkHttpStatus(ctx, rsp)
 	if err != nil {
 		return nil, err
 	}

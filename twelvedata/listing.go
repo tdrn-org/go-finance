@@ -21,31 +21,38 @@ import (
 	"fmt"
 	"log/slog"
 	"slices"
+	"time"
 
 	"github.com/tdrn-org/go-finance"
+	tracehelper "github.com/tdrn-org/go-finance/internal/trace"
 	"github.com/twelvedata/twelvedata-go/twelvedata"
+	"go.opentelemetry.io/otel/attribute"
 )
 
 // See [finance.ListingProvider.SearchListings]
 func (api *API) SearchListings(ctx context.Context, query string) ([]finance.Listing, error) {
-	api.logger.Info("search listings...", slog.String("query", query))
+	logger := api.logger.With(slog.String("query", query))
+	logger.Info("search listings...")
+	traceCtx, span := api.tracer.StartConsuming(ctx, attribute.String("query", query))
+	defer span.End()
+
+	listings, err := api.searchListings(traceCtx, query)
+	if err != nil {
+		logger.Warn("search listings failure", slog.Any("err", err))
+	} else {
+		logger.Info("listings received", slog.Int("len", len(listings)))
+	}
+	return listings, tracehelper.SetStatus(span, err)
+}
+
+func (api *API) searchListings(ctx context.Context, query string) ([]finance.Listing, error) {
 	listings := make([]finance.Listing, 0)
-	unknownTypes := make(map[string]bool)
 	err := api.executeSearch(ctx, query, func(responseItem *twelvedata.SymbolSearchResponseItem) error {
 		if !api.includeSymbolSearchResponseItem(responseItem) {
 			return nil
 		}
 		listing, err := symbolSearchResponseItemToListing(responseItem)
 		if err == nil {
-			// A raw type that is missing from instrumentTypeMap silently produces a
-			// listing without an instrument type — which then also cannot be selected
-			// via include_instrument_types. Report it once per search so a new provider
-			// type does not go unnoticed.
-			rawType := responseItem.InstrumentType
-			if rawType != "" && listing.InstrumentType() == finance.InstrumentTypeUnknown && !unknownTypes[rawType] {
-				unknownTypes[rawType] = true
-				api.logger.Warn("unmapped instrument type, listing without type", slog.String("instrument_type", rawType))
-			}
 			listings = append(listings, *listing)
 		} else {
 			api.logger.Warn("ignoring invalid instrument", slog.Any("err", err))
@@ -76,7 +83,7 @@ func (api *API) executeSearch(ctx context.Context, query string, collect func(*t
 	if err != nil {
 		return fmt.Errorf("%s: search symbol failure (cause: %w)", Name, err)
 	}
-	err = api.checkHttpStatus(rsp)
+	err = api.checkHttpStatus(ctx, rsp)
 	if err != nil {
 		return err
 	}
@@ -95,7 +102,22 @@ func (api *API) QueryQuote(ctx context.Context, listing finance.Listing) (*finan
 	if err != nil {
 		return nil, err
 	}
-	api.logger.Info("querying quote...", slog.Any("listing", listing))
+
+	logger := api.logger.With(slog.String("listing", listing.ID()))
+	logger.Info("querying quote...")
+	traceCtx, span := api.tracer.StartConsuming(ctx, attribute.Stringer("listing", listing))
+	defer span.End()
+
+	quote, err := api.queryQuote(traceCtx, listing)
+	if err != nil {
+		logger.Warn("query quote failure", slog.Any("err", err))
+	} else {
+		logger.Info("quote received", slog.Float64("price", quote.Price), slog.String("currency", string(quote.Currency)))
+	}
+	return quote, tracehelper.SetStatus(span, err)
+}
+
+func (api *API) queryQuote(ctx context.Context, listing finance.Listing) (*finance.Quote, error) {
 	ticker, err := listing.MustAttribute(finance.ListingAttributeKeyTicker)
 	if err != nil {
 		return nil, err
@@ -112,9 +134,14 @@ func (api *API) QueryQuote(ctx context.Context, listing finance.Listing) (*finan
 	if err != nil {
 		return nil, fmt.Errorf("%s: query quote failure (cause: %w)", Name, err)
 	}
-	err = api.checkHttpStatus(rsp)
+	err = api.checkHttpStatus(ctx, rsp)
 	if err != nil {
 		return nil, err
 	}
 	return getQuoteResponseToQuote(listing, response)
+}
+
+// See [finance.ListingProvider.QueryQuoteHistory]
+func (api *API) QueryQuoteHistory(ctx context.Context, listing finance.Listing, from, to time.Time) ([]finance.Quote, error) {
+	return nil, nil
 }

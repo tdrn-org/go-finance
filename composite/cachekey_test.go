@@ -19,15 +19,24 @@ package composite
 import (
 	"context"
 	"testing"
+	"time"
 
 	"github.com/tdrn-org/go-finance"
 )
 
-type stubListingProvider struct {
+type stubProvider struct {
 	name string
 }
 
-func (p *stubListingProvider) ProviderName() string { return p.name }
+func (p *stubProvider) ProviderName() string { return p.name }
+
+func (p *stubProvider) Shutdown(_ context.Context) error { return nil }
+
+func (p *stubProvider) Close() error { return nil }
+
+type stubListingProvider struct {
+	stubProvider
+}
 
 func (p *stubListingProvider) SearchListings(_ context.Context, _ string) ([]finance.Listing, error) {
 	return nil, nil
@@ -37,11 +46,13 @@ func (p *stubListingProvider) QueryQuote(_ context.Context, _ finance.Listing) (
 	return nil, nil
 }
 
-type stubFXProvider struct {
-	name string
+func (p *stubListingProvider) QueryQuoteHistory(ctx context.Context, listing finance.Listing, from, to time.Time) ([]finance.Quote, error) {
+	return nil, nil
 }
 
-func (p *stubFXProvider) ProviderName() string { return p.name }
+type stubFXProvider struct {
+	stubProvider
+}
 
 func (p *stubFXProvider) QueryExchangeRate(_ context.Context, _, _ finance.Currency) (*finance.ExchangeRate, error) {
 	return nil, nil

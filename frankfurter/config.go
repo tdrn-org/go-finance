@@ -23,6 +23,7 @@ import (
 
 const defaultBaseURLString string = "https://api.frankfurter.dev/v2/"
 
+// DefaultBaseURL defines the default base URL of the Frankfurter REST API.
 var DefaultBaseURL *url.URL = func() *url.URL {
 	defaultBaseURL, err := url.Parse(defaultBaseURLString)
 	if err != nil {
@@ -31,20 +32,29 @@ var DefaultBaseURL *url.URL = func() *url.URL {
 	return defaultBaseURL
 }()
 
+// Config interface for Frankfurter Provider.
 type Config interface {
+	// GetBaseURL gets the base URL to use for accessing the Frankfurter REST API.
 	GetBaseURL() (*url.URL, error)
+	// GetHttpClient gets the [http.Client] to use to access the Frankfurter REST API.
+	// If nil is returned, the default [http.Client] is used.
 	GetHttpClient() (*http.Client, error)
 }
 
+// StaticConfig implements [Config] via static attributes.
 type StaticConfig struct {
-	BaseURL    *url.URL
+	// See [Config.GetBaseURL]
+	BaseURL *url.URL
+	// See [Config.GetHttpClient]
 	HttpClient *http.Client
 }
 
+// See [Config.GetBaseURL]
 func (c *StaticConfig) GetBaseURL() (*url.URL, error) {
 	return c.BaseURL, nil
 }
 
+// See [Config.GetHttpClient]
 func (c *StaticConfig) GetHttpClient() (*http.Client, error) {
 	return c.HttpClient, nil
 }

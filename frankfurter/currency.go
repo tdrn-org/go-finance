@@ -23,26 +23,38 @@ import (
 	"net/http"
 
 	"github.com/tdrn-org/go-finance"
+	tracehelper "github.com/tdrn-org/go-finance/internal/trace"
 )
 
+// See [finance.FX.QueryExchangeRate]
 func (api *API) QueryExchangeRate(ctx context.Context, base, quote finance.Currency) (*finance.ExchangeRate, error) {
+	logger := api.logger.With(slog.String("base", string(base)), slog.String("quote", string(quote)))
+	logger.Info("querying exchange rate...")
+	traceCtx, span := api.tracer.StartConsuming(ctx)
+	defer span.End()
+
+	rate, err := api.queryExchangeRate(traceCtx, base, quote)
+	if err != nil {
+		logger.Info("query exchange rate failure", slog.Any("err", err))
+	} else {
+		logger.Info("exchange rate received", slog.Float64("rate", rate.Rate))
+	}
+	return rate, tracehelper.SetStatus(span, err)
+}
+
+func (api *API) queryExchangeRate(ctx context.Context, base, quote finance.Currency) (*finance.ExchangeRate, error) {
 	apiURL := api.url("/rates", "base", string(base))
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, apiURL.String(), nil)
 	if err != nil {
-		return nil, fmt.Errorf("failed create query exchange rate request (cause: %w)", err)
+		return nil, fmt.Errorf("%s: failed create query exchange rate request (cause: %w)", Name, err)
 	}
-	api.logger.Debug("querying exchange rate", slog.Any("url", req.URL))
 	rsp, err := api.httpClient.Do(req)
 	if err != nil {
-		return nil, fmt.Errorf("failed to send query exchange rate request (cause: %w)", err)
+		return nil, fmt.Errorf("%s: failed to send query exchange rate request (cause: %w)", Name, err)
 	}
 	defer rsp.Body.Close()
-	err = api.checkHttpStatus(rsp)
-	if err != nil {
-		return nil, err
-	}
 	var response ratesResponse
-	err = api.decodeResponse(rsp, &response)
+	err = api.decodeResponse(ctx, rsp, &response)
 	if err != nil {
 		return nil, err
 	}
@@ -50,6 +62,5 @@ func (api *API) QueryExchangeRate(ctx context.Context, base, quote finance.Curre
 	if rate == nil {
 		return nil, finance.ErrExchangeRateNotAvailable
 	}
-	api.logger.Debug("found exchange rate", slog.String("date", rate.Date), slog.String("base", string(rate.Base)), slog.String("quote", string(rate.Quote)), slog.Float64("rate", rate.Rate))
 	return rate.ToExchangeRate()
 }

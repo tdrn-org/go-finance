@@ -18,7 +18,6 @@ package alphavantage
 
 import (
 	_ "embed"
-	"encoding/json"
 	"fmt"
 	"time"
 
@@ -40,10 +39,10 @@ func (r *statusResponse) CheckStatus() error {
 		return fmt.Errorf("%s: API call failure: %q", Name, r.ErrorMessage)
 	}
 	if r.Note != "" {
-		return fmt.Errorf("%s: %w: %s", Name, finance.ErrRateLimitReached, r.Note)
+		return fmt.Errorf("%s: %w: %q", Name, finance.ErrRateLimitReached, r.Note)
 	}
 	if r.Information != "" {
-		return fmt.Errorf("%s: %w: %s", Name, finance.ErrRateLimitReached, r.Information)
+		return fmt.Errorf("%s: %w: %q", Name, finance.ErrRateLimitReached, r.Information)
 	}
 	return nil
 }
@@ -105,23 +104,11 @@ func (r *bestMatchResponse) Match(minScore float64) (bool, error) {
 	return matchScore >= minScore, nil
 }
 
-//go:embed typeMap.json
-var typeMapData []byte
-
-var typeMap map[string]finance.InstrumentType = func() map[string]finance.InstrumentType {
-	var typeMap map[string]finance.InstrumentType
-	err := json.Unmarshal(typeMapData, &typeMap)
-	if err != nil {
-		panic(err)
-	}
-	return typeMap
-}()
-
 func (r *bestMatchResponse) ToListing() (*finance.Listing, error) {
 	currency := finance.Currency(r.Currency)
-	listing, err := finance.NewListing(Name, finance.ListingAttributeKeySymbol).
+	listing, err := finance.NewListing(Name, idKeys...).
 		InstrumentName(r.Name).
-		InstrumentType(typeMap[r.Type]).
+		InstrumentType(typeToInstrumentType(r.Type)).
 		Attribute(finance.ListingAttributeKeySymbol, r.Symbol).
 		Currency(&currency).
 		Build().Validate()
@@ -152,7 +139,7 @@ type quoteResponse struct {
 func (r *quoteResponse) ToQuote(listing finance.Listing) (*finance.Quote, error) {
 	currency := listing.Currency()
 	if currency == nil {
-		return nil, fmt.Errorf("%s: no currency for listing %q", Name, listing.String())
+		return nil, fmt.Errorf("%s: no currency for listing %s", Name, listing.ID())
 	}
 	timestamp, err := stringToTimestamp(r.LatestTradingDay, "latest trading day")
 	if err != nil {
@@ -188,7 +175,7 @@ func (r *quoteResponse) ToQuote(listing finance.Listing) (*finance.Quote, error)
 		Open:            open,
 		High:            high,
 		Low:             low,
-		Close:           previousClose,
+		PreviousClose:   previousClose,
 		Price:           price,
 		Volume:          volume,
 		Currency:        *currency,

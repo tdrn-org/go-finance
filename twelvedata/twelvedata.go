@@ -14,22 +14,33 @@
  * limitations under the License.
  */
 
-// Package twelvedata integrates the [Twelve Data API].
+// Package twelvedata provides access to the [Twelve Data API].
 //
 // [Twelve Data API]: https://twelvedata.com/docs/
 package twelvedata
 
 import (
+	"context"
 	"fmt"
 	"log/slog"
 	"net/http"
 
 	"github.com/tdrn-org/go-finance"
+	tracehelper "github.com/tdrn-org/go-finance/internal/trace"
 	"github.com/twelvedata/twelvedata-go/twelvedata"
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/trace"
 )
 
 // Name of the Twelve Data provider.
 const Name string = "twelvedata"
+
+var idKeys []finance.ListingAttributeKey = []finance.ListingAttributeKey{
+	finance.ListingAttributeKeyTicker,
+	finance.ListingAttributeKeyMIC,
+}
+
+var defaultLogger *slog.Logger = slog.With(slog.String("provider", Name))
 
 const apiVersion string = "last"
 
@@ -43,6 +54,7 @@ type API struct {
 	includeMICs            []string
 	includeInstrumentTypes []string
 	logger                 *slog.Logger
+	tracer                 *tracehelper.Tracer
 }
 
 // NewAPI creates a new Twelve Data provider instance using the given [Config].
@@ -70,13 +82,14 @@ func NewAPI(config Config) (*API, error) {
 		cfg.HTTPClient = httpClient
 	}
 	client := twelvedata.NewAPIClient(cfg)
-	logger := slog.With(slog.String("provider", Name))
 	api := &API{
 		client:                 client,
 		includeMICs:            includeMICs,
 		includeInstrumentTypes: includeInstrumentTypes,
-		logger:                 logger,
+		logger:                 defaultLogger.With(slog.String("url", client.GetConfig().Servers[0].URL)),
+		tracer:                 tracehelper.NewTracer[API](trace.WithInstrumentationAttributes(attribute.String("provider", Name))),
 	}
+	api.logger.Info("provider enabled")
 	return api, nil
 }
 
@@ -85,7 +98,18 @@ func (api *API) ProviderName() string {
 	return Name
 }
 
-func (api *API) checkHttpStatus(rsp *http.Response) error {
+// See [finance.APIProvider.Shutdown]
+func (api *API) Shutdown(_ context.Context) error {
+	return nil
+}
+
+// See [finance.APIProvider.Close]
+func (api *API) Close() error {
+	return nil
+}
+
+func (api *API) checkHttpStatus(ctx context.Context, rsp *http.Response) error {
+	tracehelper.SetHttpResponse(trace.SpanFromContext(ctx), rsp)
 	switch rsp.StatusCode {
 	case http.StatusOK:
 		return nil

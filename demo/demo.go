@@ -18,11 +18,14 @@
 package demo
 
 import (
+	"context"
 	"log/slog"
 )
 
 // Name of the Demo Provider.
 const Name string = "demo"
+
+var defaultLogger *slog.Logger = slog.With(slog.String("provider", Name))
 
 // API provides a Demo provider implementing
 //   - [finance.FX]
@@ -34,10 +37,9 @@ type API struct {
 
 // NewAPI creates a new Demo provider instance using the given [Config].
 func NewAPI(config Config) (*API, error) {
-	logger := slog.With(slog.String("provider", Name))
 	api := &API{
 		enabled: config.GetEnabled(),
-		logger:  logger,
+		logger:  defaultLogger,
 	}
 	return api, nil
 }
@@ -45,4 +47,14 @@ func NewAPI(config Config) (*API, error) {
 // See [finance.APIProvider.ProviderName]
 func (api *API) ProviderName() string {
 	return Name
+}
+
+// See [finance.APIProvider.Shutdown]
+func (api *API) Shutdown(_ context.Context) error {
+	return nil
+}
+
+// See [finance.APIProvider.Close]
+func (api *API) Close() error {
+	return nil
 }

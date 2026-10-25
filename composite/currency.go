@@ -33,19 +33,33 @@ type ExchangeRateCache cache.KeyValue[string, *finance.ExchangeRate]
 type cachedFXProvider struct {
 	provider finance.FX
 	cache    ExchangeRateCache
+	logger   *slog.Logger
 }
 
 func NewCachedFXProvider(provider finance.FX, cache ExchangeRateCache) finance.FX {
 	return &cachedFXProvider{
 		provider: provider,
 		cache:    cache,
+		logger:   slog.With(slog.String("provider", provider.ProviderName())),
 	}
 }
 
+// See [finance.APIProvider.ProviderName]
 func (p *cachedFXProvider) ProviderName() string {
 	return p.provider.ProviderName()
 }
 
+// See [finance.APIProvider.Shutdown]
+func (p *cachedFXProvider) Shutdown(ctx context.Context) error {
+	return p.provider.Shutdown(ctx)
+}
+
+// See [finance.APIProvider.Close]
+func (p *cachedFXProvider) Close() error {
+	return p.provider.Close()
+}
+
+// See [finance.APIProvider.QueryExchangeRate]
 func (p *cachedFXProvider) QueryExchangeRate(ctx context.Context, base, quote finance.Currency) (*finance.ExchangeRate, error) {
 	key := p.cacheKey(base, quote)
 	cachedExchangeRate, err := p.cache.Get(ctx, key)
@@ -57,6 +71,8 @@ func (p *cachedFXProvider) QueryExchangeRate(ctx context.Context, base, quote fi
 		p.cache.Put(ctx, key, cachedExchangeRate)
 	} else if err != nil {
 		return nil, err
+	} else {
+		p.logger.Info("using cached exchange rate", slog.String("base", string(base)), slog.String("quote", string(quote)), slog.Float64("rate", cachedExchangeRate.Rate))
 	}
 	return cachedExchangeRate, nil
 }
@@ -81,6 +97,7 @@ func NewFallbackFXProvider(cooldown time.Duration, providers ...finance.FX) fina
 	}
 }
 
+// See [finance.APIProvider.ProviderName]
 func (p *fallbackFXProvider) ProviderName() string {
 	buffer := &strings.Builder{}
 	buffer.WriteString("fallback:")
@@ -92,6 +109,30 @@ func (p *fallbackFXProvider) ProviderName() string {
 		buffer.WriteString(provider.ProviderName())
 	})
 	return buffer.String()
+}
+
+// See [finance.APIProvider.Shutdown]
+func (p *fallbackFXProvider) Shutdown(ctx context.Context) error {
+	errs := make([]error, 0)
+	p.queue.ForEach(func(provider finance.FX) {
+		err := provider.Shutdown(ctx)
+		if err != nil {
+			errs = append(errs, err)
+		}
+	})
+	return errors.Join(errs...)
+}
+
+// See [finance.APIProvider.Close]
+func (p *fallbackFXProvider) Close() error {
+	errs := make([]error, 0)
+	p.queue.ForEach(func(provider finance.FX) {
+		err := provider.Close()
+		if err != nil {
+			errs = append(errs, err)
+		}
+	})
+	return errors.Join(errs...)
 }
 
 func (p *fallbackFXProvider) QueryExchangeRate(ctx context.Context, base, quote finance.Currency) (*finance.ExchangeRate, error) {

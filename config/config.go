@@ -54,11 +54,11 @@ func Load(path string, strict bool) (*Config, error) {
 
 func (c *Config) NewFXProvider() (finance.FX, error) {
 	c.fxFactory.NewAPI(func(c *Config) (finance.FX, error) {
-		providers := make([]finance.FX, 0, len(c.FX.ProviderNames))
-		for _, providerName := range c.FX.ProviderNames {
+		providers := make([]finance.FX, 0, len(c.FX.Providers))
+		for _, providerConfig := range c.FX.Providers {
 			var provider finance.FX
 			var err error
-			switch providerName {
+			switch providerConfig.Name {
 			case FXProviderNameDemo:
 				provider, err = c.Demo.NewAPI()
 			case FXProviderNameAlphaVantage:
@@ -70,33 +70,32 @@ func (c *Config) NewFXProvider() (finance.FX, error) {
 			case FXProviderNameTwelveData:
 				provider, err = c.TwelveData.NewAPI()
 			default:
-				err = fmt.Errorf("unrecognized FX provider name %q", providerName)
+				err = fmt.Errorf("unrecognized FX provider name %q", providerConfig.Name)
 			}
 			if err != nil {
 				return nil, err
 			}
-			providers = append(providers, provider)
+			cache, err := c.Cache.NewExchangeRateCache(time.Duration(providerConfig.CacheTTL))
+			if err != nil {
+				return nil, err
+			}
+			providers = append(providers, composite.NewCachedFXProvider(provider, cache))
 		}
 		if len(providers) == 0 {
 			return nil, fmt.Errorf("at least one FX provider must be defined")
 		}
-		cache, err := c.Cache.NewExchangeRateCache(time.Duration(c.FX.CacheTTL))
-		if err != nil {
-			return nil, err
-		}
-		fallbackProvider := composite.NewFallbackFXProvider(time.Duration(c.FX.Cooldown), providers...)
-		return composite.NewCachedFXProvider(fallbackProvider, cache), nil
+		return composite.NewFallbackFXProvider(time.Duration(c.FX.Cooldown), providers...), nil
 	}, c)
 	return c.fxFactory.api, c.fxFactory.err
 }
 
 func (c *Config) NewListingProvider() (finance.ListingProvider, error) {
 	c.listingFactory.NewAPI(func(c *Config) (finance.ListingProvider, error) {
-		providers := make([]finance.ListingProvider, 0, len(c.Listings.ProviderNames))
-		for _, providerName := range c.Listings.ProviderNames {
+		providers := make([]finance.ListingProvider, 0, len(c.Listings.Providers))
+		for _, providerConfig := range c.Listings.Providers {
 			var provider finance.ListingProvider
 			var err error
-			switch providerName {
+			switch providerConfig.Name {
 			case ListingProviderNameDemo:
 				provider, err = c.Demo.NewAPI()
 			case ListingProviderNameAlphaVantage:
@@ -106,26 +105,25 @@ func (c *Config) NewListingProvider() (finance.ListingProvider, error) {
 			case ListingProviderNameTwelveData:
 				provider, err = c.TwelveData.NewAPI()
 			default:
-				err = fmt.Errorf("unrecognized Listing provider name %q", providerName)
+				err = fmt.Errorf("unrecognized Listing provider name %q", providerConfig.Name)
 			}
 			if err != nil {
 				return nil, err
 			}
-			providers = append(providers, provider)
+			listingCache, err := c.Cache.NewListingCache(time.Duration(providerConfig.ListingCacheTTL))
+			if err != nil {
+				return nil, err
+			}
+			quoteCache, err := c.Cache.NewQuoteCache(time.Duration(providerConfig.QuoteCacheTTL))
+			if err != nil {
+				return nil, err
+			}
+			providers = append(providers, composite.NewCachedListingProvider(provider, listingCache, quoteCache))
 		}
 		if len(providers) == 0 {
 			return nil, fmt.Errorf("at least one Listing provider must be defined")
 		}
-		listingCache, err := c.Cache.NewListingCache(time.Duration(c.Listings.ListingCacheTTL))
-		if err != nil {
-			return nil, err
-		}
-		quoteCache, err := c.Cache.NewQuoteCache(time.Duration(c.Listings.QuoteCacheTTL))
-		if err != nil {
-			return nil, err
-		}
-		cachedProviders := composite.NewCachedListingProviders(providers, listingCache, quoteCache)
-		return composite.NewCombinedListingProvider(time.Duration(c.Listings.Cooldown), cachedProviders...), nil
+		return composite.NewCombinedListingProvider(time.Duration(c.Listings.Cooldown), providers...), nil
 	}, c)
 	return c.listingFactory.api, c.listingFactory.err
 }

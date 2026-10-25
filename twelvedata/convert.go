@@ -20,6 +20,7 @@ import (
 	_ "embed"
 	"encoding/json"
 	"fmt"
+	"log/slog"
 	"strconv"
 	"strings"
 	"time"
@@ -29,9 +30,6 @@ import (
 )
 
 func exchangeRateResponseToExchangeRate(response *twelvedata.GetExchangeRate200Response) (*finance.ExchangeRate, error) {
-	if response == nil {
-		return nil, nil
-	}
 	baseAndQuote := strings.Split(response.Symbol, "/")
 	if len(baseAndQuote) != 2 {
 		return nil, fmt.Errorf("%s: unexepcted exchange rate symbol %q", Name, response.Symbol)
@@ -59,14 +57,20 @@ var instrumentTypeMap map[string]finance.InstrumentType = func() map[string]fina
 	return instrumentTypeMap
 }()
 
-func symbolSearchResponseItemToListing(responseItem *twelvedata.SymbolSearchResponseItem) (*finance.Listing, error) {
-	if responseItem == nil {
-		return nil, nil
+func instrumentTypeToInstrumentType(instrumentType string) finance.InstrumentType {
+	mapped, ok := instrumentTypeMap[instrumentType]
+	if !ok {
+		defaultLogger.Warn("missing InstrumentType mapping", slog.String("instrumentType", instrumentType))
+		return finance.InstrumentTypeUnknown
 	}
+	return mapped
+}
+
+func symbolSearchResponseItemToListing(responseItem *twelvedata.SymbolSearchResponseItem) (*finance.Listing, error) {
 	currency := finance.Currency(responseItem.Currency)
-	listing, err := finance.NewListing(Name, finance.ListingAttributeKeyTicker, finance.ListingAttributeKeyMIC).
+	listing, err := finance.NewListing(Name, idKeys...).
 		InstrumentName(responseItem.InstrumentName).
-		InstrumentType(instrumentTypeMap[responseItem.InstrumentType]).
+		InstrumentType(instrumentTypeToInstrumentType(responseItem.InstrumentType)).
 		Attribute(finance.ListingAttributeKeyTicker, responseItem.Symbol).
 		Attribute(finance.ListingAttributeKeyMIC, responseItem.MicCode).
 		Currency(&currency).
@@ -78,9 +82,6 @@ func symbolSearchResponseItemToListing(responseItem *twelvedata.SymbolSearchResp
 }
 
 func getQuoteResponseToQuote(listing finance.Listing, response *twelvedata.GetQuote200Response) (*finance.Quote, error) {
-	if response == nil {
-		return nil, nil
-	}
 	timestamp := time.Unix(response.Timestamp, 0).UTC()
 	if response.LastQuoteAt != nil {
 		timestamp = time.Unix(*response.LastQuoteAt, 0).UTC()
@@ -97,7 +98,7 @@ func getQuoteResponseToQuote(listing finance.Listing, response *twelvedata.GetQu
 	if err != nil {
 		return nil, err
 	}
-	close, err := stringToFloat64(response.Close, "close")
+	price, err := stringToFloat64(response.Close, "close")
 	if err != nil {
 		return nil, err
 	}
@@ -113,7 +114,7 @@ func getQuoteResponseToQuote(listing finance.Listing, response *twelvedata.GetQu
 		}
 	}
 	if response.Currency == nil {
-		return nil, fmt.Errorf("%s: unable to determine quote currency for listing %q", Name, listing.String())
+		return nil, fmt.Errorf("%s: unable to determine quote currency for listing %s", Name, listing.ID())
 	}
 	currency := finance.Currency(*response.Currency)
 	quote := &finance.Quote{
@@ -122,8 +123,8 @@ func getQuoteResponseToQuote(listing finance.Listing, response *twelvedata.GetQu
 		Open:            open,
 		High:            high,
 		Low:             low,
-		Close:           previousClose,
-		Price:           close,
+		PreviousClose:   previousClose,
+		Price:           price,
 		Volume:          volume,
 		Currency:        currency,
 		Source:          Name,

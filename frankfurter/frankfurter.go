@@ -14,30 +14,42 @@
  * limitations under the License.
  */
 
-// Package frankfurter integrates the [Frankfurter REST API] service.
+// Package frankfurter provides access to the [Frankfurter REST API] service.
 //
 // [Frankfurter REST API]: https://frankfurter.dev/
 package frankfurter
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"log/slog"
 	"net/http"
 	"net/url"
+
+	tracehelper "github.com/tdrn-org/go-finance/internal/trace"
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/trace"
 )
 
 // Name of Frankfurter Provider.
 const Name string = "frankfurter"
 
+var defaultLogger *slog.Logger = slog.With(slog.String("provider", Name))
+
+// API provides access to the [Frankfurter REST API] and implements
+//   - [finance.FX]
+//
+// [Frankfurter REST API]: https://frankfurter.dev/
 type API struct {
 	baseURL    *url.URL
 	httpClient *http.Client
 	logger     *slog.Logger
+	tracer     *tracehelper.Tracer
 }
 
+// NewAPI creates a new Frankfurter provider instance using the given [Config].
 func NewAPI(config Config) (*API, error) {
-	logger := slog.With(slog.String("provider", Name))
 	baseURL, err := config.GetBaseURL()
 	if err != nil {
 		return nil, err
@@ -52,13 +64,26 @@ func NewAPI(config Config) (*API, error) {
 	api := &API{
 		baseURL:    baseURL,
 		httpClient: httpClient,
-		logger:     logger,
+		logger:     defaultLogger.With(slog.Any("url", baseURL)),
+		tracer:     tracehelper.NewTracer[API](trace.WithInstrumentationAttributes(attribute.String("provider", Name))),
 	}
+	api.logger.Info("provider enabled")
 	return api, nil
 }
 
+// See [finance.APIProvider.ProviderName]
 func (api *API) ProviderName() string {
 	return Name
+}
+
+// See [finance.APIProvider.Shutdown]
+func (api *API) Shutdown(_ context.Context) error {
+	return nil
+}
+
+// See [finance.APIProvider.Close]
+func (api *API) Close() error {
+	return nil
 }
 
 func (api *API) url(service string, args ...string) *url.URL {
@@ -71,19 +96,14 @@ func (api *API) url(service string, args ...string) *url.URL {
 	return apiURL
 }
 
-func (api *API) checkHttpStatus(rsp *http.Response) error {
-	switch rsp.StatusCode {
-	case http.StatusOK:
-		return nil
-	default:
-		return fmt.Errorf("service failure (status: %d %s)", rsp.StatusCode, rsp.Status)
+func (api *API) decodeResponse(ctx context.Context, rsp *http.Response, decoded any) error {
+	tracehelper.SetHttpResponse(trace.SpanFromContext(ctx), rsp)
+	if rsp.StatusCode != http.StatusOK {
+		return fmt.Errorf("%s: service failure (status: %s)", Name, rsp.Status)
 	}
-}
-
-func (api *API) decodeResponse(rsp *http.Response, decoded any) error {
 	err := json.NewDecoder(rsp.Body).Decode(decoded)
 	if err != nil {
-		return fmt.Errorf("failed to decode response body (cause: %w)", err)
+		return fmt.Errorf("%s: failed to decode response body (cause: %w)", Name, err)
 	}
 	return nil
 }

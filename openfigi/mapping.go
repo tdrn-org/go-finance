@@ -19,14 +19,41 @@ package openfigi
 import (
 	"context"
 	"fmt"
+	"log/slog"
 
 	"github.com/tdrn-org/go-finance"
+	tracehelper "github.com/tdrn-org/go-finance/internal/trace"
 	openfigiapi "github.com/tdrn-org/go-finance/openfigi/api"
 )
 
-func (api *API) MapListings(ctx context.Context, listings []finance.Listing) (any, error) {
+// Mapping is an array of OpenFIGI information objects.
+type Mapping []openfigiapi.FigiResult
+
+// MapListings maps the given [finance.Listing]s to their corresponding
+// OpenFIGI information.
+//
+// The returned array contains for each given listing the resolved mappings.
+// The unambiguity of the mapping depends on the instrument IDs provided by
+// the listing provider. Usually one listing is resolved to a single mapping.
+// For listing providers with custom IDs zero or multiple mappings may be
+// resolved.
+func (api *API) MapListings(ctx context.Context, listings []finance.Listing) ([]Mapping, error) {
+	api.logger.Info("map listings...")
+	traceCtx, span := api.tracer.StartConsuming(ctx)
+	defer span.End()
+
+	mappings, err := api.mapListings(traceCtx, listings)
+	if err != nil {
+		api.logger.Info("map listings failure", slog.Any("err", err))
+	} else {
+		api.logger.Info("mappings received", slog.Int("len", len(mappings)))
+	}
+	return mappings, tracehelper.SetStatus(span, err)
+}
+
+func (api *API) mapListings(ctx context.Context, listings []finance.Listing) ([]Mapping, error) {
 	listingsLen := len(listings)
-	mappings := make([][]openfigiapi.FigiResult, listingsLen)
+	mappings := make([]Mapping, listingsLen)
 	requestLimit := 5
 	if api.apiKey != "" {
 		requestLimit = 100
@@ -71,7 +98,7 @@ func (api *API) postMappingWithResponse(ctx context.Context, request openfigiapi
 	if err != nil {
 		return nil, api.wrapSystemError(operation, err)
 	}
-	err = api.checkAPIResponseWithBody(operation, response.HTTPResponse, response.JSON200)
+	err = api.checkAPIResponseWithBody(ctx, operation, response.HTTPResponse, response.JSON200)
 	if err != nil {
 		return nil, err
 	}

@@ -18,21 +18,39 @@ package consorsbank
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"log/slog"
 	"slices"
+	"time"
 
 	"github.com/tdrn-org/go-finance"
 	"github.com/tdrn-org/go-finance/consorsbank/proto"
+	tracehelper "github.com/tdrn-org/go-finance/internal/trace"
 )
 
 // See [finance.ListingProvider.SearchListings]
 func (api *API) SearchListings(ctx context.Context, query string) ([]finance.Listing, error) {
-	api.logger.Info("search listings...", slog.String("query", query))
+	logger := api.logger.With(slog.String("query", query))
+	logger.Info("search listings...")
+	traceCtx, span := api.tracer.StartConsuming(ctx)
+	defer span.End()
 
 	api.mutex.Lock()
 	defer api.mutex.Unlock()
 
+	listings, err := api.searchListingsLocked(traceCtx, query)
+	if errors.Is(err, finance.ErrListingSearchRestricted) {
+		logger.Info("ignoriing unsupported listing search")
+	} else if err != nil {
+		logger.Warn("search listings failure", slog.Any("err", err))
+	} else {
+		logger.Info("listings received", slog.Int("len", len(listings)))
+	}
+	return listings, tracehelper.SetStatus(span, err)
+}
+
+func (api *API) searchListingsLocked(ctx context.Context, query string) ([]finance.Listing, error) {
 	session, err := api.getSessionLocked(ctx)
 	if err != nil {
 		return nil, err
@@ -40,11 +58,11 @@ func (api *API) SearchListings(ctx context.Context, query string) ([]finance.Lis
 	securityService := session.SecurityService()
 	securityCodes := queryToSecurityCodes(query)
 	if len(securityCodes) == 0 {
-		return nil, finance.ErrListingSearchRestricted
+		return []finance.Listing{}, finance.ErrListingSearchRestricted
 	}
 	listings := make([]finance.Listing, 0)
 	for _, securityCode := range securityCodes {
-		reply, err := api.getSecurityInfo(ctx, session, securityService, securityCode)
+		reply, err := api.getSecurityInfoLocked(ctx, session, securityService, securityCode)
 		if err != nil {
 			return nil, err
 		}
@@ -63,6 +81,22 @@ func (api *API) SearchListings(ctx context.Context, query string) ([]finance.Lis
 	return listings, nil
 }
 
+func (api *API) getSecurityInfoLocked(ctx context.Context, session *apiSession, securityService proto.SecurityServiceClient, securityCode *proto.SecurityCode) (*proto.SecurityInfoReply, error) {
+	reply, err := securityService.GetSecurityInfo(ctx, &proto.SecurityInfoRequest{
+		AccessToken:  session.AccessToken,
+		SecurityCode: securityCode,
+	})
+	if err != nil {
+		api.invalidateSessionLocked()
+		return nil, fmt.Errorf("%s: failed to query security info (cause: %w)", Name, err)
+	}
+	if tapiError := reply.GetError(); tapiError != nil {
+		return nil, fmt.Errorf("%s: query security info error (code: %s, message: %s)",
+			Name, tapiError.GetCode(), tapiError.GetMessage())
+	}
+	return reply, nil
+}
+
 func (api *API) includeSecurityStockExchange(stockExchangeInfo *proto.SecurityStockExchangeInfo) bool {
 	if len(api.includeExchanges) > 0 && !slices.Contains(api.includeExchanges, stockExchangeInfo.StockExchange.Id) {
 		return false
@@ -77,11 +111,26 @@ func (api *API) QueryQuote(ctx context.Context, listing finance.Listing) (*finan
 		return nil, err
 	}
 
-	api.logger.Info("querying quote...", slog.Any("listing", listing))
+	logger := api.logger.With(slog.String("listing", listing.ID()))
+	logger.Info("querying quote...")
+	traceCtx, span := api.tracer.StartConsuming(ctx)
+	defer span.End()
 
 	api.mutex.Lock()
 	defer api.mutex.Unlock()
 
+	quote, err := api.queryQuoteLocked(traceCtx, listing)
+	if errors.Is(err, finance.ErrRequestPending) {
+		logger.Info("quote request pending")
+	} else if err != nil {
+		logger.Warn("query quote failure", slog.Any("err", err))
+	} else {
+		logger.Info("quote received", slog.Float64("price", quote.Price), slog.String("currency", string(quote.Currency)))
+	}
+	return quote, tracehelper.SetStatus(span, err)
+}
+
+func (api *API) queryQuoteLocked(ctx context.Context, listing finance.Listing) (*finance.Quote, error) {
 	subscription := api.getSecurityMarketDataSubscriptionLocked(listing)
 	if subscription == nil {
 		var err error
@@ -93,24 +142,8 @@ func (api *API) QueryQuote(ctx context.Context, listing finance.Listing) (*finan
 	return subscription.LastReply()
 }
 
-func (api *API) getSecurityInfo(ctx context.Context, session *apiSession, securityService proto.SecurityServiceClient, securityCode *proto.SecurityCode) (*proto.SecurityInfoReply, error) {
-	reply, err := securityService.GetSecurityInfo(ctx, &proto.SecurityInfoRequest{
-		AccessToken:  session.AccessToken,
-		SecurityCode: securityCode,
-	})
-	if err != nil {
-		api.invalidateSessionLocked()
-		return nil, fmt.Errorf("%s: failed to query security info from TAPI at %q (cause: %w)", Name, api.address, err)
-	}
-	if tapiError := reply.GetError(); tapiError != nil {
-		return nil, fmt.Errorf("%s: query security info error in call to TAPI at %q (code: %s, message: %s)",
-			Name, api.address, tapiError.GetCode(), tapiError.GetMessage())
-	}
-	return reply, nil
-}
-
 func (api *API) getSecurityMarketDataSubscriptionLocked(listing finance.Listing) *streamSubscription[proto.SecurityMarketDataReply, finance.Quote] {
-	subscriptionKey := listing.String()
+	subscriptionKey := api.securityMarketdataSubscriptionKey(listing)
 	subscription := api.quoteSubscriptions[subscriptionKey]
 	if subscription.IsClosed() {
 		return nil
@@ -132,12 +165,9 @@ func (api *API) startSecurityMarketDataSubscriptionLocked(ctx context.Context, l
 		Code:     isin,
 		CodeType: proto.SecurityCodeType_ISIN,
 	}
-	securityInfoReply, err := api.getSecurityInfo(ctx, session, securityService, securityCode)
+	securityInfoReply, err := api.getSecurityInfoLocked(ctx, session, securityService, securityCode)
 	if err != nil {
 		return nil, err
-	}
-	if len(securityInfoReply.StockExchangeInfos) == 0 {
-		return nil, fmt.Errorf("%s: unable to determine stock exchange for quote query (code: %s)", Name, securityCode.Code)
 	}
 	listingExchange, err := api.getListingExchange(listing, securityInfoReply.StockExchangeInfos)
 	if err != nil {
@@ -161,12 +191,12 @@ func (api *API) startSecurityMarketDataSubscriptionLocked(ctx context.Context, l
 		api.invalidateSessionLocked()
 		return nil, fmt.Errorf("%s: failed to create security market data subscription (cause: %w)", Name, err)
 	}
-	subscriptionKey := listing.String()
+	subscriptionKey := api.securityMarketdataSubscriptionKey(listing)
 	subscription := &streamSubscription[proto.SecurityMarketDataReply, finance.Quote]{
 		client:              client,
 		subscriptionTimeout: api.subscriptionTimeout,
-		recordReply: func(s *streamSubscription[proto.SecurityMarketDataReply, finance.Quote], reply *proto.SecurityMarketDataReply) {
-			recordSecurityMarketDataReply(s, listing, reply)
+		processReply: func(s *streamSubscription[proto.SecurityMarketDataReply, finance.Quote], reply *proto.SecurityMarketDataReply) {
+			api.processSecurityMarketDataReply(s, listing, reply)
 		},
 		ctx:    subscriptionCtx,
 		cancel: subscriptionCancel,
@@ -190,15 +220,20 @@ func (api *API) getListingExchange(listing finance.Listing, exchangeInfos []*pro
 	return nil, fmt.Errorf("%s: unable to determine exchange for listing: %s", Name, listing.String())
 }
 
-func recordSecurityMarketDataReply(s *streamSubscription[proto.SecurityMarketDataReply, finance.Quote], listing finance.Listing, reply *proto.SecurityMarketDataReply) {
+func (api *API) processSecurityMarketDataReply(s *streamSubscription[proto.SecurityMarketDataReply, finance.Quote], listing finance.Listing, reply *proto.SecurityMarketDataReply) {
 	if reply.Error != nil {
-		s.logger.Warn("ignoring errornous market data reply", slog.Any("err", reply.Error))
+		api.logger.Warn("errornous market data reply; closing stream", slog.Any("error", reply.Error))
+		s.MarkClosed()
 		return
 	}
+	s.RecordReply(securityMarketDataReplyToQuote(listing, reply))
+}
 
-	s.mutex.Lock()
-	defer s.mutex.Unlock()
+func (api *API) securityMarketdataSubscriptionKey(listing finance.Listing) string {
+	return listing.ID()
+}
 
-	s.logger.Info("recording security market data reply")
-	s.lastReply = securityMarketDataReplyToQuote(listing, reply)
+// See [finance.ListingProvider.QueryQuoteHistory]
+func (api *API) QueryQuoteHistory(ctx context.Context, listing finance.Listing, from, to time.Time) ([]finance.Quote, error) {
+	return nil, nil
 }

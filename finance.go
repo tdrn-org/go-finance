@@ -18,7 +18,10 @@
 // providers in a pluggable setup.
 package finance
 
-import "errors"
+import (
+	"context"
+	"errors"
+)
 
 var (
 	// ErrRateLimitReached indicates a provider will only respond
@@ -32,6 +35,14 @@ var (
 
 // APIProvider is the interface common to all providers.
 type APIProvider interface {
-	// ProviderName gets the provider name.
+	// ProviderName gets the name of this provider.
 	ProviderName() string
+
+	// Shutdown gracefully shuts down any running
+	// background requests started by this provider.
+	Shutdown(ctx context.Context) error
+
+	// Close releases all resources allocated by this
+	// provider.
+	Close() error
 }

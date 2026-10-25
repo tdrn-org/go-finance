@@ -20,41 +20,40 @@ import (
 	"errors"
 	"fmt"
 	"testing"
-	"time"
 
 	"github.com/stretchr/testify/require"
 	"github.com/tdrn-org/go-finance"
 )
 
+func TestDemoListingProviderAPI(t *testing.T) {
+	api := newDemoAPI(t)
+
+	testListingProviderAPI(t, api, "AAPL", "Apple")
+}
+
 func TestAlphaVantageListingProviderAPI(t *testing.T) {
 	api := newAlphaVantageAPI(t)
 
-	testListingProviderAPI(t, api)
+	testListingProviderAPI(t, api, "AAPL", "Apple")
 }
 
 func TestConsorsbankListingProviderAPI(t *testing.T) {
 	api := newConsorsbankAPI(t)
 
-	testListingProviderAPI(t, api)
+	testListingProviderAPI(t, api, "US0378331005", "865985")
 }
 
 func TestTwelvedataListingProviderAPI(t *testing.T) {
 	api := newTwelveDataAPI(t)
 
-	testListingProviderAPI(t, api)
+	testListingProviderAPI(t, api, "AAPL", "US0378331005", "Apple")
 }
 
-func testListingProviderAPI(t *testing.T, api finance.ListingProvider) {
+func testListingProviderAPI(t *testing.T, api finance.ListingProvider, queries ...string) {
 	t.Log("provider", api.ProviderName())
 
 	// SearchListings
-	queries := []string{
-		// "Apple", // Name
-		"AAPL", // Ticker
-		// "US0378331005", // ISIN
-		// "865985", // WKN
-	}
-	searchResults := make([]finance.Listing, 0)
+	listings := make([]finance.Listing, 0)
 	for _, query := range queries {
 		searchResult, err := api.SearchListings(t.Context(), query)
 		if !errors.Is(err, finance.ErrListingSearchRestricted) {
@@ -63,27 +62,21 @@ func testListingProviderAPI(t *testing.T, api finance.ListingProvider) {
 			for _, listing := range searchResult {
 				fmt.Println(listing.String())
 			}
-			searchResults = append(searchResults, searchResult...)
+			listings = append(listings, searchResult...)
 		}
 	}
 
 	// QueryQuote
-	for _, listing := range searchResults {
-		retries := 3
-		retrySleep := 500 * time.Millisecond
-		for {
-			quote, err := api.QueryQuote(t.Context(), listing)
-			if errors.Is(err, finance.ErrRequestPending) {
-				retries--
-				if retries > 0 {
-					time.Sleep(retrySleep)
-					continue
-				}
-			}
-			require.NoError(t, err)
-			require.NotNil(t, quote)
-			fmt.Println(quote.String())
-			break
+	require.NotEmpty(t, listings)
+	listing := listings[0]
+	err := retryRequestPending(func() error {
+		quote, err := api.QueryQuote(t.Context(), listing)
+		if err != nil {
+			return err
 		}
-	}
+		require.NotNil(t, quote)
+		fmt.Println(quote.String())
+		return nil
+	})
+	require.NoError(t, err)
 }

@@ -529,20 +529,20 @@ type ListingPrice struct {
 	SourceTimestamp time.Time `json:"source_timestamp"`
 }
 
-// String formats this Quote.
-func (q *ListingPrice) String() string {
+// String formats this ListingPrice.
+func (p *ListingPrice) String() string {
 	buffer := &strings.Builder{}
-	buffer.WriteString(q.Listing.String())
+	buffer.WriteString(p.Listing.ID())
 	buffer.WriteString("|timestamp:")
-	buffer.WriteString(q.Timestamp.UTC().Format(time.RFC3339Nano))
+	buffer.WriteString(p.Timestamp.UTC().Format(time.RFC3339Nano))
 	buffer.WriteString("|price:")
-	buffer.WriteString(strconv.FormatFloat(q.Price, 'g', -1, 64))
+	buffer.WriteString(strconv.FormatFloat(p.Price, 'g', -1, 64))
 	buffer.WriteString("|currency:")
-	buffer.WriteString(string(q.Currency))
+	buffer.WriteString(string(p.Currency))
 	buffer.WriteString("|source:")
-	buffer.WriteString(q.Source)
+	buffer.WriteString(p.Source)
 	buffer.WriteString("|queried:")
-	buffer.WriteString(q.SourceTimestamp.UTC().Format(time.RFC3339Nano))
+	buffer.WriteString(p.SourceTimestamp.UTC().Format(time.RFC3339Nano))
 	return buffer.String()
 }
 
@@ -555,10 +555,37 @@ type Quote struct {
 	High float64 `json:"high"`
 	// Low gives the low price at the trading day identified by Timestamp.
 	Low float64 `json:"low"`
-	// Close gives the close price of the day before the trading day identified by Timestamp.
-	Close float64 `json:"close"`
+	// PreviousClose gives the close price of the day before the trading day identified by Timestamp.
+	PreviousClose float64 `json:"close"`
 	// Volume gives the order volume at the trading day identified by Timestamp.
 	Volume int64 `json:"volume"`
+}
+
+// String formats this Quote.
+func (q *Quote) String() string {
+	buffer := &strings.Builder{}
+	buffer.WriteString(q.Listing.ID())
+	buffer.WriteString("|timestamp:")
+	buffer.WriteString(q.Timestamp.UTC().Format(time.RFC3339Nano))
+	buffer.WriteString("|price:")
+	buffer.WriteString(strconv.FormatFloat(q.Price, 'g', -1, 64))
+	buffer.WriteString("|open:")
+	buffer.WriteString(strconv.FormatFloat(q.Open, 'g', -1, 64))
+	buffer.WriteString("|high:")
+	buffer.WriteString(strconv.FormatFloat(q.High, 'g', -1, 64))
+	buffer.WriteString("|low:")
+	buffer.WriteString(strconv.FormatFloat(q.Low, 'g', -1, 64))
+	buffer.WriteString("|previous_close:")
+	buffer.WriteString(strconv.FormatFloat(q.PreviousClose, 'g', -1, 64))
+	buffer.WriteString("|currency:")
+	buffer.WriteString(string(q.Currency))
+	buffer.WriteString("|volume:")
+	buffer.WriteString(strconv.FormatInt(q.Volume, 10))
+	buffer.WriteString("|source:")
+	buffer.WriteString(q.Source)
+	buffer.WriteString("|queried:")
+	buffer.WriteString(q.SourceTimestamp.UTC().Format(time.RFC3339Nano))
+	return buffer.String()
 }
 
 type ListingProvider interface {
@@ -569,4 +596,7 @@ type ListingProvider interface {
 
 	// QueryQuote returns the latest quote for the given listing.
 	QueryQuote(ctx context.Context, listing Listing) (*Quote, error)
+
+	// QueryQuoteHistory returns the quote history for the given listing and given time range.
+	QueryQuoteHistory(ctx context.Context, listing Listing, from, to time.Time) ([]Quote, error)
 }

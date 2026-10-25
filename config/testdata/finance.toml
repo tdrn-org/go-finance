@@ -1,11 +1,39 @@
 [fx]
-providers = [ "frankfurter", "alphavantage", "consorsbank", "twelvedata" ]
+cooldown = "1m"
+
+[[fx.provider]]
+name = "frankfurter"
 cache_ttl = "6h"
 
+[[fx.provider]]
+name = "alphavantage"
+cache_ttl = "5h"
+
+[[fx.provider]]
+name = "consorsbank"
+cache_ttl = "4h"
+
+[[fx.provider]]
+name = "twelvedata"
+cache_ttl = "3h"
+
 [listings]
-providers = [ "alphavantage", "consorsbank", "twelvedata" ]
+cooldown = "2m"
+
+[[listings.provider]]
+name = "alphavantage"
 listing_cache_ttl = "6h"
 quote_cache_ttl = "1h"
+
+[[listings.provider]]
+name = "consorsbank"
+listing_cache_ttl = "5h"
+quote_cache_ttl = "2h"
+
+[[listings.provider]]
+name = "twelvedata"
+listing_cache_ttl = "4h"
+quote_cache_ttl = "3h"
 
 [alphavantage]
 base_url = "https://www.alphavantage.co/query/"

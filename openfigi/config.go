@@ -21,6 +21,17 @@ import (
 	"net/url"
 )
 
+const defaultBaseURLString string = "https://api.openfigi.com/v3"
+
+// DefaultBaseURL defines the default base URL for the OpenFIGI API.
+var DefaultBaseURL *url.URL = func() *url.URL {
+	defaultBaseURL, err := url.Parse(defaultBaseURLString)
+	if err != nil {
+		panic(err)
+	}
+	return defaultBaseURL
+}()
+
 type Config interface {
 	GetBaseURL() (*url.URL, error)
 	GetAPIKey() (string, error)

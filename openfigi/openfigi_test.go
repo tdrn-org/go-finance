@@ -25,6 +25,11 @@ import (
 	"github.com/tdrn-org/go-finance/openfigi"
 )
 
+var testListingSymbol finance.Listing = *finance.NewListing(openfigi.Name, finance.ListingAttributeKeySymbol).
+	InstrumentName("APPLE INC").
+	InstrumentType(finance.InstrumentTypeEquity).
+	Attribute(finance.ListingAttributeKeySymbol, "AAPL").
+	Build().MustValidate()
 var testListingISIN finance.Listing = *finance.NewListing(openfigi.Name, finance.ListingAttributeKeyISIN, finance.ListingAttributeKeyMIC).
 	InstrumentName("APPLE INC").
 	InstrumentType(finance.InstrumentTypeEquity).

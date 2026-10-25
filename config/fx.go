@@ -26,9 +26,13 @@ import (
 )
 
 type FXConfig struct {
-	ProviderNames []FXProviderName    `toml:"providers"`
-	Cooldown      config.DurationSpec `toml:"cooldown"`
-	CacheTTL      config.DurationSpec `toml:"cache_ttl"`
+	Providers []FXProviderConfig  `toml:"provider"`
+	Cooldown  config.DurationSpec `toml:"cooldown"`
+}
+
+type FXProviderConfig struct {
+	Name     FXProviderName      `toml:"name"`
+	CacheTTL config.DurationSpec `toml:"cache_ttl"`
 }
 
 type FXProviderName string

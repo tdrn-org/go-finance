@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-// Package openfigi integrates the [OpenFIGI API].
+// Package openfigi provides access to the [OpenFIGI API].
 //
 // [OpenFIGI API]: https://www.openfigi.com/api
 package openfigi
@@ -28,22 +28,16 @@ import (
 	"reflect"
 
 	"github.com/tdrn-org/go-finance"
+	tracehelper "github.com/tdrn-org/go-finance/internal/trace"
 	openfigiapi "github.com/tdrn-org/go-finance/openfigi/api"
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/trace"
 )
 
 // Name of OpenFIGI Provider.
 const Name string = "openfigi"
 
-const defaultBaseURLString string = "https://api.openfigi.com/v3"
-
-// DefaultBaseURL defines the default base URL for the OpenFIGI API.
-var DefaultBaseURL *url.URL = func() *url.URL {
-	defaultBaseURL, err := url.Parse(defaultBaseURLString)
-	if err != nil {
-		panic(err)
-	}
-	return defaultBaseURL
-}()
+var defaultLogger *slog.Logger = slog.With(slog.String("provider", Name))
 
 // API provides access to the [OpenFIGI API].
 //
@@ -53,10 +47,11 @@ type API struct {
 	apiKey    string
 	apiClient openfigiapi.ClientWithResponsesInterface
 	logger    *slog.Logger
+	tracer    *tracehelper.Tracer
 }
 
+// NewAPI creates a new OpenFIGI provider instance using the given [Config].
 func NewAPI(config Config) (*API, error) {
-	logger := slog.With(slog.String("provider", Name))
 	baseURL, err := config.GetBaseURL()
 	if err != nil {
 		return nil, err
@@ -84,14 +79,26 @@ func NewAPI(config Config) (*API, error) {
 		baseURL:   baseURL,
 		apiKey:    apiKey,
 		apiClient: apiClient,
-		logger:    logger,
+		logger:    defaultLogger.With(slog.Any("url", baseURL)),
+		tracer:    tracehelper.NewTracer[API](trace.WithInstrumentationAttributes(attribute.String("provider", Name))),
 	}
+	api.logger.Info("provider enabled")
 	return api, nil
 }
 
 // See [finance.APIProvider]
 func (api *API) ProviderName() string {
 	return Name
+}
+
+// See [finance.APIProvider.Shutdown]
+func (api *API) Shutdown(_ context.Context) error {
+	return nil
+}
+
+// See [finance.APIProvider.Close]
+func (api *API) Close() error {
+	return nil
 }
 
 func (api *API) authenticateRequest(ctx context.Context, request *http.Request) error {
@@ -105,19 +112,20 @@ func (api *API) wrapSystemError(operation string, err error) error {
 	return fmt.Errorf("%s: %s call failure (cause: %w)", Name, operation, err)
 }
 
-func (api *API) checkAPIResponse(operation string, httpResponse *http.Response) error {
-	switch httpResponse.StatusCode {
+func (api *API) checkAPIResponse(ctx context.Context, operation string, rsp *http.Response) error {
+	tracehelper.SetHttpResponse(trace.SpanFromContext(ctx), rsp)
+	switch rsp.StatusCode {
 	case http.StatusOK:
 		return nil
 	case http.StatusTooManyRequests:
 		return finance.ErrRateLimitReached
 	default:
-		return fmt.Errorf("%s: %s API failure (status: %s)", Name, operation, httpResponse.Status)
+		return fmt.Errorf("%s: %s API failure (status: %s)", Name, operation, rsp.Status)
 	}
 }
 
-func (api *API) checkAPIResponseWithBody(operation string, httpResponse *http.Response, body any) error {
-	err := api.checkAPIResponse(operation, httpResponse)
+func (api *API) checkAPIResponseWithBody(ctx context.Context, operation string, rsp *http.Response, body any) error {
+	err := api.checkAPIResponse(ctx, operation, rsp)
 	if err != nil {
 		return err
 	}
