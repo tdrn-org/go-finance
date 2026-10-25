@@ -75,14 +75,9 @@ func (p *cachedListingProvider) SearchListings(ctx context.Context, query string
 	} else if err != nil {
 		return nil, err
 	} else {
-		p.logger.Info("using cached listings", slog.Any("listings", cachedListings))
+		p.logger.Info("using cached listings", slog.Int("len", len(cachedListings)))
 	}
 	return cachedListings, nil
-}
-
-// See [finance.ListingProvider.QueryQuoteHistory]
-func (p *cachedListingProvider) QueryQuoteHistory(ctx context.Context, listing finance.Listing, from, to time.Time) ([]finance.Quote, error) {
-	return nil, nil
 }
 
 func (p *cachedListingProvider) listingCacheKey(query string) string {
@@ -106,13 +101,18 @@ func (p *cachedListingProvider) QueryQuote(ctx context.Context, listing finance.
 	} else if err != nil {
 		return nil, err
 	} else {
-		p.logger.Info("using cached quote", slog.Any("quote", cachedQuote))
+		p.logger.Info("using cached quote", slog.String("listing", cachedQuote.Listing.ID()), slog.Float64("price", cachedQuote.Price))
 	}
 	return cachedQuote, nil
 }
 
 func (p *cachedListingProvider) quoteCacheKey(listing finance.Listing) string {
 	return fmt.Sprintf("finance:quote:%s:%s", p.provider.ProviderName(), listing.ID())
+}
+
+// See [finance.ListingProvider.QueryQuoteHistory]
+func (p *cachedListingProvider) QueryQuoteHistory(ctx context.Context, listing finance.Listing, from, to time.Time) ([]finance.Quote, error) {
+	return nil, nil
 }
 
 type combinedListingProvider struct {
