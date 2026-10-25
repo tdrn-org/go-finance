@@ -58,7 +58,7 @@ func (api *API) queryExchangeRateLocked(ctx context.Context, base, quote finance
 			return nil, err
 		}
 	}
-	return subscription.LastReply()
+	return subscription.waitInitialReply(context.Background(), initialReplyTimeout)
 }
 
 func (api *API) getExchangeRateSubscriptionLocked(base, quote finance.Currency) *streamSubscription[proto.CurrencyRateReply, finance.ExchangeRate] {
@@ -88,14 +88,8 @@ func (api *API) startExchangeRateSubscriptionLocked(ctx context.Context, base, q
 		api.invalidateSessionLocked()
 		return nil, fmt.Errorf("%s: failed to create exchange rate subscription (cause: %w)", Name, err)
 	}
-	subscription := &streamSubscription[proto.CurrencyRateReply, finance.ExchangeRate]{
-		client:              client,
-		subscriptionTimeout: api.subscriptionTimeout,
-		processReply:        api.processCurrencyRateReply,
-		ctx:                 subscriptionCtx,
-		cancel:              subscriptionCancel,
-		logger:              api.logger.With(slog.String("currencyRateSubscription", subscriptionKey)),
-	}
+	subscription := newSubscription(client, subscriptionCancel, api.processCurrencyRateReply, api.logger.With(slog.String("currencyRateSubscription", subscriptionKey)))
+	subscription.Timeout = api.subscriptionTimeout
 	api.exchangeRateSubscriptions[subscriptionKey] = subscription
 	api.stoppedWG.Go(subscription.Run)
 	return subscription, nil
@@ -104,12 +98,12 @@ func (api *API) startExchangeRateSubscriptionLocked(ctx context.Context, base, q
 func (api *API) processCurrencyRateReply(s *streamSubscription[proto.CurrencyRateReply, finance.ExchangeRate], reply *proto.CurrencyRateReply) {
 	if reply.Error != nil {
 		api.logger.Warn("ignoring errornous currency rate reply; closing stream", slog.Any("err", reply.Error))
-		s.MarkClosed()
+		s.Close()
 		return
 	}
 	if reply.CurrencyFrom == "" || reply.CurrencyTo == "" || math.IsNaN(reply.CurrencyRate) {
 		api.logger.Warn("ignoring empty currency rate reply; closing stream")
-		s.MarkClosed()
+		s.Close()
 		return
 	}
 	s.RecordReply(currencyRateReplyToExchangeRate(reply))

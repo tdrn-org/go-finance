@@ -29,17 +29,29 @@ import (
 	"google.golang.org/grpc"
 )
 
+const initialReplyTimeout time.Duration = 250 * time.Millisecond
+
 type streamSubscription[R, T any] struct {
-	client              grpc.ServerStreamingClient[R]
-	subscriptionTimeout time.Duration
-	suscribeUntil       time.Time
-	lastReply           *T
-	processReply        func(*streamSubscription[R, T], *R)
-	ctx                 context.Context
-	cancel              context.CancelFunc
-	closed              bool
-	logger              *slog.Logger
-	mutex               sync.Mutex
+	Timeout       time.Duration
+	client        grpc.ServerStreamingClient[R]
+	cancel        context.CancelFunc
+	processReply  func(*streamSubscription[R, T], *R)
+	initialReply  chan *T
+	lastReply     *T
+	suscribeUntil time.Time
+	closed        bool
+	logger        *slog.Logger
+	mutex         sync.Mutex
+}
+
+func newSubscription[R, T any](client grpc.ServerStreamingClient[R], cancel context.CancelFunc, processReply func(*streamSubscription[R, T], *R), logger *slog.Logger) *streamSubscription[R, T] {
+	return &streamSubscription[R, T]{
+		client:       client,
+		cancel:       cancel,
+		processReply: processReply,
+		initialReply: make(chan *T, 1),
+		logger:       logger,
+	}
 }
 
 func (s *streamSubscription[R, T]) IsClosed() bool {
@@ -53,11 +65,12 @@ func (s *streamSubscription[R, T]) IsClosed() bool {
 	return s.closed
 }
 
-func (s *streamSubscription[R, T]) MarkClosed() {
+func (s *streamSubscription[R, T]) Close() {
 	s.mutex.Lock()
 	defer s.mutex.Unlock()
 
 	s.closed = true
+	s.cancel()
 }
 
 func (s *streamSubscription[R, T]) Run() {
@@ -65,10 +78,10 @@ func (s *streamSubscription[R, T]) Run() {
 	for {
 		reply, err := s.client.Recv()
 		if err != nil {
-			s.MarkClosed()
+			s.Close()
 			if errors.Is(err, io.EOF) {
 				s.logger.Info("closing subscription; server closed connection")
-			} else if s.ctx.Err() != nil || s.client.Context().Err() != nil {
+			} else if s.client.Context().Err() != nil {
 				s.logger.Info("closing subscription; client is disconnecting")
 			} else {
 				s.logger.Info("closing subscription; recv failure", slog.Any("err", err))
@@ -79,24 +92,36 @@ func (s *streamSubscription[R, T]) Run() {
 	}
 }
 
+func (s *streamSubscription[R, T]) waitInitialReply(ctx context.Context, timeout time.Duration) (*T, error) {
+	timeoutCtx, cancel := context.WithTimeout(ctx, timeout)
+	defer cancel()
+	select {
+	case reply := <-s.initialReply:
+		return reply, nil
+	case <-timeoutCtx.Done():
+		return nil, finance.ErrRequestPending
+	}
+}
+
 func (s *streamSubscription[R, T]) RecordReply(reply *T) {
 	s.mutex.Lock()
 	defer s.mutex.Unlock()
 
 	replyType := reflect.TypeOf(reply).Elem()
 	if s.lastReply == nil {
+		s.initialReply <- reply
 		s.logger.Info("recording initial reply", slog.Any("reply", replyType))
 	} else {
 		s.logger.Debug("recording reply", slog.Any("reply", replyType))
 	}
 	s.lastReply = reply
-	s.suscribeUntil = time.Now().Add(s.subscriptionTimeout)
+	s.suscribeUntil = time.Now().Add(s.Timeout)
 }
 
 func (s *streamSubscription[R, T]) LastReply() (*T, error) {
 	if s.timeoutReached() {
 		s.logger.Info("closing subscription; timeout reached")
-		s.MarkClosed()
+		s.Close()
 	}
 
 	s.mutex.Lock()
@@ -112,12 +137,12 @@ func (s *streamSubscription[R, T]) timeoutReached() bool {
 	s.mutex.Lock()
 	defer s.mutex.Unlock()
 
-	if s.subscriptionTimeout <= 0 {
+	if s.Timeout <= 0 {
 		return false
 	}
 	now := time.Now()
 	if s.suscribeUntil.IsZero() {
-		s.suscribeUntil = now.Add(s.subscriptionTimeout)
+		s.suscribeUntil = now.Add(s.Timeout)
 		return false
 	}
 	return now.After(s.suscribeUntil)

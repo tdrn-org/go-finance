@@ -139,7 +139,7 @@ func (api *API) queryQuoteLocked(ctx context.Context, listing finance.Listing) (
 			return nil, err
 		}
 	}
-	return subscription.LastReply()
+	return subscription.waitInitialReply(context.Background(), initialReplyTimeout)
 }
 
 func (api *API) getSecurityMarketDataSubscriptionLocked(listing finance.Listing) *streamSubscription[proto.SecurityMarketDataReply, finance.Quote] {
@@ -192,16 +192,11 @@ func (api *API) startSecurityMarketDataSubscriptionLocked(ctx context.Context, l
 		return nil, fmt.Errorf("%s: failed to create security market data subscription (cause: %w)", Name, err)
 	}
 	subscriptionKey := api.securityMarketdataSubscriptionKey(listing)
-	subscription := &streamSubscription[proto.SecurityMarketDataReply, finance.Quote]{
-		client:              client,
-		subscriptionTimeout: api.subscriptionTimeout,
-		processReply: func(s *streamSubscription[proto.SecurityMarketDataReply, finance.Quote], reply *proto.SecurityMarketDataReply) {
-			api.processSecurityMarketDataReply(s, listing, reply)
-		},
-		ctx:    subscriptionCtx,
-		cancel: subscriptionCancel,
-		logger: api.logger.With(slog.String("securityMarketDataSubscription", subscriptionKey)),
+	processReply := func(s *streamSubscription[proto.SecurityMarketDataReply, finance.Quote], reply *proto.SecurityMarketDataReply) {
+		api.processSecurityMarketDataReply(s, listing, reply)
 	}
+	subscription := newSubscription(client, subscriptionCancel, processReply, api.logger.With(slog.String("securityMarketDataSubscription", subscriptionKey)))
+	subscription.Timeout = api.subscriptionTimeout
 	api.quoteSubscriptions[subscriptionKey] = subscription
 	api.stoppedWG.Go(subscription.Run)
 	return subscription, nil
@@ -223,7 +218,7 @@ func (api *API) getListingExchange(listing finance.Listing, exchangeInfos []*pro
 func (api *API) processSecurityMarketDataReply(s *streamSubscription[proto.SecurityMarketDataReply, finance.Quote], listing finance.Listing, reply *proto.SecurityMarketDataReply) {
 	if reply.Error != nil {
 		api.logger.Warn("errornous market data reply; closing stream", slog.Any("error", reply.Error))
-		s.MarkClosed()
+		s.Close()
 		return
 	}
 	s.RecordReply(securityMarketDataReplyToQuote(listing, reply))
