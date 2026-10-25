@@ -58,7 +58,7 @@ func (api *API) queryExchangeRateLocked(ctx context.Context, base, quote finance
 			return nil, err
 		}
 	}
-	return subscription.waitInitialReply(context.Background(), initialReplyTimeout)
+	return subscription.waitInitialReply(ctx, initialReplyTimeout)
 }
 
 func (api *API) getExchangeRateSubscriptionLocked(base, quote finance.Currency) *streamSubscription[proto.CurrencyRateReply, finance.ExchangeRate] {

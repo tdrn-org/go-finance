@@ -139,7 +139,7 @@ func (api *API) queryQuoteLocked(ctx context.Context, listing finance.Listing) (
 			return nil, err
 		}
 	}
-	return subscription.waitInitialReply(context.Background(), initialReplyTimeout)
+	return subscription.waitInitialReply(ctx, initialReplyTimeout)
 }
 
 func (api *API) getSecurityMarketDataSubscriptionLocked(listing finance.Listing) *streamSubscription[proto.SecurityMarketDataReply, finance.Quote] {
