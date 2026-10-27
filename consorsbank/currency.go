@@ -35,10 +35,7 @@ func (api *API) QueryExchangeRate(ctx context.Context, base, quote finance.Curre
 	traceCtx, span := api.tracer.StartConsuming(ctx)
 	defer span.End()
 
-	api.mutex.Lock()
-	defer api.mutex.Unlock()
-
-	rate, err := api.queryExchangeRateLocked(traceCtx, base, quote)
+	rate, err := api.queryExchangeRate(traceCtx, base, quote)
 	if errors.Is(err, finance.ErrRequestPending) {
 		logger.Info("exchange rate request pending")
 	} else if err != nil {
@@ -49,7 +46,18 @@ func (api *API) QueryExchangeRate(ctx context.Context, base, quote finance.Curre
 	return rate, tracehelper.SetStatus(span, err)
 }
 
-func (api *API) queryExchangeRateLocked(ctx context.Context, base, quote finance.Currency) (*finance.ExchangeRate, error) {
+func (api *API) queryExchangeRate(ctx context.Context, base, quote finance.Currency) (*finance.ExchangeRate, error) {
+	subscription, err := api.getOrStartExchangeRateSubscription(ctx, base, quote)
+	if err != nil {
+		return nil, err
+	}
+	return subscription.waitInitialReply(ctx, initialReplyTimeout)
+}
+
+func (api *API) getOrStartExchangeRateSubscription(ctx context.Context, base, quote finance.Currency) (*streamSubscription[proto.CurrencyRateReply, finance.ExchangeRate], error) {
+	api.mutex.Lock()
+	defer api.mutex.Unlock()
+
 	subscription := api.getExchangeRateSubscriptionLocked(base, quote)
 	if subscription == nil {
 		var err error
@@ -58,7 +66,7 @@ func (api *API) queryExchangeRateLocked(ctx context.Context, base, quote finance
 			return nil, err
 		}
 	}
-	return subscription.waitInitialReply(ctx, initialReplyTimeout)
+	return subscription, nil
 }
 
 func (api *API) getExchangeRateSubscriptionLocked(base, quote finance.Currency) *streamSubscription[proto.CurrencyRateReply, finance.ExchangeRate] {

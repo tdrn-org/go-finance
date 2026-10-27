@@ -32,16 +32,16 @@ import (
 const initialReplyTimeout time.Duration = 250 * time.Millisecond
 
 type streamSubscription[R, T any] struct {
-	Timeout       time.Duration
-	client        grpc.ServerStreamingClient[R]
-	cancel        context.CancelFunc
-	processReply  func(*streamSubscription[R, T], *R)
-	initialReply  chan *T
-	lastReply     *T
-	suscribeUntil time.Time
-	closed        bool
-	logger        *slog.Logger
-	mutex         sync.Mutex
+	Timeout        time.Duration
+	client         grpc.ServerStreamingClient[R]
+	cancel         context.CancelFunc
+	processReply   func(*streamSubscription[R, T], *R)
+	initialReply   chan *T
+	lastReply      *T
+	subscribeUntil time.Time
+	closed         bool
+	logger         *slog.Logger
+	mutex          sync.Mutex
 }
 
 func newSubscription[R, T any](client grpc.ServerStreamingClient[R], cancel context.CancelFunc, processReply func(*streamSubscription[R, T], *R), logger *slog.Logger) *streamSubscription[R, T] {
@@ -115,7 +115,7 @@ func (s *streamSubscription[R, T]) RecordReply(reply *T) {
 		s.logger.Debug("recording reply", slog.Any("reply", replyType))
 	}
 	s.lastReply = reply
-	s.suscribeUntil = time.Now().Add(s.Timeout)
+	s.subscribeUntil = time.Now().Add(s.Timeout)
 }
 
 func (s *streamSubscription[R, T]) LastReply() (*T, error) {
@@ -141,9 +141,9 @@ func (s *streamSubscription[R, T]) timeoutReached() bool {
 		return false
 	}
 	now := time.Now()
-	if s.suscribeUntil.IsZero() {
-		s.suscribeUntil = now.Add(s.Timeout)
+	if s.subscribeUntil.IsZero() {
+		s.subscribeUntil = now.Add(s.Timeout)
 		return false
 	}
-	return now.After(s.suscribeUntil)
+	return now.After(s.subscribeUntil)
 }

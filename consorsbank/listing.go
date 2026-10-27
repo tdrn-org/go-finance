@@ -116,10 +116,7 @@ func (api *API) QueryQuote(ctx context.Context, listing finance.Listing) (*finan
 	traceCtx, span := api.tracer.StartConsuming(ctx)
 	defer span.End()
 
-	api.mutex.Lock()
-	defer api.mutex.Unlock()
-
-	quote, err := api.queryQuoteLocked(traceCtx, listing)
+	quote, err := api.queryQuote(traceCtx, listing)
 	if errors.Is(err, finance.ErrRequestPending) {
 		logger.Info("quote request pending")
 	} else if err != nil {
@@ -130,7 +127,18 @@ func (api *API) QueryQuote(ctx context.Context, listing finance.Listing) (*finan
 	return quote, tracehelper.SetStatus(span, err)
 }
 
-func (api *API) queryQuoteLocked(ctx context.Context, listing finance.Listing) (*finance.Quote, error) {
+func (api *API) queryQuote(ctx context.Context, listing finance.Listing) (*finance.Quote, error) {
+	subscription, err := api.getOrStartSecurityMarketDataSubscription(ctx, listing)
+	if err != nil {
+		return nil, err
+	}
+	return subscription.waitInitialReply(ctx, initialReplyTimeout)
+}
+
+func (api *API) getOrStartSecurityMarketDataSubscription(ctx context.Context, listing finance.Listing) (*streamSubscription[proto.SecurityMarketDataReply, finance.Quote], error) {
+	api.mutex.Lock()
+	defer api.mutex.Unlock()
+
 	subscription := api.getSecurityMarketDataSubscriptionLocked(listing)
 	if subscription == nil {
 		var err error
@@ -139,7 +147,7 @@ func (api *API) queryQuoteLocked(ctx context.Context, listing finance.Listing) (
 			return nil, err
 		}
 	}
-	return subscription.waitInitialReply(ctx, initialReplyTimeout)
+	return subscription, nil
 }
 
 func (api *API) getSecurityMarketDataSubscriptionLocked(listing finance.Listing) *streamSubscription[proto.SecurityMarketDataReply, finance.Quote] {
