@@ -1,37 +1,42 @@
 [fx]
-cooldown = "1m"
 
 [[fx.provider]]
 name = "frankfurter"
+cooldown_ttl = "2m"
 cache_ttl = "6h"
 
 [[fx.provider]]
 name = "alphavantage"
+cooldown_ttl = "3m"
 cache_ttl = "5h"
 
 [[fx.provider]]
 name = "consorsbank"
+cooldown_ttl = "3m"
 cache_ttl = "4h"
 
 [[fx.provider]]
 name = "twelvedata"
+cooldown_ttl = "4m"
 cache_ttl = "3h"
 
 [listings]
-cooldown = "2m"
 
 [[listings.provider]]
 name = "alphavantage"
+cooldown_ttl = "3m"
 listing_cache_ttl = "6h"
 quote_cache_ttl = "1h"
 
 [[listings.provider]]
 name = "consorsbank"
+cooldown_ttl = "4m"
 listing_cache_ttl = "5h"
 quote_cache_ttl = "2h"
 
 [[listings.provider]]
 name = "twelvedata"
+cooldown_ttl = "5m"
 listing_cache_ttl = "4h"
 quote_cache_ttl = "3h"
 

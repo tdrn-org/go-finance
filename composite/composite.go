@@ -17,63 +17,68 @@
 package composite
 
 import (
+	"fmt"
+	"log/slog"
+	"reflect"
 	"sync"
 	"time"
+
+	"github.com/tdrn-org/go-finance"
 )
 
-type cooldownQueueEntry[P comparable] struct {
+type cooldownQueueEntry[P finance.APIProvider] struct {
 	provider      P
+	cooldownTTL   time.Duration
+	lastErr       error
 	cooldownUntil time.Time
 }
 
-type cooldownQueue[P comparable] struct {
-	cooldown time.Duration
-	entries  []*cooldownQueueEntry[P]
-	mutex    sync.RWMutex
+type cooldownQueue[P finance.APIProvider] struct {
+	entries []*cooldownQueueEntry[P]
+	mutex   sync.RWMutex
 }
 
-func newCooldownQueue[P comparable](cooldown time.Duration, providers ...P) *cooldownQueue[P] {
+func newCooldownQueue[P finance.APIProvider]() *cooldownQueue[P] {
 	queue := &cooldownQueue[P]{
-		cooldown: cooldown,
-		entries:  make([]*cooldownQueueEntry[P], 0, len(providers)),
-	}
-	for _, provider := range providers {
-		queue.entries = append(queue.entries, &cooldownQueueEntry[P]{provider: provider})
+		entries: make([]*cooldownQueueEntry[P], 0),
 	}
 	return queue
 }
 
-func (q *cooldownQueue[P]) ForEach(f func(provider P)) {
+func (q *cooldownQueue[P]) Add(provider P, cooldownTTL time.Duration) {
 	q.mutex.RLock()
 	defer q.mutex.RUnlock()
 
-	for _, entry := range q.entries {
-		f(entry.provider)
-	}
+	q.entries = append(q.entries, &cooldownQueueEntry[P]{provider: provider, cooldownTTL: cooldownTTL})
 }
 
-func (q *cooldownQueue[P]) GetAvailableProviders() []P {
-	providers := make([]P, 0, len(q.entries))
-
-	q.mutex.RLock()
-	defer q.mutex.RUnlock()
-
+func (q *cooldownQueue[P]) ForEach(f func(provider P, lastErr error)) {
 	now := time.Now()
-	for _, entry := range q.entries {
+	for _, entry := range q.providerEntries() {
 		if now.After(entry.cooldownUntil) {
-			providers = append(providers, entry.provider)
+			entry.lastErr = nil
 		}
+		f(entry.provider, entry.lastErr)
 	}
-	return providers
 }
 
-func (q *cooldownQueue[P]) MarkProviderFailed(provider P) {
+func (q *cooldownQueue[P]) providerEntries() []*cooldownQueueEntry[P] {
+	q.mutex.RLock()
+	defer q.mutex.RUnlock()
+
+	return append(make([]*cooldownQueueEntry[P], 0, len(q.entries)), q.entries...)
+}
+
+func (q *cooldownQueue[P]) MarkProviderFailed(provider P, err error) {
 	q.mutex.Lock()
 	defer q.mutex.Unlock()
 
+	providerName := provider.ProviderName()
 	for _, entry := range q.entries {
-		if entry.provider == provider {
-			entry.cooldownUntil = time.Now().Add(q.cooldown)
+		if entry.provider.ProviderName() == providerName {
+			slog.Warn(fmt.Sprintf("marking %T provider as failed", reflect.TypeFor[P]()), slog.String("provider", providerName), slog.Any("err", err))
+			entry.lastErr = err
+			entry.cooldownUntil = time.Now().Add(entry.cooldownTTL)
 			break
 		}
 	}

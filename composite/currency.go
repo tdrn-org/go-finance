@@ -87,22 +87,27 @@ func (p *cachedFXProvider) cacheKey(base, quote finance.Currency) string {
 	return fmt.Sprintf("finance:exchangeRate:%s/%s", strings.ToUpper(string(base)), strings.ToUpper(string(quote)))
 }
 
-type fallbackFXProvider struct {
+type FallbackFXProvider struct {
 	queue *cooldownQueue[finance.FX]
 }
 
-func NewFallbackFXProvider(cooldown time.Duration, providers ...finance.FX) finance.FX {
-	return &fallbackFXProvider{
-		queue: newCooldownQueue(cooldown, providers...),
+func NewFallbackFXProvider() *FallbackFXProvider {
+	return &FallbackFXProvider{
+		queue: newCooldownQueue[finance.FX](),
 	}
 }
 
+// Add adds the given [finance.FX] provider to the provider's queue.
+func (p *FallbackFXProvider) Add(provider finance.FX, cooldownTTL time.Duration) {
+	p.queue.Add(provider, cooldownTTL)
+}
+
 // See [finance.APIProvider.ProviderName]
-func (p *fallbackFXProvider) ProviderName() string {
+func (p *FallbackFXProvider) ProviderName() string {
 	buffer := &strings.Builder{}
 	buffer.WriteString("fallback:")
 	initialBufferLen := buffer.Len()
-	p.queue.ForEach(func(provider finance.FX) {
+	p.queue.ForEach(func(provider finance.FX, _ error) {
 		if buffer.Len() > initialBufferLen {
 			buffer.WriteRune('|')
 		}
@@ -112,9 +117,9 @@ func (p *fallbackFXProvider) ProviderName() string {
 }
 
 // See [finance.APIProvider.Shutdown]
-func (p *fallbackFXProvider) Shutdown(ctx context.Context) error {
+func (p *FallbackFXProvider) Shutdown(ctx context.Context) error {
 	errs := make([]error, 0)
-	p.queue.ForEach(func(provider finance.FX) {
+	p.queue.ForEach(func(provider finance.FX, _ error) {
 		err := provider.Shutdown(ctx)
 		if err != nil {
 			errs = append(errs, err)
@@ -124,9 +129,9 @@ func (p *fallbackFXProvider) Shutdown(ctx context.Context) error {
 }
 
 // See [finance.APIProvider.Close]
-func (p *fallbackFXProvider) Close() error {
+func (p *FallbackFXProvider) Close() error {
 	errs := make([]error, 0)
-	p.queue.ForEach(func(provider finance.FX) {
+	p.queue.ForEach(func(provider finance.FX, _ error) {
 		err := provider.Close()
 		if err != nil {
 			errs = append(errs, err)
@@ -135,18 +140,31 @@ func (p *fallbackFXProvider) Close() error {
 	return errors.Join(errs...)
 }
 
-func (p *fallbackFXProvider) QueryExchangeRate(ctx context.Context, base, quote finance.Currency) (*finance.ExchangeRate, error) {
-	availableProviders := p.queue.GetAvailableProviders()
-	for _, availableProvider := range availableProviders {
-		exchangeRate, err := availableProvider.QueryExchangeRate(ctx, base, quote)
-		if errors.Is(err, finance.ErrRequestPending) {
-			continue
-		} else if err != nil {
-			slog.Warn("marking FX provider as failed", slog.String("provider", availableProvider.ProviderName()), slog.Any("err", err))
-			p.queue.MarkProviderFailed(availableProvider)
-			continue
+// See [finance.FX.QueryExchangeRate]
+func (p *FallbackFXProvider) QueryExchangeRate(ctx context.Context, base, quote finance.Currency) (*finance.ExchangeRate, error) {
+	var rate *finance.ExchangeRate
+	requestPending := false
+	errs := make([]error, 0)
+	p.queue.ForEach(func(provider finance.FX, lastErr error) {
+		if rate == nil && lastErr == nil {
+			providerRate, err := provider.QueryExchangeRate(ctx, base, quote)
+			if err == nil {
+				rate = providerRate
+			} else if errors.Is(err, finance.ErrRequestPending) {
+				requestPending = true
+			} else if err != nil {
+				errs = append(errs, err)
+				p.queue.MarkProviderFailed(provider, err)
+			}
 		}
-		return exchangeRate, nil
+	})
+	var err error
+	if rate == nil {
+		if requestPending {
+			err = finance.ErrRequestPending
+		} else {
+			err = fmt.Errorf("%w (cause: %w))", finance.ErrExchangeRateNotAvailable, errors.Join(errs...))
+		}
 	}
-	return nil, finance.ErrExchangeRateNotAvailable
+	return rate, err
 }

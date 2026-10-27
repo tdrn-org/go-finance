@@ -1,15 +1,15 @@
 [fx]
-cooldown = "10m"
 
 [[fx.provider]]
 name = "demo"
+cooldown_ttl = "10m"
 cache_ttl = "1h"
 
 [listings]
-cooldown = "10m"
 
 [[listings.provider]]
 name = "demo"
+cooldown_ttl = "10m"
 listing_cache_ttl = "12h"
 quote_cache_ttl = "5m"
 

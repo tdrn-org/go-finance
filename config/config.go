@@ -54,24 +54,12 @@ func Load(path string, strict bool) (*Config, error) {
 
 func (c *Config) NewFXProvider() (finance.FX, error) {
 	c.fxFactory.NewAPI(func(c *Config) (finance.FX, error) {
-		providers := make([]finance.FX, 0, len(c.FX.Providers))
+		if len(c.FX.Providers) == 0 {
+			return nil, fmt.Errorf("at least one FX provider must be defined")
+		}
+		fallbackProvider := composite.NewFallbackFXProvider()
 		for _, providerConfig := range c.FX.Providers {
-			var provider finance.FX
-			var err error
-			switch providerConfig.Name {
-			case FXProviderNameDemo:
-				provider, err = c.Demo.NewAPI()
-			case FXProviderNameAlphaVantage:
-				provider, err = c.AlphaVantage.NewAPI()
-			case FXProviderNameConsorsbank:
-				provider, err = c.Consorsbank.NewAPI()
-			case FXProviderNameFrankfurter:
-				provider, err = c.Frankfurter.NewAPI()
-			case FXProviderNameTwelveData:
-				provider, err = c.TwelveData.NewAPI()
-			default:
-				err = fmt.Errorf("unrecognized FX provider name %q", providerConfig.Name)
-			}
+			provider, err := c.newUpstreamFXProvider(&providerConfig)
 			if err != nil {
 				return nil, err
 			}
@@ -79,34 +67,38 @@ func (c *Config) NewFXProvider() (finance.FX, error) {
 			if err != nil {
 				return nil, err
 			}
-			providers = append(providers, composite.NewCachedFXProvider(provider, cache))
+			fallbackProvider.Add(composite.NewCachedFXProvider(provider, cache), time.Duration(providerConfig.CooldownTTL))
 		}
-		if len(providers) == 0 {
-			return nil, fmt.Errorf("at least one FX provider must be defined")
-		}
-		return composite.NewFallbackFXProvider(time.Duration(c.FX.Cooldown), providers...), nil
+		return fallbackProvider, nil
 	}, c)
 	return c.fxFactory.api, c.fxFactory.err
 }
 
+func (c *Config) newUpstreamFXProvider(providerConfig *FXProviderConfig) (finance.FX, error) {
+	switch providerConfig.Name {
+	case FXProviderNameDemo:
+		return c.Demo.NewAPI()
+	case FXProviderNameAlphaVantage:
+		return c.AlphaVantage.NewAPI()
+	case FXProviderNameConsorsbank:
+		return c.Consorsbank.NewAPI()
+	case FXProviderNameFrankfurter:
+		return c.Frankfurter.NewAPI()
+	case FXProviderNameTwelveData:
+		return c.TwelveData.NewAPI()
+	default:
+		return nil, fmt.Errorf("unrecognized FX provider name %q", providerConfig.Name)
+	}
+}
+
 func (c *Config) NewListingProvider() (finance.ListingProvider, error) {
 	c.listingFactory.NewAPI(func(c *Config) (finance.ListingProvider, error) {
-		providers := make([]finance.ListingProvider, 0, len(c.Listings.Providers))
+		if len(c.Listings.Providers) == 0 {
+			return nil, fmt.Errorf("at least one Listing provider must be defined")
+		}
+		combinedProvider := composite.NewCombinedListingProvider()
 		for _, providerConfig := range c.Listings.Providers {
-			var provider finance.ListingProvider
-			var err error
-			switch providerConfig.Name {
-			case ListingProviderNameDemo:
-				provider, err = c.Demo.NewAPI()
-			case ListingProviderNameAlphaVantage:
-				provider, err = c.AlphaVantage.NewAPI()
-			case ListingProviderNameConsorsbank:
-				provider, err = c.Consorsbank.NewAPI()
-			case ListingProviderNameTwelveData:
-				provider, err = c.TwelveData.NewAPI()
-			default:
-				err = fmt.Errorf("unrecognized Listing provider name %q", providerConfig.Name)
-			}
+			provider, err := c.newUpstreamListingProvider(&providerConfig)
 			if err != nil {
 				return nil, err
 			}
@@ -118,14 +110,26 @@ func (c *Config) NewListingProvider() (finance.ListingProvider, error) {
 			if err != nil {
 				return nil, err
 			}
-			providers = append(providers, composite.NewCachedListingProvider(provider, listingCache, quoteCache))
+			combinedProvider.Add(composite.NewCachedListingProvider(provider, listingCache, quoteCache), time.Duration(providerConfig.CooldownTTL))
 		}
-		if len(providers) == 0 {
-			return nil, fmt.Errorf("at least one Listing provider must be defined")
-		}
-		return composite.NewCombinedListingProvider(time.Duration(c.Listings.Cooldown), providers...), nil
+		return combinedProvider, nil
 	}, c)
 	return c.listingFactory.api, c.listingFactory.err
+}
+
+func (c *Config) newUpstreamListingProvider(providerConfig *ListingProviderConfig) (finance.ListingProvider, error) {
+	switch providerConfig.Name {
+	case ListingProviderNameDemo:
+		return c.Demo.NewAPI()
+	case ListingProviderNameAlphaVantage:
+		return c.AlphaVantage.NewAPI()
+	case ListingProviderNameConsorsbank:
+		return c.Consorsbank.NewAPI()
+	case ListingProviderNameTwelveData:
+		return c.TwelveData.NewAPI()
+	default:
+		return nil, fmt.Errorf("unrecognized Listing provider name %q", providerConfig.Name)
+	}
 }
 
 type apiFactory[A finance.APIProvider, C any] struct {

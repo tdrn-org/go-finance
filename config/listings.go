@@ -26,13 +26,14 @@ import (
 
 type ListingsConfig struct {
 	Providers []ListingProviderConfig `toml:"provider"`
-	Cooldown  config.DurationSpec     `toml:"cooldown"`
 }
 
 type ListingProviderConfig struct {
 	Name            ListingProviderName `toml:"name"`
+	CooldownTTL     config.DurationSpec `toml:"cooldown_ttl"`
 	ListingCacheTTL config.DurationSpec `toml:"listing_cache_ttl"`
 	QuoteCacheTTL   config.DurationSpec `toml:"quote_cache_ttl"`
+	HistoryCacheTTL config.DurationSpec `toml:"history_cache_ttl"`
 }
 
 type ListingProviderName string

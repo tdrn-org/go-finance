@@ -106,7 +106,7 @@ func (api *API) includeSecurityStockExchange(stockExchangeInfo *proto.SecuritySt
 
 // See [finance.ListingProvider.QueryQuote]
 func (api *API) QueryQuote(ctx context.Context, listing finance.Listing) (*finance.Quote, error) {
-	err := listing.CheckProvider(Name)
+	err := listing.CheckProviderName(Name)
 	if err != nil {
 		return nil, err
 	}

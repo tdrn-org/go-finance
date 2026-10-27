@@ -211,10 +211,17 @@ func (l *Listing) ID() string {
 	return l.id
 }
 
-// CheckProvider checks whether the given provider name matches
+// CheckProvider checks whether the given provider matches
 // the issueing provider of this [Listing].
 // If not matching, [ErrListingProviderMismatch] is returned.
-func (l *Listing) CheckProvider(name string) error {
+func (l *Listing) CheckProvider(provider ListingProvider) error {
+	return l.CheckProviderName(provider.ProviderName())
+}
+
+// CheckProviderName checks whether the given provider name matches
+// the issueing provider's name of this [Listing].
+// If not matching, [ErrListingProviderMismatch] is returned.
+func (l *Listing) CheckProviderName(name string) error {
 	if l.data == nil {
 		return ErrEmptyListing
 	}

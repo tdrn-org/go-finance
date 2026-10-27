@@ -115,22 +115,27 @@ func (p *cachedListingProvider) QueryQuoteHistory(ctx context.Context, listing f
 	return nil, nil
 }
 
-type combinedListingProvider struct {
+type CombinedListingProvider struct {
 	queue *cooldownQueue[finance.ListingProvider]
 }
 
-func NewCombinedListingProvider(cooldown time.Duration, providers ...finance.ListingProvider) finance.ListingProvider {
-	return &combinedListingProvider{
-		queue: newCooldownQueue(cooldown, providers...),
+func NewCombinedListingProvider() *CombinedListingProvider {
+	return &CombinedListingProvider{
+		queue: newCooldownQueue[finance.ListingProvider](),
 	}
 }
 
+// Add adds the given [finance.ListingProvider] provider to the provider's queue.
+func (p *CombinedListingProvider) Add(provider finance.ListingProvider, cooldownTTL time.Duration) {
+	p.queue.Add(provider, cooldownTTL)
+}
+
 // See [finance.APIProvider.ProviderName]
-func (p *combinedListingProvider) ProviderName() string {
+func (p *CombinedListingProvider) ProviderName() string {
 	buffer := &strings.Builder{}
 	buffer.WriteString("combined:")
 	initialBufferLen := buffer.Len()
-	p.queue.ForEach(func(provider finance.ListingProvider) {
+	p.queue.ForEach(func(provider finance.ListingProvider, _ error) {
 		if buffer.Len() > initialBufferLen {
 			buffer.WriteRune('|')
 		}
@@ -140,9 +145,9 @@ func (p *combinedListingProvider) ProviderName() string {
 }
 
 // See [finance.APIProvider.Shutdown]
-func (p *combinedListingProvider) Shutdown(ctx context.Context) error {
+func (p *CombinedListingProvider) Shutdown(ctx context.Context) error {
 	errs := make([]error, 0)
-	p.queue.ForEach(func(provider finance.ListingProvider) {
+	p.queue.ForEach(func(provider finance.ListingProvider, _ error) {
 		err := provider.Shutdown(ctx)
 		if err != nil {
 			errs = append(errs, err)
@@ -152,9 +157,9 @@ func (p *combinedListingProvider) Shutdown(ctx context.Context) error {
 }
 
 // See [finance.APIProvider.Close]
-func (p *combinedListingProvider) Close() error {
+func (p *CombinedListingProvider) Close() error {
 	errs := make([]error, 0)
-	p.queue.ForEach(func(provider finance.ListingProvider) {
+	p.queue.ForEach(func(provider finance.ListingProvider, _ error) {
 		err := provider.Close()
 		if err != nil {
 			errs = append(errs, err)
@@ -164,45 +169,44 @@ func (p *combinedListingProvider) Close() error {
 }
 
 // See [finance.ListingProvider.SearchListings]
-func (p *combinedListingProvider) SearchListings(ctx context.Context, query string) ([]finance.Listing, error) {
-	availableProviders := p.queue.GetAvailableProviders()
+func (p *CombinedListingProvider) SearchListings(ctx context.Context, query string) ([]finance.Listing, error) {
 	listings := make([]finance.Listing, 0)
-	for _, availableProvider := range availableProviders {
-		foundListings, err := availableProvider.SearchListings(ctx, query)
-		if errors.Is(err, finance.ErrListingSearchRestricted) {
-			continue
-		} else if err != nil {
-			slog.Warn("marking listing provider as failed", slog.String("provider", availableProvider.ProviderName()), slog.Any("err", err))
-			p.queue.MarkProviderFailed(availableProvider)
-			continue
+	p.queue.ForEach(func(provider finance.ListingProvider, lastErr error) {
+		if lastErr == nil {
+			providerListings, err := provider.SearchListings(ctx, query)
+			if err == nil {
+				listings = append(listings, providerListings...)
+			} else if !errors.Is(err, finance.ErrListingSearchRestricted) {
+				p.queue.MarkProviderFailed(provider, err)
+			}
 		}
-		listings = append(listings, foundListings...)
-	}
+	})
 	return listings, nil
 }
 
 // See [finance.ListingProvider.QueryQuote]
-func (p *combinedListingProvider) QueryQuote(ctx context.Context, listing finance.Listing) (*finance.Quote, error) {
-	for _, availableProvider := range p.queue.GetAvailableProviders() {
-		err := listing.CheckProvider(availableProvider.ProviderName())
-		if err != nil {
-			continue
+func (p *CombinedListingProvider) QueryQuote(ctx context.Context, listing finance.Listing) (*finance.Quote, error) {
+	var quote *finance.Quote
+	var err error
+	p.queue.ForEach(func(provider finance.ListingProvider, lastErr error) {
+		if quote == nil && err == nil {
+			err := listing.CheckProvider(provider)
+			if err == nil {
+				if lastErr != nil {
+					err = lastErr
+				} else {
+					quote, err = provider.QueryQuote(ctx, listing)
+					if err != nil {
+						p.queue.MarkProviderFailed(provider, err)
+					}
+				}
+			}
 		}
-		quote, err := availableProvider.QueryQuote(ctx, listing)
-		if errors.Is(err, finance.ErrListingProviderMismatch) {
-			continue
-		} else if errors.Is(err, finance.ErrRequestPending) {
-			return nil, err
-		} else if err != nil {
-			slog.Warn("marking listing provider as failed", slog.String("provider", availableProvider.ProviderName()), slog.Any("err", err))
-			p.queue.MarkProviderFailed(availableProvider)
-		}
-		return quote, err
-	}
-	return nil, finance.ErrListingProviderMismatch
+	})
+	return quote, err
 }
 
 // See [finance.ListingProvider.QueryQuoteHistory]
-func (p *combinedListingProvider) QueryQuoteHistory(ctx context.Context, listing finance.Listing, from, to time.Time) ([]finance.Quote, error) {
+func (p *CombinedListingProvider) QueryQuoteHistory(ctx context.Context, listing finance.Listing, from, to time.Time) ([]finance.Quote, error) {
 	return nil, nil
 }
