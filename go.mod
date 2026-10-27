@@ -7,7 +7,7 @@ toolchain go1.27.1
 require (
 	github.com/oapi-codegen/runtime v1.8.0
 	github.com/stretchr/testify v1.12.1
-	github.com/tdrn-org/go-cache v0.1.6
+	github.com/tdrn-org/go-cache v0.1.8
 	github.com/tdrn-org/go-config-toml v0.1.1
 	github.com/twelvedata/twelvedata-go v1.0.14
 	go.opentelemetry.io/otel v1.47.0
