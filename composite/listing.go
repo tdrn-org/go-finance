@@ -176,7 +176,7 @@ func (p *CombinedListingProvider) SearchListings(ctx context.Context, query stri
 			providerListings, err := provider.SearchListings(ctx, query)
 			if err == nil {
 				listings = append(listings, providerListings...)
-			} else if !errors.Is(err, finance.ErrListingSearchRestricted) {
+			} else if !finance.IsTransientErr(err) {
 				p.queue.MarkProviderFailed(provider, err)
 			}
 		}
@@ -189,20 +189,20 @@ func (p *CombinedListingProvider) QueryQuote(ctx context.Context, listing financ
 	var quote *finance.Quote
 	var err error
 	p.queue.ForEach(func(provider finance.ListingProvider, lastErr error) {
-		if quote == nil && err == nil {
-			err := listing.CheckProvider(provider)
-			if err == nil {
-				if lastErr != nil {
-					err = lastErr
-				} else {
-					quote, err = provider.QueryQuote(ctx, listing)
-					if err != nil {
-						p.queue.MarkProviderFailed(provider, err)
-					}
+		if quote == nil && err == nil && listing.CheckProvider(provider) == nil {
+			if lastErr == nil {
+				quote, err = provider.QueryQuote(ctx, listing)
+				if !finance.IsTransientErr(err) {
+					p.queue.MarkProviderFailed(provider, err)
 				}
+			} else {
+				err = lastErr
 			}
 		}
 	})
+	if quote == nil && err == nil {
+		err = finance.ErrQuoteNotAvailable
+	}
 	return quote, err
 }
 

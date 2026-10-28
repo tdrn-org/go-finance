@@ -34,39 +34,44 @@ type cooldownQueueEntry[P finance.APIProvider] struct {
 }
 
 type cooldownQueue[P finance.APIProvider] struct {
-	entries []*cooldownQueueEntry[P]
+	entries map[string]cooldownQueueEntry[P]
 	mutex   sync.RWMutex
 }
 
 func newCooldownQueue[P finance.APIProvider]() *cooldownQueue[P] {
 	queue := &cooldownQueue[P]{
-		entries: make([]*cooldownQueueEntry[P], 0),
+		entries: make(map[string]cooldownQueueEntry[P], 0),
 	}
 	return queue
 }
 
 func (q *cooldownQueue[P]) Add(provider P, cooldownTTL time.Duration) {
-	q.mutex.RLock()
-	defer q.mutex.RUnlock()
+	q.mutex.Lock()
+	defer q.mutex.Unlock()
 
-	q.entries = append(q.entries, &cooldownQueueEntry[P]{provider: provider, cooldownTTL: cooldownTTL})
+	q.entries[provider.ProviderName()] = cooldownQueueEntry[P]{provider: provider, cooldownTTL: cooldownTTL}
 }
 
 func (q *cooldownQueue[P]) ForEach(f func(provider P, lastErr error)) {
-	now := time.Now()
 	for _, entry := range q.providerEntries() {
-		if now.After(entry.cooldownUntil) {
-			entry.lastErr = nil
-		}
 		f(entry.provider, entry.lastErr)
 	}
 }
 
-func (q *cooldownQueue[P]) providerEntries() []*cooldownQueueEntry[P] {
+func (q *cooldownQueue[P]) providerEntries() []cooldownQueueEntry[P] {
 	q.mutex.RLock()
 	defer q.mutex.RUnlock()
 
-	return append(make([]*cooldownQueueEntry[P], 0, len(q.entries)), q.entries...)
+	now := time.Now()
+	entries := make([]cooldownQueueEntry[P], 0, len(q.entries))
+	for providerName, providerEntry := range q.entries {
+		if providerEntry.lastErr != nil && now.After(providerEntry.cooldownUntil) {
+			providerEntry.lastErr = nil
+			q.entries[providerName] = providerEntry
+		}
+		entries = append(entries, providerEntry)
+	}
+	return entries
 }
 
 func (q *cooldownQueue[P]) MarkProviderFailed(provider P, err error) {
@@ -74,12 +79,13 @@ func (q *cooldownQueue[P]) MarkProviderFailed(provider P, err error) {
 	defer q.mutex.Unlock()
 
 	providerName := provider.ProviderName()
-	for _, entry := range q.entries {
-		if entry.provider.ProviderName() == providerName {
-			slog.Warn(fmt.Sprintf("marking %T provider as failed", reflect.TypeFor[P]()), slog.String("provider", providerName), slog.Any("err", err))
-			entry.lastErr = err
-			entry.cooldownUntil = time.Now().Add(entry.cooldownTTL)
-			break
-		}
+	providerEntry, ok := q.entries[providerName]
+	if !ok {
+		slog.Warn("unknown provider", slog.String("provider", providerName))
+		return
 	}
+	slog.Warn(fmt.Sprintf("marking %T provider as failed", reflect.TypeFor[P]()), slog.String("provider", providerName), slog.Any("err", err))
+	providerEntry.lastErr = err
+	providerEntry.cooldownUntil = time.Now().Add(providerEntry.cooldownTTL)
+	q.entries[providerName] = providerEntry
 }

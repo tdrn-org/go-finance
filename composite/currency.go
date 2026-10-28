@@ -21,6 +21,7 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
+	"slices"
 	"strings"
 	"time"
 
@@ -143,28 +144,25 @@ func (p *FallbackFXProvider) Close() error {
 // See [finance.FX.QueryExchangeRate]
 func (p *FallbackFXProvider) QueryExchangeRate(ctx context.Context, base, quote finance.Currency) (*finance.ExchangeRate, error) {
 	var rate *finance.ExchangeRate
-	requestPending := false
 	errs := make([]error, 0)
 	p.queue.ForEach(func(provider finance.FX, lastErr error) {
 		if rate == nil && lastErr == nil {
 			providerRate, err := provider.QueryExchangeRate(ctx, base, quote)
 			if err == nil {
 				rate = providerRate
-			} else if errors.Is(err, finance.ErrRequestPending) {
-				requestPending = true
-			} else if err != nil {
+			} else {
 				errs = append(errs, err)
-				p.queue.MarkProviderFailed(provider, err)
+				if !finance.IsTransientErr(err) {
+					p.queue.MarkProviderFailed(provider, err)
+				}
 			}
 		}
 	})
-	var err error
 	if rate == nil {
-		if requestPending {
-			err = finance.ErrRequestPending
-		} else {
-			err = fmt.Errorf("%w (cause: %w))", finance.ErrExchangeRateNotAvailable, errors.Join(errs...))
+		if slices.Contains(errs, finance.ErrRequestPending) {
+			return nil, finance.ErrRequestPending
 		}
+		return nil, fmt.Errorf("%w: %w", finance.ErrExchangeRateNotAvailable, errors.Join(errs...))
 	}
-	return rate, err
+	return rate, nil
 }
