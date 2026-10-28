@@ -35,7 +35,7 @@ type cooldownQueueEntry[P finance.APIProvider] struct {
 
 type cooldownQueue[P finance.APIProvider] struct {
 	entries []cooldownQueueEntry[P]
-	mutex   sync.RWMutex
+	mutex   sync.Mutex
 }
 
 func newCooldownQueue[P finance.APIProvider]() *cooldownQueue[P] {

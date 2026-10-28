@@ -37,7 +37,7 @@ var (
 // transient error, allowing a retry shortly after. A nil
 // error is also considered transient.
 func IsTransientErr(err error) bool {
-	return err == nil || err == ErrRequestPending || err == ErrListingSearchRestricted
+	return err == nil || errors.Is(err, ErrRequestPending) || errors.Is(err, ErrListingSearchRestricted)
 }
 
 // APIProvider is the interface common to all providers.
