@@ -161,6 +161,8 @@ func (p *FallbackFXProvider) QueryExchangeRate(ctx context.Context, base, quote 
 	if rate == nil {
 		if slices.Contains(errs, finance.ErrRequestPending) {
 			return nil, finance.ErrRequestPending
+		} else if len(errs) == 0 {
+			return nil, finance.ErrExchangeRateNotAvailable
 		}
 		return nil, fmt.Errorf("%w: %w", finance.ErrExchangeRateNotAvailable, errors.Join(errs...))
 	}
