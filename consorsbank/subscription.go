@@ -93,13 +93,18 @@ func (s *streamSubscription[R, T]) Run() {
 }
 
 func (s *streamSubscription[R, T]) waitInitialReply(ctx context.Context, timeout time.Duration) (*T, error) {
+	reply, err := s.LastReply()
+	if err == nil || !errors.Is(err, finance.ErrRequestPending) {
+		return reply, err
+	}
+
 	timeoutCtx, cancel := context.WithTimeout(ctx, timeout)
 	defer cancel()
 	select {
 	case reply := <-s.initialReply:
 		return reply, nil
 	case <-timeoutCtx.Done():
-		return nil, finance.ErrRequestPending
+		return s.LastReply()
 	}
 }
 
