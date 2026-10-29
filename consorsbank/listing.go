@@ -229,7 +229,9 @@ func (api *API) processSecurityMarketDataReply(s *streamSubscription[proto.Secur
 		s.Close()
 		return
 	}
-	s.RecordReply(securityMarketDataReplyToQuote(listing, reply))
+	s.MergeReply(reply, func(lastReply *finance.Quote, rawReply *proto.SecurityMarketDataReply) *finance.Quote {
+		return securityMarketDataReplyToQuote(listing, lastReply, reply)
+	})
 }
 
 func (api *API) securityMarketdataSubscriptionKey(listing finance.Listing) string {

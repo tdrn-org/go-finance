@@ -108,11 +108,15 @@ func (s *streamSubscription[R, T]) waitInitialReply(ctx context.Context, timeout
 	}
 }
 
-func (s *streamSubscription[R, T]) RecordReply(reply *T) {
+func (s *streamSubscription[R, T]) MergeReply(rawReply *R, merge func(lastReply *T, rawReply *R) *T) {
 	s.mutex.Lock()
 	defer s.mutex.Unlock()
 
-	replyType := reflect.TypeOf(reply).Elem()
+	reply := merge(s.lastReply, rawReply)
+	if reply == nil {
+		return
+	}
+	replyType := reflect.TypeFor[T]()
 	if s.lastReply == nil {
 		s.initialReply <- reply
 		s.logger.Info("recording initial reply", slog.Any("reply", replyType))

@@ -114,7 +114,7 @@ func (api *API) processCurrencyRateReply(s *streamSubscription[proto.CurrencyRat
 		s.Close()
 		return
 	}
-	s.RecordReply(currencyRateReplyToExchangeRate(reply))
+	s.MergeReply(reply, currencyRateReplyToExchangeRate)
 }
 
 func (api *API) exchangeRateSubscriptionKey(base, quote finance.Currency) string {

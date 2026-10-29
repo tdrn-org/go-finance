@@ -26,7 +26,7 @@ import (
 	"github.com/tdrn-org/go-finance/consorsbank/proto"
 )
 
-func currencyRateReplyToExchangeRate(reply *proto.CurrencyRateReply) *finance.ExchangeRate {
+func currencyRateReplyToExchangeRate(_ *finance.ExchangeRate, reply *proto.CurrencyRateReply) *finance.ExchangeRate {
 	now := time.Now().UTC()
 	timestamp := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, time.UTC)
 	return &finance.ExchangeRate{
@@ -98,23 +98,41 @@ func securityInfoToListing(reply *proto.SecurityInfoReply, stockExchangeInfo *pr
 	return listing, nil
 }
 
-func securityMarketDataReplyToQuote(listing finance.Listing, reply *proto.SecurityMarketDataReply) *finance.Quote {
+func securityMarketDataReplyToQuote(listing finance.Listing, last *finance.Quote, reply *proto.SecurityMarketDataReply) *finance.Quote {
 	now := time.Now().UTC()
-	timestamp := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, time.UTC)
-	if reply.LastDateTime != nil {
-		timestamp = time.Unix(reply.LastDateTime.Seconds, int64(reply.LastDateTime.Nanos)).UTC()
-	}
-	return &finance.Quote{
+	quote := &finance.Quote{
 		Listing:         listing,
-		Timestamp:       timestamp,
-		Open:            reply.OpenPrice,
-		High:            reply.HighPrice,
-		Low:             reply.LowPrice,
-		PreviousClose:   reply.PreviousPrice,
-		Price:           reply.LastPrice,
-		Volume:          int64(reply.TodayVolume),
 		Currency:        finance.Currency(reply.Currency),
 		Source:          Name,
 		SourceTimestamp: now,
 	}
+	if last != nil {
+		quote.Timestamp = last.Timestamp
+		quote.Open = last.Open
+		quote.High = last.High
+		quote.Low = last.Low
+		quote.PreviousClose = last.PreviousClose
+		quote.Price = last.Price
+		quote.Volume = last.Volume
+		quote.Currency = last.Currency
+	}
+	for _, changedField := range reply.ChangedFields {
+		switch changedField {
+		case proto.SecurityMarketDataReply_LAST_DATE_TIME:
+			quote.Timestamp = time.Unix(reply.LastDateTime.Seconds, int64(reply.LastDateTime.Nanos)).UTC()
+		case proto.SecurityMarketDataReply_OPEN_PRICE:
+			quote.Open = reply.OpenPrice
+		case proto.SecurityMarketDataReply_HIGH_PRICE:
+			quote.High = reply.HighPrice
+		case proto.SecurityMarketDataReply_LOW_PRICE:
+			quote.Low = reply.LowPrice
+		case proto.SecurityMarketDataReply_PREVIOUS_PRICE:
+			quote.PreviousClose = reply.PreviousPrice
+		case proto.SecurityMarketDataReply_LAST_PRICE:
+			quote.Price = reply.LastPrice
+		case proto.SecurityMarketDataReply_TODAY_VOLUME:
+			quote.Volume = int64(reply.TodayVolume)
+		}
+	}
+	return quote
 }

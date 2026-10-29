@@ -60,7 +60,7 @@ func testListingProviderAPI(t *testing.T, api finance.ListingProvider, queries .
 			require.NoError(t, err)
 			require.NotNil(t, searchResult)
 			for _, listing := range searchResult {
-				fmt.Println(listing.String())
+				fmt.Println(listing.ID())
 			}
 			listings = append(listings, searchResult...)
 		}
