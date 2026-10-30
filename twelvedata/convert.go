@@ -133,6 +133,77 @@ func getQuoteResponseToQuote(listing finance.Listing, response *twelvedata.GetQu
 	return quote, nil
 }
 
+func getTimeSeriesResponseToBars(listing finance.Listing, response *twelvedata.GetTimeSeries200Response) ([]finance.Bar, error) {
+	if response.Meta.Currency == nil {
+		return nil, fmt.Errorf("%s: unable to determine time series currency for listing %s", Name, listing.ID())
+	}
+	currency := finance.Currency(*response.Meta.Currency)
+	now := time.Now().UTC()
+	bars := make([]finance.Bar, 0, len(response.Values))
+	for _, responseItem := range response.Values {
+		bar, err := timeSeriesItemToBar(listing, &responseItem, currency, now)
+		if err != nil {
+			return nil, err
+		}
+		bars = append(bars, *bar)
+	}
+	return bars, nil
+}
+
+func timeSeriesItemToBar(listing finance.Listing, response *twelvedata.TimeSeriesItem, currency finance.Currency, sourceTimestamp time.Time) (*finance.Bar, error) {
+	timestamp, err := stringToTime(response.Datetime, "datetime")
+	if err != nil {
+		return nil, err
+	}
+	open, err := stringToFloat64(response.Open, "open")
+	if err != nil {
+		return nil, err
+	}
+	high, err := stringToFloat64(response.High, "high")
+	if err != nil {
+		return nil, err
+	}
+	low, err := stringToFloat64(response.Low, "low")
+	if err != nil {
+		return nil, err
+	}
+	price, err := stringToFloat64(response.Close, "close")
+	if err != nil {
+		return nil, err
+	}
+	var volume int64
+	if response.Volume != nil {
+		volume, err = stringToInt64(*response.Volume, "volume")
+		if err != nil {
+			return nil, err
+		}
+	}
+	bar := &finance.Bar{
+		Listing:         listing,
+		Timestamp:       timestamp,
+		Open:            open,
+		High:            high,
+		Low:             low,
+		Price:           price,
+		Volume:          volume,
+		Currency:        currency,
+		Source:          Name,
+		SourceTimestamp: sourceTimestamp,
+	}
+	return bar, nil
+}
+
+func stringToTime(s, name string) (time.Time, error) {
+	value, err := time.Parse(time.DateTime, s)
+	if err != nil {
+		value, err = time.Parse(time.DateOnly, s)
+	}
+	if err != nil {
+		return time.Time{}, fmt.Errorf("%s: failed to parse %s %q (cause: %w)", Name, name, s, err)
+	}
+	return value, nil
+}
+
 func stringToFloat64(s, name string) (float64, error) {
 	value, err := strconv.ParseFloat(s, 64)
 	if err != nil {

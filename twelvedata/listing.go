@@ -142,6 +142,71 @@ func (api *API) queryQuote(ctx context.Context, listing finance.Listing) (*finan
 }
 
 // See [finance.ListingProvider.QueryQuoteHistory]
-func (api *API) QueryQuoteHistory(ctx context.Context, listing finance.Listing, from, to time.Time) ([]finance.Quote, error) {
-	return nil, nil
+func (api *API) QueryQuoteHistory(ctx context.Context, listing finance.Listing, from, to time.Time) ([]finance.Bar, error) {
+	err := listing.CheckProviderName(Name)
+	if err != nil {
+		return nil, err
+	}
+
+	logger := api.logger.With(slog.String("listing", listing.ID()), slog.Time("from", from), slog.Time("to", to))
+	logger.Info("querying quote history...")
+	traceCtx, span := api.tracer.StartConsuming(ctx, attribute.Stringer("listing", listing))
+	defer span.End()
+
+	history, err := api.queryQuoteHistory(traceCtx, listing, from, to)
+	if err != nil {
+		logger.Warn("query quote history failure", slog.Any("err", err))
+	} else {
+		logger.Info("quote history received", slog.Int("len", len(history)))
+	}
+	return history, tracehelper.SetStatus(span, err)
+}
+
+func (api *API) queryQuoteHistory(ctx context.Context, listing finance.Listing, from, to time.Time) ([]finance.Bar, error) {
+	ticker, err := listing.MustAttribute(finance.ListingAttributeKeyTicker)
+	if err != nil {
+		return nil, err
+	}
+	mic, err := listing.MustAttribute(finance.ListingAttributeKeyMIC)
+	if err != nil {
+		return nil, err
+	}
+	startDate, endDate, interval, err := api.timeSeriesParams(from, to)
+	if err != nil {
+		return nil, err
+	}
+	response, rsp, err := api.client.MarketDataAPI.
+		GetTimeSeries(ctx).
+		Symbol(ticker).
+		MicCode(mic).
+		StartDate(startDate).
+		EndDate(endDate).
+		Interval(interval).
+		Execute()
+	if err != nil {
+		return nil, fmt.Errorf("%s: query quote history failure (cause: %w)", Name, err)
+	}
+	err = api.checkHttpStatus(ctx, rsp)
+	if err != nil {
+		return nil, err
+	}
+	return getTimeSeriesResponseToBars(listing, response)
+}
+
+func (api *API) timeSeriesParams(from, to time.Time) (string, string, twelvedata.IntervalEnum, error) {
+	interval := twelvedata.IntervalEnum("")
+	timeLayout := ""
+	switch finance.FromToInterval(from, to) {
+	case finance.IntervalHourly:
+		interval = twelvedata.INTERVALENUM__1H
+		timeLayout = time.DateTime
+	case finance.IntervalDaily:
+		interval = twelvedata.INTERVALENUM__1DAY
+		timeLayout = time.DateOnly
+	default:
+		return "", "", "", fmt.Errorf("invalid history interval: %t - %t", from, to)
+	}
+	startDate := from.Format(timeLayout)
+	endDate := to.Format(timeLayout)
+	return startDate, endDate, interval, nil
 }
