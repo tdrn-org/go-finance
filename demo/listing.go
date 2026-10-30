@@ -68,6 +68,6 @@ func (api *API) QueryQuote(ctx context.Context, listing finance.Listing) (*finan
 }
 
 // See [finance.ListingProvider.QueryQuoteHistory]
-func (api *API) QueryQuoteHistory(ctx context.Context, listing finance.Listing, from, to time.Time) ([]finance.Quote, error) {
+func (api *API) QueryQuoteHistory(ctx context.Context, listing finance.Listing, from, to time.Time) ([]finance.Bar, error) {
 	return nil, nil
 }

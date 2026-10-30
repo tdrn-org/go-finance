@@ -128,7 +128,8 @@ func (s *streamSubscription[R, T]) MergeReply(rawReply *R, merge func(lastReply 
 }
 
 func (s *streamSubscription[R, T]) LastReply() (*T, error) {
-	if s.timeoutReached() {
+	timedOut, closed := s.timeoutReachedOrClosed()
+	if timedOut && !closed {
 		s.logger.Info("closing subscription; timeout reached")
 		s.Close()
 	}
@@ -142,17 +143,17 @@ func (s *streamSubscription[R, T]) LastReply() (*T, error) {
 	return s.lastReply, nil
 }
 
-func (s *streamSubscription[R, T]) timeoutReached() bool {
+func (s *streamSubscription[R, T]) timeoutReachedOrClosed() (bool, bool) {
 	s.mutex.Lock()
 	defer s.mutex.Unlock()
 
 	if s.Timeout <= 0 {
-		return false
+		return false, s.closed
 	}
 	now := time.Now()
 	if s.subscribeUntil.IsZero() {
 		s.subscribeUntil = now.Add(s.Timeout)
-		return false
+		return false, s.closed
 	}
-	return now.After(s.subscribeUntil)
+	return now.After(s.subscribeUntil), s.closed
 }

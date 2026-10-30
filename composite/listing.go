@@ -111,7 +111,7 @@ func (p *cachedListingProvider) quoteCacheKey(listing finance.Listing) string {
 }
 
 // See [finance.ListingProvider.QueryQuoteHistory]
-func (p *cachedListingProvider) QueryQuoteHistory(ctx context.Context, listing finance.Listing, from, to time.Time) ([]finance.Quote, error) {
+func (p *cachedListingProvider) QueryQuoteHistory(ctx context.Context, listing finance.Listing, from, to time.Time) ([]finance.Bar, error) {
 	return nil, nil
 }
 
@@ -207,6 +207,6 @@ func (p *CombinedListingProvider) QueryQuote(ctx context.Context, listing financ
 }
 
 // See [finance.ListingProvider.QueryQuoteHistory]
-func (p *CombinedListingProvider) QueryQuoteHistory(ctx context.Context, listing finance.Listing, from, to time.Time) ([]finance.Quote, error) {
+func (p *CombinedListingProvider) QueryQuoteHistory(ctx context.Context, listing finance.Listing, from, to time.Time) ([]finance.Bar, error) {
 	return nil, nil
 }

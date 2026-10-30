@@ -337,6 +337,14 @@ func (l Listing) Validate() (*Listing, error) {
 	if len(l.data.IDKeys) == 0 {
 		errs = append(errs, errors.New("no id keys"))
 	}
+	for _, idKey := range l.data.IDKeys {
+		// We only check the existince of the idKey attribute here.
+		// The validity of the actual attribute is validated below.
+		_, ok := l.data.Attributes[idKey]
+		if !ok {
+			errs = append(errs, fmt.Errorf("unset id attribute %s", idKey))
+		}
+	}
 	if l.data.InstrumentName == "" {
 		errs = append(errs, errors.New("no listing instrument name"))
 	}
@@ -348,22 +356,6 @@ func (l Listing) Validate() (*Listing, error) {
 			if err != nil {
 				errs = append(errs, err)
 			}
-		}
-	}
-	// Every id key must carry a value. The ID is built from exactly those
-	// attributes, so a missing one yields an ID with an empty segment - a
-	// well-formed key for a different instrument, which would silently collide
-	// with it in the store. An id key that is not a known attribute key can be
-	// neither validated nor looked up and is rejected for the same reason.
-	seenIDKeys := make(map[ListingAttributeKey]bool, len(l.data.IDKeys))
-	for _, idKey := range l.data.IDKeys {
-		if seenIDKeys[idKey] {
-			errs = append(errs, fmt.Errorf("duplicate id key %s", idKey))
-			continue
-		}
-		seenIDKeys[idKey] = true
-		if value, ok := l.data.Attributes[idKey]; !ok || value == "" {
-			errs = append(errs, fmt.Errorf("no value for id attribute %s", idKey))
 		}
 	}
 	err := errors.Join(errs...)
@@ -518,7 +510,7 @@ func (b *ListingBuilder) Build() Listing {
 	return b.listing
 }
 
-type ListingPrice struct {
+type Tick struct {
 	// Instrument the financial instrument this price is for.
 	Listing Listing `json:"listing"`
 	// Timestamp gives the point in time this price was current
@@ -537,35 +529,66 @@ type ListingPrice struct {
 }
 
 // String formats this ListingPrice.
-func (p *ListingPrice) String() string {
+func (t *Tick) String() string {
 	buffer := &strings.Builder{}
-	buffer.WriteString(p.Listing.ID())
+	buffer.WriteString(t.Listing.ID())
 	buffer.WriteString("|timestamp:")
-	buffer.WriteString(p.Timestamp.UTC().Format(time.RFC3339Nano))
+	buffer.WriteString(t.Timestamp.UTC().Format(time.RFC3339Nano))
 	buffer.WriteString("|price:")
-	buffer.WriteString(strconv.FormatFloat(p.Price, 'g', -1, 64))
+	buffer.WriteString(strconv.FormatFloat(t.Price, 'g', -1, 64))
 	buffer.WriteString("|currency:")
-	buffer.WriteString(string(p.Currency))
+	buffer.WriteString(string(t.Currency))
 	buffer.WriteString("|source:")
-	buffer.WriteString(p.Source)
+	buffer.WriteString(t.Source)
 	buffer.WriteString("|queried:")
-	buffer.WriteString(p.SourceTimestamp.UTC().Format(time.RFC3339Nano))
+	buffer.WriteString(t.SourceTimestamp.UTC().Format(time.RFC3339Nano))
 	return buffer.String()
 }
 
-// Quote represents a single full price data point for a [Listing].
-type Quote struct {
-	ListingPrice
+// Bar represents a single full price data point for a [Listing].
+type Bar struct {
+	Tick
 	// Open gives the open price at the trading day identified by Timestamp.
 	Open float64 `json:"open"`
 	// High gives the high price at the trading day identified by Timestamp.
 	High float64 `json:"high"`
 	// Low gives the low price at the trading day identified by Timestamp.
 	Low float64 `json:"low"`
-	// PreviousClose gives the close price of the day before the trading day identified by Timestamp.
-	PreviousClose float64 `json:"close"`
 	// Volume gives the order volume at the trading day identified by Timestamp.
 	Volume int64 `json:"volume"`
+}
+
+// String formats this Quote.
+func (b *Bar) String() string {
+	buffer := &strings.Builder{}
+	buffer.WriteString(b.Listing.ID())
+	buffer.WriteString("|timestamp:")
+	buffer.WriteString(b.Timestamp.UTC().Format(time.RFC3339Nano))
+	buffer.WriteString("|price:")
+	buffer.WriteString(strconv.FormatFloat(b.Price, 'g', -1, 64))
+	buffer.WriteString("|open:")
+	buffer.WriteString(strconv.FormatFloat(b.Open, 'g', -1, 64))
+	buffer.WriteString("|high:")
+	buffer.WriteString(strconv.FormatFloat(b.High, 'g', -1, 64))
+	buffer.WriteString("|low:")
+	buffer.WriteString(strconv.FormatFloat(b.Low, 'g', -1, 64))
+	buffer.WriteString("|currency:")
+	buffer.WriteString(string(b.Currency))
+	buffer.WriteString("|volume:")
+	buffer.WriteString(strconv.FormatInt(b.Volume, 10))
+	buffer.WriteString("|source:")
+	buffer.WriteString(b.Source)
+	buffer.WriteString("|queried:")
+	buffer.WriteString(b.SourceTimestamp.UTC().Format(time.RFC3339Nano))
+	return buffer.String()
+}
+
+// Quote represents a single full price data point for a [Listing] including
+// the previous close price.
+type Quote struct {
+	Bar
+	// PreviousClose gives the close price of the day before the trading day identified by Timestamp.
+	PreviousClose float64 `json:"close"`
 }
 
 // String formats this Quote.
@@ -605,5 +628,5 @@ type ListingProvider interface {
 	QueryQuote(ctx context.Context, listing Listing) (*Quote, error)
 
 	// QueryQuoteHistory returns the quote history for the given listing and given time range.
-	QueryQuoteHistory(ctx context.Context, listing Listing, from, to time.Time) ([]Quote, error)
+	QueryQuoteHistory(ctx context.Context, listing Listing, from, to time.Time) ([]Bar, error)
 }

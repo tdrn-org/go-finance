@@ -46,7 +46,7 @@ func (p *stubListingProvider) QueryQuote(_ context.Context, _ finance.Listing) (
 	return nil, nil
 }
 
-func (p *stubListingProvider) QueryQuoteHistory(ctx context.Context, listing finance.Listing, from, to time.Time) ([]finance.Quote, error) {
+func (p *stubListingProvider) QueryQuoteHistory(ctx context.Context, listing finance.Listing, from, to time.Time) ([]finance.Bar, error) {
 	return nil, nil
 }
 
