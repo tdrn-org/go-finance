@@ -204,7 +204,7 @@ func (api *API) timeSeriesParams(from, to time.Time) (string, string, twelvedata
 		interval = twelvedata.INTERVALENUM__1DAY
 		timeLayout = time.DateOnly
 	default:
-		return "", "", "", fmt.Errorf("invalid history interval: %t - %t", from, to)
+		return "", "", "", fmt.Errorf("invalid history interval: %s - %s", from.Format(time.DateTime), to.Format(time.DateTime))
 	}
 	startDate := from.Format(timeLayout)
 	endDate := to.Format(timeLayout)
