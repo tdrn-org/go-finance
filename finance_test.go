@@ -20,6 +20,8 @@ import (
 	"context"
 	"errors"
 	"os"
+	"path/filepath"
+	"strings"
 	"testing"
 	"time"
 
@@ -30,6 +32,9 @@ import (
 	"github.com/tdrn-org/go-finance/demo"
 	"github.com/tdrn-org/go-finance/frankfurter"
 	"github.com/tdrn-org/go-finance/twelvedata"
+
+	"gopkg.in/dnaeon/go-vcr.v4/pkg/cassette"
+	"gopkg.in/dnaeon/go-vcr.v4/pkg/recorder"
 )
 
 var testMICs []string = []string{"XNYS", "XNGS", "XFRA", "XGAT"}
@@ -127,16 +132,38 @@ func TestTwelveDataProvider(t *testing.T) {
 }
 
 func newTwelveDataAPI(t *testing.T) *twelvedata.API {
-	config := &twelvedata.StaticConfig{
-		APIKey:      os.Getenv("TWELVEDATA_API_KEY"),
-		IncludeMICs: testMICs,
+	// Enable HTTP recording
+	maskedAPIKey := "<masked>"
+	maskAuthorizationHeader := func(i *cassette.Interaction) error {
+		i.Request.Headers["Authorization"] = []string{"apikey " + maskedAPIKey}
+		return nil
 	}
-	if config.APIKey == "" {
-		t.Skip("No Twelve Data API key set; skipping tests")
+	vcr := newHTTPRecorder(t, "twelvedata", recorder.WithHook(maskAuthorizationHeader, recorder.AfterCaptureHook))
+
+	// Setup API key
+	apiKey := os.Getenv("TWELVEDATA_API_KEY")
+	if !vcr.IsRecording() {
+		apiKey = maskedAPIKey
+	}
+
+	// Create API
+	config := &twelvedata.StaticConfig{
+		APIKey:      apiKey,
+		HttpClient:  vcr.GetDefaultClient(),
+		IncludeMICs: testMICs,
 	}
 	api, err := twelvedata.NewAPI(config)
 	require.NoError(t, err)
 	return api
+}
+
+func newHTTPRecorder(t *testing.T, provider string, opts ...recorder.Option) *recorder.Recorder {
+	vcr, err := recorder.New(filepath.Join("testdata", provider, strings.ReplaceAll(t.Name(), "/", "_")), opts...)
+	require.NoError(t, err)
+	t.Cleanup(func() {
+		require.NoError(t, vcr.Stop())
+	})
+	return vcr
 }
 
 func retryRequestPending(f func() error) error {

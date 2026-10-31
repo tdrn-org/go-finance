@@ -1,0 +1,63 @@
+---
+version: 2
+interactions:
+    - id: 0
+      request:
+        proto: HTTP/1.1
+        proto_major: 1
+        proto_minor: 1
+        content_length: 0
+        host: api.twelvedata.com
+        form:
+            symbol:
+                - USD/EUR
+        headers:
+            Accept:
+                - application/json
+            Authorization:
+                - apikey <masked>
+            User-Agent:
+                - OpenAPI-Generator/1.0.14/go
+            X-Api-Version:
+                - last
+        url: https://api.twelvedata.com/exchange_rate?symbol=USD%2FEUR
+        method: GET
+      response:
+        proto: HTTP/2.0
+        proto_major: 2
+        proto_minor: 0
+        content_length: -1
+        uncompressed: true
+        body: '{"symbol":"USD/EUR","rate":0.89359,"timestamp":1793459700}'
+        headers:
+            Access-Control-Allow-Credentials:
+                - "true"
+            Access-Control-Allow-Headers:
+                - Content-Type, Accept-Encoding, Authorization, Accept, Origin, X-Requested-With, X-CSRF-TOKEN
+            Access-Control-Allow-Methods:
+                - GET, OPTIONS
+            Access-Control-Allow-Origin:
+                - '*'
+            Api-Credits-Left:
+                - "7"
+            Api-Credits-Request:
+                - "1"
+            Api-Credits-Used:
+                - "1"
+            Cf-Cache-Status:
+                - DYNAMIC
+            Cf-Ray:
+                - a533a0506e281811-DUS
+            Content-Type:
+                - application/json; charset=utf-8
+            Date:
+                - Sat, 31 Oct 2026 15:17:22 GMT
+            Nel:
+                - '{"report_to":"cf-nel","success_fraction":0.0,"max_age":604800}'
+            Report-To:
+                - '{"group":"cf-nel","max_age":604800,"endpoints":[{"url":"https://a.nel.cloudflare.com/report/v4?s=xgsB3o%2F8%2BjhP%2FXldAIeKaEDLJktf5GsMRoEb4Dl5XPEo4V6wpjEIeL8k83kT5EfjNwY18Cwy%2FjBLiytg5DjPIf6t4QgNmdEwcMIQyVKJjJlgoWhrycLJTzMlN6mU2K10855gOWW3TwcSURaqp9CXTw%3D%3D"}]}'
+            Server:
+                - cloudflare
+        status: 200 OK
+        code: 200
+        duration: 284.787125ms
