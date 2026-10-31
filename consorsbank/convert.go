@@ -55,6 +55,22 @@ func queryToSecurityCodes(query string) []*proto.SecurityCode {
 	return securityCodes
 }
 
+func listingToSecurityCodeAndExchange(listing finance.Listing) (*proto.SecurityCode, string, error) {
+	isin, err := listing.MustAttribute(finance.ListingAttributeKeyISIN)
+	if err != nil {
+		return nil, "", err
+	}
+	securityCode := &proto.SecurityCode{
+		Code:     isin,
+		CodeType: proto.SecurityCodeType_ISIN,
+	}
+	exchange, err := listing.MustAttribute(finance.ListingAttributeKeyExchange)
+	if err != nil {
+		return nil, "", err
+	}
+	return securityCode, exchange, nil
+}
+
 //go:embed securityClassMap.json
 var securityClassMapData []byte
 
@@ -111,10 +127,9 @@ func securityMarketDataReplyToQuote(listing finance.Listing, last *finance.Quote
 		quote.Open = last.Open
 		quote.High = last.High
 		quote.Low = last.Low
-		quote.PreviousClose = last.PreviousClose
 		quote.Price = last.Price
 		quote.Volume = last.Volume
-		quote.Currency = last.Currency
+		quote.PreviousClose = last.PreviousClose
 	}
 	for _, changedField := range reply.ChangedFields {
 		switch changedField {
@@ -135,4 +150,24 @@ func securityMarketDataReplyToQuote(listing finance.Listing, last *finance.Quote
 		}
 	}
 	return quote
+}
+
+func securityPriceHistoryReplyToBars(listing finance.Listing, reply *proto.SecurityPriceHistoryReply) finance.Bars {
+	now := time.Now()
+	bars := make(finance.Bars, 0, len(reply.PriceEntries))
+	for _, entry := range reply.PriceEntries {
+		bars = append(bars, finance.Bar{
+			Listing:         listing,
+			Timestamp:       time.Unix(entry.CloseTime.Seconds, int64(entry.CloseTime.Nanos)).UTC(),
+			Price:           entry.ClosePrice,
+			Open:            entry.OpenPrice,
+			High:            entry.HighPrice,
+			Low:             entry.LowPrice,
+			Volume:          int64(entry.Volume),
+			Currency:        finance.Currency(reply.Currency),
+			Source:          Name,
+			SourceTimestamp: now,
+		})
+	}
+	return bars
 }

@@ -110,7 +110,11 @@ func (c *Config) NewListingProvider() (finance.ListingProvider, error) {
 			if err != nil {
 				return nil, err
 			}
-			combinedProvider.Add(composite.NewCachedListingProvider(provider, listingCache, quoteCache), time.Duration(providerConfig.CooldownTTL))
+			quoteHistoryCache, err := c.Cache.NewQuoteHistoryCache(time.Duration(providerConfig.QuoteHistoryCacheTTL))
+			if err != nil {
+				return nil, err
+			}
+			combinedProvider.Add(composite.NewCachedListingProvider(provider, listingCache, quoteCache, quoteHistoryCache), time.Duration(providerConfig.CooldownTTL))
 		}
 		return combinedProvider, nil
 	}, c)

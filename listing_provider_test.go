@@ -20,7 +20,6 @@ import (
 	"errors"
 	"fmt"
 	"testing"
-	"time"
 
 	"github.com/stretchr/testify/require"
 	"github.com/tdrn-org/go-finance"
@@ -35,7 +34,7 @@ func TestDemoListingProviderAPI(t *testing.T) {
 func TestAlphaVantageListingProviderAPI(t *testing.T) {
 	api := newAlphaVantageAPI(t)
 
-	testListingProviderAPI(t, api, "AAPL", "Apple")
+	testListingProviderAPI(t, api, "AAPL")
 }
 
 func TestConsorsbankListingProviderAPI(t *testing.T) {
@@ -82,18 +81,10 @@ func testListingProviderAPI(t *testing.T, api finance.ListingProvider, queries .
 	require.NoError(t, err)
 
 	// QueryQuoteHistory
-	to := time.Now()
-	from := to.Add(-7 * 24 * time.Hour)
-	err = retryRequestPending(func() error {
-		history, err := api.QueryQuoteHistory(t.Context(), listing, from, to)
-		if err != nil {
-			return err
-		}
-		require.NotNil(t, history)
-		for _, quote := range history {
-			fmt.Println(quote.String())
-		}
-		return nil
-	})
+	bars, err := api.QueryQuoteHistory(t.Context(), listing, finance.History30D)
 	require.NoError(t, err)
+	require.NotNil(t, bars)
+	for _, bar := range bars {
+		fmt.Println(bar.String())
+	}
 }

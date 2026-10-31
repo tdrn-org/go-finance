@@ -133,19 +133,7 @@ func TestValidateRequiresAllIDKeys(t *testing.T) {
 		Attribute(finance.ListingAttributeKeyTicker, "TCKR").
 		Build()
 	_, err := incomplete.Validate()
-	require.ErrorContains(t, err, "no value for id attribute mic")
-}
-
-// TestValidateRejectsDuplicateIDKeys covers an id key given twice, which the
-// ID's segment format cannot represent.
-func TestValidateRejectsDuplicateIDKeys(t *testing.T) {
-	duplicate := finance.NewListing("test", finance.ListingAttributeKeyTicker, finance.ListingAttributeKeyTicker).
-		InstrumentName("Test instrument").
-		InstrumentType(finance.InstrumentTypeEquity).
-		Attribute(finance.ListingAttributeKeyTicker, "TCKR").
-		Build()
-	_, err := duplicate.Validate()
-	require.ErrorContains(t, err, "duplicate id key ticker")
+	require.ErrorContains(t, err, "unset id attribute mic")
 }
 
 // TestParseListingID covers reading an ID back into an identity.

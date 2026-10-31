@@ -22,26 +22,23 @@ import (
 	"fmt"
 	"log/slog"
 	"slices"
-	"time"
 
 	"github.com/tdrn-org/go-finance"
 	"github.com/tdrn-org/go-finance/consorsbank/proto"
 	tracehelper "github.com/tdrn-org/go-finance/internal/trace"
+	"go.opentelemetry.io/otel/attribute"
 )
 
 // See [finance.ListingProvider.SearchListings]
 func (api *API) SearchListings(ctx context.Context, query string) ([]finance.Listing, error) {
 	logger := api.logger.With(slog.String("query", query))
 	logger.Info("search listings...")
-	traceCtx, span := api.tracer.StartConsuming(ctx)
+	traceCtx, span := api.tracer.StartConsuming(ctx, attribute.String("query", query))
 	defer span.End()
 
-	api.mutex.Lock()
-	defer api.mutex.Unlock()
-
-	listings, err := api.searchListingsLocked(traceCtx, query)
+	listings, err := api.searchListings(traceCtx, query)
 	if errors.Is(err, finance.ErrListingSearchRestricted) {
-		logger.Info("ignoriing unsupported listing search")
+		logger.Info("ignoring unsupported listing search")
 	} else if err != nil {
 		logger.Warn("search listings failure", slog.Any("err", err))
 	} else {
@@ -50,20 +47,23 @@ func (api *API) SearchListings(ctx context.Context, query string) ([]finance.Lis
 	return listings, tracehelper.SetStatus(span, err)
 }
 
-func (api *API) searchListingsLocked(ctx context.Context, query string) ([]finance.Listing, error) {
+func (api *API) searchListings(ctx context.Context, query string) ([]finance.Listing, error) {
+	api.mutex.Lock()
+	defer api.mutex.Unlock()
+
 	session, err := api.getSessionLocked(ctx)
 	if err != nil {
 		return nil, err
 	}
-	securityService := session.SecurityService()
 	securityCodes := queryToSecurityCodes(query)
 	if len(securityCodes) == 0 {
 		return []finance.Listing{}, finance.ErrListingSearchRestricted
 	}
 	listings := make([]finance.Listing, 0)
 	for _, securityCode := range securityCodes {
-		reply, err := api.getSecurityInfoLocked(ctx, session, securityService, securityCode)
+		reply, err := api.getSecurityInfoLocked(ctx, session, securityCode)
 		if err != nil {
+			api.invalidateSessionLocked()
 			return nil, err
 		}
 		for _, stockExchangeInfo := range reply.StockExchangeInfos {
@@ -79,22 +79,6 @@ func (api *API) searchListingsLocked(ctx context.Context, query string) ([]finan
 		}
 	}
 	return listings, nil
-}
-
-func (api *API) getSecurityInfoLocked(ctx context.Context, session *apiSession, securityService proto.SecurityServiceClient, securityCode *proto.SecurityCode) (*proto.SecurityInfoReply, error) {
-	reply, err := securityService.GetSecurityInfo(ctx, &proto.SecurityInfoRequest{
-		AccessToken:  session.AccessToken,
-		SecurityCode: securityCode,
-	})
-	if err != nil {
-		api.invalidateSessionLocked()
-		return nil, fmt.Errorf("%s: failed to query security info (cause: %w)", Name, err)
-	}
-	if tapiError := reply.GetError(); tapiError != nil {
-		return nil, fmt.Errorf("%s: query security info error (code: %s, message: %s)",
-			Name, tapiError.GetCode(), tapiError.GetMessage())
-	}
-	return reply, nil
 }
 
 func (api *API) includeSecurityStockExchange(stockExchangeInfo *proto.SecurityStockExchangeInfo) bool {
@@ -113,7 +97,7 @@ func (api *API) QueryQuote(ctx context.Context, listing finance.Listing) (*finan
 
 	logger := api.logger.With(slog.String("listing", listing.ID()))
 	logger.Info("querying quote...")
-	traceCtx, span := api.tracer.StartConsuming(ctx)
+	traceCtx, span := api.tracer.StartConsuming(ctx, attribute.String("listing", listing.ID()))
 	defer span.End()
 
 	quote, err := api.queryQuote(traceCtx, listing)
@@ -164,30 +148,19 @@ func (api *API) startSecurityMarketDataSubscriptionLocked(ctx context.Context, l
 	if err != nil {
 		return nil, err
 	}
-	isin, err := listing.MustAttribute(finance.ListingAttributeKeyISIN)
+	securityCode, exchange, err := listingToSecurityCodeAndExchange(listing)
 	if err != nil {
 		return nil, err
 	}
-	securityService := session.SecurityService()
-	securityCode := &proto.SecurityCode{
-		Code:     isin,
-		CodeType: proto.SecurityCodeType_ISIN,
-	}
-	securityInfoReply, err := api.getSecurityInfoLocked(ctx, session, securityService, securityCode)
+	securityWithStockExchange, err := api.getSecurityWithStockExchangeLocked(ctx, session, securityCode, exchange)
 	if err != nil {
-		return nil, err
-	}
-	listingExchange, err := api.getListingExchange(listing, securityInfoReply.StockExchangeInfos)
-	if err != nil {
+		api.invalidateSessionLocked()
 		return nil, err
 	}
 	subscriptionCtx, subscriptionCancel := context.WithCancel(context.Background())
-	client, err := securityService.StreamMarketData(subscriptionCtx, &proto.SecurityMarketDataRequest{
-		AccessToken: session.AccessToken,
-		SecurityWithStockexchange: &proto.SecurityWithStockExchange{
-			SecurityCode:  securityCode,
-			StockExchange: listingExchange.StockExchange,
-		},
+	client, err := session.SecurityService.StreamMarketData(subscriptionCtx, &proto.SecurityMarketDataRequest{
+		AccessToken:               session.AccessToken,
+		SecurityWithStockexchange: securityWithStockExchange,
 		// The TAPI converts into the requested currency, so a US instrument can be
 		// quoted in EUR directly — no exchange rate conversion needed downstream. An
 		// empty value leaves the field unset and the TAPI answers in the instrument's
@@ -210,19 +183,6 @@ func (api *API) startSecurityMarketDataSubscriptionLocked(ctx context.Context, l
 	return subscription, nil
 }
 
-func (api *API) getListingExchange(listing finance.Listing, exchangeInfos []*proto.SecurityStockExchangeInfo) (*proto.SecurityStockExchangeInfo, error) {
-	exchange, err := listing.MustAttribute(finance.ListingAttributeKeyExchange)
-	if err != nil {
-		return nil, err
-	}
-	for _, exchangeInfo := range exchangeInfos {
-		if exchangeInfo.StockExchange.Id == exchange {
-			return exchangeInfo, nil
-		}
-	}
-	return nil, fmt.Errorf("%s: unable to determine exchange for listing: %s", Name, listing.String())
-}
-
 func (api *API) processSecurityMarketDataReply(s *streamSubscription[proto.SecurityMarketDataReply, finance.Quote], listing finance.Listing, reply *proto.SecurityMarketDataReply) {
 	if reply.Error != nil {
 		api.logger.Warn("errornous market data reply; closing stream", slog.Any("error", reply.Error))
@@ -239,6 +199,49 @@ func (api *API) securityMarketdataSubscriptionKey(listing finance.Listing) strin
 }
 
 // See [finance.ListingProvider.QueryQuoteHistory]
-func (api *API) QueryQuoteHistory(ctx context.Context, listing finance.Listing, from, to time.Time) ([]finance.Bar, error) {
-	return nil, nil
+func (api *API) QueryQuoteHistory(ctx context.Context, listing finance.Listing, history finance.History) (finance.Bars, error) {
+	err := listing.CheckProviderName(Name)
+	if err != nil {
+		return nil, err
+	}
+
+	logger := api.logger.With(slog.String("listing", listing.ID()), slog.String("history", string(history)))
+	logger.Info("querying quote history...")
+	traceCtx, span := api.tracer.StartConsuming(ctx, attribute.String("listing", listing.ID()), attribute.String("history", string(history)))
+	defer span.End()
+
+	bars, err := api.queryQuoteHistory(traceCtx, listing, history)
+	if errors.Is(err, finance.ErrRequestPending) {
+		logger.Info("quote history request pending")
+	} else if err != nil {
+		logger.Warn("query quote history failure", slog.Any("err", err))
+	} else {
+		logger.Info("quote history received", slog.Int("len", len(bars)))
+	}
+	return bars, tracehelper.SetStatus(span, err)
+}
+
+func (api *API) queryQuoteHistory(ctx context.Context, listing finance.Listing, history finance.History) (finance.Bars, error) {
+	api.mutex.Lock()
+	defer api.mutex.Unlock()
+
+	session, err := api.getSessionLocked(ctx)
+	if err != nil {
+		return nil, err
+	}
+	securityCode, exchange, err := listingToSecurityCodeAndExchange(listing)
+	if err != nil {
+		return nil, err
+	}
+	securityWithStockExchange, err := api.getSecurityWithStockExchangeLocked(ctx, session, securityCode, exchange)
+	if err != nil {
+		api.invalidateSessionLocked()
+		return nil, err
+	}
+	reply, err := api.getSecurityPriceHistory(ctx, session, securityWithStockExchange, history)
+	if err != nil {
+		api.invalidateSessionLocked()
+		return nil, err
+	}
+	return securityPriceHistoryReplyToBars(listing, reply), nil
 }

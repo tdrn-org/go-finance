@@ -18,6 +18,7 @@ package demo
 
 import (
 	"context"
+	"fmt"
 	"time"
 
 	"github.com/tdrn-org/go-finance"
@@ -50,24 +51,49 @@ func (api *API) QueryQuote(ctx context.Context, listing finance.Listing) (*finan
 		return nil, finance.ErrQuoteNotAvailable
 	}
 
-	now := time.Now()
-	quote := &finance.Quote{
-		Listing:         listing,
-		Timestamp:       now,
-		Open:            101.0,
-		High:            102.0,
-		Low:             100.5,
-		PreviousClose:   100.0,
-		Price:           101.0 + float64(now.Minute())/100.0,
-		Volume:          int64(now.Hour()),
-		Currency:        finance.CurrencyUSD,
-		Source:          Name,
-		SourceTimestamp: now,
-	}
+	now := time.Now().UTC()
+	quote := api.generateQuote(listing, now)
 	return quote, nil
 }
 
 // See [finance.ListingProvider.QueryQuoteHistory]
-func (api *API) QueryQuoteHistory(ctx context.Context, listing finance.Listing, from, to time.Time) ([]finance.Bar, error) {
-	return nil, nil
+func (api *API) QueryQuoteHistory(ctx context.Context, listing finance.Listing, history finance.History) (finance.Bars, error) {
+	delta := 0 * time.Hour
+	count := 0
+	switch history {
+	case finance.History24h:
+		delta = 1 * time.Hour
+		count = 24
+	case finance.History7D:
+		delta = 24 * time.Hour
+		count = 7
+	case finance.History30D:
+		delta = 24 * time.Hour
+		count = 30
+	default:
+		return nil, fmt.Errorf("%s: unrecognized history type: %q", Name, history)
+	}
+	bars := make(finance.Bars, 0, count)
+	timestamp := time.Now().UTC()
+	for range count {
+		bars = append(bars, api.generateQuote(listing, timestamp).Bar)
+		timestamp = timestamp.Add(delta)
+	}
+	return bars, nil
+}
+
+func (api *API) generateQuote(listing finance.Listing, timestamp time.Time) *finance.Quote {
+	return &finance.Quote{
+		Listing:         listing,
+		Timestamp:       timestamp,
+		Price:           85.0 + float64(timestamp.Day())/100.0,
+		Open:            100.0,
+		High:            120.0,
+		Low:             80.0,
+		Volume:          int64(timestamp.Day() * 1000),
+		PreviousClose:   100.0,
+		Currency:        finance.CurrencyUSD,
+		Source:          Name,
+		SourceTimestamp: time.Now().UTC(),
+	}
 }

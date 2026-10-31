@@ -133,13 +133,13 @@ func getQuoteResponseToQuote(listing finance.Listing, response *twelvedata.GetQu
 	return quote, nil
 }
 
-func getTimeSeriesResponseToBars(listing finance.Listing, response *twelvedata.GetTimeSeries200Response) ([]finance.Bar, error) {
+func getTimeSeriesResponseToBars(listing finance.Listing, response *twelvedata.GetTimeSeries200Response) (finance.Bars, error) {
 	if response.Meta.Currency == nil {
 		return nil, fmt.Errorf("%s: unable to determine time series currency for listing %s", Name, listing.ID())
 	}
 	currency := finance.Currency(*response.Meta.Currency)
 	now := time.Now().UTC()
-	bars := make([]finance.Bar, 0, len(response.Values))
+	bars := make(finance.Bars, 0, len(response.Values))
 	for _, responseItem := range response.Values {
 		bar, err := timeSeriesItemToBar(listing, &responseItem, currency, now)
 		if err != nil {

@@ -30,20 +30,23 @@ import (
 
 type ListingCache cache.KeyValue[string, []finance.Listing]
 type QuoteCache cache.KeyValue[string, *finance.Quote]
+type QuoteHistoryCache cache.KeyValue[string, finance.Bars]
 
 type cachedListingProvider struct {
-	provider     finance.ListingProvider
-	listingCache ListingCache
-	quoteCache   QuoteCache
-	logger       *slog.Logger
+	provider          finance.ListingProvider
+	listingCache      ListingCache
+	quoteCache        QuoteCache
+	quoteHistoryCache QuoteHistoryCache
+	logger            *slog.Logger
 }
 
-func NewCachedListingProvider(provider finance.ListingProvider, listingCache ListingCache, quoteCache QuoteCache) finance.ListingProvider {
+func NewCachedListingProvider(provider finance.ListingProvider, listingCache ListingCache, quoteCache QuoteCache, quoteHistoryCache QuoteHistoryCache) finance.ListingProvider {
 	return &cachedListingProvider{
-		provider:     provider,
-		listingCache: listingCache,
-		quoteCache:   quoteCache,
-		logger:       slog.With(slog.String("provider", provider.ProviderName())),
+		provider:          provider,
+		listingCache:      listingCache,
+		quoteCache:        quoteCache,
+		quoteHistoryCache: quoteHistoryCache,
+		logger:            slog.With(slog.String("provider", provider.ProviderName())),
 	}
 }
 
@@ -101,7 +104,7 @@ func (p *cachedListingProvider) QueryQuote(ctx context.Context, listing finance.
 	} else if err != nil {
 		return nil, err
 	} else {
-		p.logger.Info("using cached quote", slog.String("listing", cachedQuote.Listing.ID()), slog.Float64("price", cachedQuote.Price))
+		p.logger.Info("using cached quote", slog.String("listing", listing.ID()), slog.Float64("price", cachedQuote.Price))
 	}
 	return cachedQuote, nil
 }
@@ -111,8 +114,25 @@ func (p *cachedListingProvider) quoteCacheKey(listing finance.Listing) string {
 }
 
 // See [finance.ListingProvider.QueryQuoteHistory]
-func (p *cachedListingProvider) QueryQuoteHistory(ctx context.Context, listing finance.Listing, from, to time.Time) ([]finance.Bar, error) {
-	return nil, nil
+func (p *cachedListingProvider) QueryQuoteHistory(ctx context.Context, listing finance.Listing, history finance.History) (finance.Bars, error) {
+	key := p.quoteHistoryCacheKey(listing, history)
+	cachedBars, err := p.quoteHistoryCache.Get(ctx, key)
+	if errors.Is(err, cache.ErrNotFound) {
+		cachedBars, err = p.provider.QueryQuoteHistory(ctx, listing, history)
+		if err != nil {
+			return nil, err
+		}
+		p.quoteHistoryCache.Put(ctx, key, cachedBars)
+	} else if err != nil {
+		return nil, err
+	} else {
+		p.logger.Info("using cached quote history", slog.String("listing", listing.ID()), slog.Int("len", len(cachedBars)))
+	}
+	return cachedBars, nil
+}
+
+func (p *cachedListingProvider) quoteHistoryCacheKey(listing finance.Listing, history finance.History) string {
+	return fmt.Sprintf("finance:quote:%s:%s:%s", history, p.provider.ProviderName(), listing.ID())
 }
 
 type CombinedListingProvider struct {
@@ -207,6 +227,23 @@ func (p *CombinedListingProvider) QueryQuote(ctx context.Context, listing financ
 }
 
 // See [finance.ListingProvider.QueryQuoteHistory]
-func (p *CombinedListingProvider) QueryQuoteHistory(ctx context.Context, listing finance.Listing, from, to time.Time) ([]finance.Bar, error) {
-	return nil, nil
+func (p *CombinedListingProvider) QueryQuoteHistory(ctx context.Context, listing finance.Listing, history finance.History) (finance.Bars, error) {
+	var bars finance.Bars
+	var err error
+	p.queue.ForEach(func(provider finance.ListingProvider, lastErr error) {
+		if bars == nil && err == nil && listing.CheckProvider(provider) == nil {
+			if lastErr == nil {
+				bars, err = provider.QueryQuoteHistory(ctx, listing, history)
+				if !finance.IsTransientErr(err) {
+					p.queue.MarkProviderFailed(provider, err)
+				}
+			} else {
+				err = lastErr
+			}
+		}
+	})
+	if bars == nil && err == nil {
+		err = finance.ErrQuoteNotAvailable
+	}
+	return bars, err
 }

@@ -29,11 +29,11 @@ type ListingsConfig struct {
 }
 
 type ListingProviderConfig struct {
-	Name            ListingProviderName `toml:"name"`
-	CooldownTTL     config.DurationSpec `toml:"cooldown_ttl"`
-	ListingCacheTTL config.DurationSpec `toml:"listing_cache_ttl"`
-	QuoteCacheTTL   config.DurationSpec `toml:"quote_cache_ttl"`
-	HistoryCacheTTL config.DurationSpec `toml:"history_cache_ttl"`
+	Name                 ListingProviderName `toml:"name"`
+	CooldownTTL          config.DurationSpec `toml:"cooldown_ttl"`
+	ListingCacheTTL      config.DurationSpec `toml:"listing_cache_ttl"`
+	QuoteCacheTTL        config.DurationSpec `toml:"quote_cache_ttl"`
+	QuoteHistoryCacheTTL config.DurationSpec `toml:"quote_history_cache_ttl"`
 }
 
 type ListingProviderName string

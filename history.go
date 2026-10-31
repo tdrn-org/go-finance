@@ -16,24 +16,46 @@
 
 package finance
 
-import "time"
-
-type Interval int
-
-const (
-	IntervalNone   Interval = 0
-	IntervalHourly Interval = 60
-	IntervalDaily  Interval = 60 * 24
+import (
+	"iter"
+	"slices"
 )
 
-func FromToInterval(from, to time.Time) Interval {
-	delta := to.Sub(from)
-	switch {
-	case delta <= 0:
-		return IntervalNone
-	case delta < 24*time.Hour:
-		return IntervalHourly
-	default:
-		return IntervalDaily
+type History string
+
+const (
+	History24h History = "24h"
+	History7D  History = "7d"
+	History30D History = "30d"
+)
+
+type Bars []Bar
+
+func (bars Bars) Sorted() iter.Seq2[int, Bar] {
+	return bars.SortFunc(func(i, j int) int {
+		return bars[i].Timestamp.Compare(bars[j].Timestamp)
+	})
+}
+
+func (bars Bars) Reversed() iter.Seq2[int, Bar] {
+	return bars.SortFunc(func(i, j int) int {
+		return bars[j].Timestamp.Compare(bars[i].Timestamp)
+	})
+}
+
+func (bars Bars) SortFunc(cmp func(int, int) int) iter.Seq2[int, Bar] {
+	indices := make([]int, len(bars))
+	for i := range indices {
+		indices[i] = i
+	}
+	slices.SortFunc(indices, func(i, j int) int {
+		return cmp(i, j)
+	})
+	return func(yield func(int, Bar) bool) {
+		for _, originalIdx := range indices {
+			if !yield(originalIdx, bars[originalIdx]) {
+				return
+			}
+		}
 	}
 }

@@ -12,6 +12,7 @@ name = "demo"
 cooldown_ttl = "10m"
 listing_cache_ttl = "12h"
 quote_cache_ttl = "5m"
+quote_history_cache_ttl = "24h"
 
 [demo]
 enabled = true

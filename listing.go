@@ -627,6 +627,6 @@ type ListingProvider interface {
 	// QueryQuote returns the latest quote for the given listing.
 	QueryQuote(ctx context.Context, listing Listing) (*Quote, error)
 
-	// QueryQuoteHistory returns the quote history for the given listing and given time range.
-	QueryQuoteHistory(ctx context.Context, listing Listing, from, to time.Time) ([]Bar, error)
+	// QueryQuoteHistory returns the quote history for the given listing and history type.
+	QueryQuoteHistory(ctx context.Context, listing Listing, history History) (Bars, error)
 }

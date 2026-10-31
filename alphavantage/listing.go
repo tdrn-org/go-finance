@@ -21,7 +21,6 @@ import (
 	"fmt"
 	"log/slog"
 	"net/http"
-	"time"
 
 	"github.com/tdrn-org/go-finance"
 	tracehelper "github.com/tdrn-org/go-finance/internal/trace"
@@ -112,7 +111,7 @@ func (api *API) QueryQuote(ctx context.Context, listing finance.Listing) (*finan
 
 	logger := api.logger.With(slog.String("listing", listing.ID()))
 	logger.Info("querying quote...")
-	traceCtx, span := api.tracer.StartConsuming(ctx, attribute.Stringer("listing", listing))
+	traceCtx, span := api.tracer.StartConsuming(ctx, attribute.String("listing", listing.ID()))
 	defer span.End()
 
 	quote, err := api.queryQuote(traceCtx, listing)
@@ -140,11 +139,11 @@ func (api *API) getGlobalQuote(ctx context.Context, symbol string) (*quoteRespon
 	apiURL := api.url("function", "GLOBAL_QUOTE", "symbol", symbol)
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, apiURL.String(), nil)
 	if err != nil {
-		return nil, fmt.Errorf("%s: failed create query quote request (cause: %w)", Name, err)
+		return nil, fmt.Errorf("%s: failed create global quote request (cause: %w)", Name, err)
 	}
 	rsp, err := api.httpClient.Do(req)
 	if err != nil {
-		return nil, fmt.Errorf("%s: failed to send query quote request (cause: %w)", Name, err)
+		return nil, fmt.Errorf("%s: failed to send global quote request (cause: %w)", Name, err)
 	}
 	defer rsp.Body.Close()
 	response := &globalQuoteResponse{}
@@ -156,6 +155,79 @@ func (api *API) getGlobalQuote(ctx context.Context, symbol string) (*quoteRespon
 }
 
 // See [finance.ListingProvider.QueryQuoteHistory]
-func (api *API) QueryQuoteHistory(ctx context.Context, listing finance.Listing, from, to time.Time) ([]finance.Bar, error) {
-	return nil, nil
+func (api *API) QueryQuoteHistory(ctx context.Context, listing finance.Listing, history finance.History) (finance.Bars, error) {
+	err := listing.CheckProviderName(Name)
+	if err != nil {
+		return nil, err
+	}
+
+	logger := api.logger.With(slog.String("listing", listing.ID()), slog.String("history", string(history)))
+	logger.Info("querying quote history...")
+	traceCtx, span := api.tracer.StartConsuming(ctx, attribute.String("listing", listing.ID()), attribute.String("history", string(history)))
+	defer span.End()
+
+	bars, err := api.queryQuoteHistory(traceCtx, listing, history)
+	if err != nil {
+		logger.Warn("query quote history failure", slog.Any("err", err))
+	} else {
+		logger.Info("quote history received", slog.Int("lene", len(bars)))
+	}
+	return bars, tracehelper.SetStatus(span, err)
+}
+
+func (api *API) queryQuoteHistory(ctx context.Context, listing finance.Listing, history finance.History) (finance.Bars, error) {
+	symbol, err := listing.MustAttribute(finance.ListingAttributeKeySymbol)
+	if err != nil {
+		return nil, err
+	}
+	limit, err := api.historyParams(history)
+	if err != nil {
+		return nil, err
+	}
+	timeSeriesDaily, err := api.getTimeSeriesDaily(ctx, symbol)
+	if err != nil {
+		return nil, err
+	}
+	allBars, err := timeSeriesDaily.ToBars(listing)
+	if err != nil {
+		return nil, err
+	}
+	bars := make(finance.Bars, 0, limit)
+	allBars.Reversed()(func(i int, bar finance.Bar) bool {
+		bars = append(bars, bar)
+		return len(bars) < limit
+	})
+	return bars, nil
+}
+
+func (api *API) historyParams(history finance.History) (int, error) {
+	switch history {
+	case finance.History24h:
+		return 1, nil
+	case finance.History7D:
+		return 7, nil
+	case finance.History30D:
+		return 30, nil
+	default:
+		return 0, fmt.Errorf("%s: unrecognized history type: %q", Name, history)
+	}
+}
+
+func (api *API) getTimeSeriesDaily(ctx context.Context, symbol string) (timeSeriesDaily, error) {
+	apiURL := api.url("function", "TIME_SERIES_DAILY", "symbol", symbol)
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, apiURL.String(), nil)
+	if err != nil {
+		return nil, fmt.Errorf("%s: failed create time series daily request (cause: %w)", Name, err)
+	}
+	rsp, err := api.httpClient.Do(req)
+	if err != nil {
+		return nil, fmt.Errorf("%s: failed to send time series daily request (cause: %w)", Name, err)
+	}
+	defer rsp.Body.Close()
+	response := &timeSeriesDailyResponse{}
+	err = api.decodeAndCheckResponse(ctx, rsp, response)
+	if err != nil {
+		return nil, err
+	}
+	return response.TimeSeries, nil
 }

@@ -27,18 +27,21 @@ name = "alphavantage"
 cooldown_ttl = "3m"
 listing_cache_ttl = "6h"
 quote_cache_ttl = "1h"
+quote_history_cache_ttl = "12h"
 
 [[listings.provider]]
 name = "consorsbank"
 cooldown_ttl = "4m"
 listing_cache_ttl = "5h"
 quote_cache_ttl = "2h"
+quote_history_cache_ttl = "12h"
 
 [[listings.provider]]
 name = "twelvedata"
 cooldown_ttl = "5m"
 listing_cache_ttl = "4h"
 quote_cache_ttl = "3h"
+quote_history_cache_ttl = "12h"
 
 [alphavantage]
 base_url = "https://www.alphavantage.co/query/"

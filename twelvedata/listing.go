@@ -105,7 +105,7 @@ func (api *API) QueryQuote(ctx context.Context, listing finance.Listing) (*finan
 
 	logger := api.logger.With(slog.String("listing", listing.ID()))
 	logger.Info("querying quote...")
-	traceCtx, span := api.tracer.StartConsuming(ctx, attribute.Stringer("listing", listing))
+	traceCtx, span := api.tracer.StartConsuming(ctx, attribute.String("listing", listing.ID()))
 	defer span.End()
 
 	quote, err := api.queryQuote(traceCtx, listing)
@@ -142,27 +142,27 @@ func (api *API) queryQuote(ctx context.Context, listing finance.Listing) (*finan
 }
 
 // See [finance.ListingProvider.QueryQuoteHistory]
-func (api *API) QueryQuoteHistory(ctx context.Context, listing finance.Listing, from, to time.Time) ([]finance.Bar, error) {
+func (api *API) QueryQuoteHistory(ctx context.Context, listing finance.Listing, history finance.History) (finance.Bars, error) {
 	err := listing.CheckProviderName(Name)
 	if err != nil {
 		return nil, err
 	}
 
-	logger := api.logger.With(slog.String("listing", listing.ID()), slog.Time("from", from), slog.Time("to", to))
+	logger := api.logger.With(slog.String("listing", listing.ID()), slog.String("history", string(history)))
 	logger.Info("querying quote history...")
-	traceCtx, span := api.tracer.StartConsuming(ctx, attribute.Stringer("listing", listing))
+	traceCtx, span := api.tracer.StartConsuming(ctx, attribute.String("listing", listing.ID()), attribute.String("history", string(history)))
 	defer span.End()
 
-	history, err := api.queryQuoteHistory(traceCtx, listing, from, to)
+	bars, err := api.queryQuoteHistory(traceCtx, listing, history)
 	if err != nil {
 		logger.Warn("query quote history failure", slog.Any("err", err))
 	} else {
 		logger.Info("quote history received", slog.Int("len", len(history)))
 	}
-	return history, tracehelper.SetStatus(span, err)
+	return bars, tracehelper.SetStatus(span, err)
 }
 
-func (api *API) queryQuoteHistory(ctx context.Context, listing finance.Listing, from, to time.Time) ([]finance.Bar, error) {
+func (api *API) queryQuoteHistory(ctx context.Context, listing finance.Listing, history finance.History) (finance.Bars, error) {
 	ticker, err := listing.MustAttribute(finance.ListingAttributeKeyTicker)
 	if err != nil {
 		return nil, err
@@ -171,7 +171,7 @@ func (api *API) queryQuoteHistory(ctx context.Context, listing finance.Listing, 
 	if err != nil {
 		return nil, err
 	}
-	startDate, endDate, interval, err := api.timeSeriesParams(from, to)
+	startDate, endDate, interval, err := api.timeSeriesParams(history)
 	if err != nil {
 		return nil, err
 	}
@@ -193,20 +193,28 @@ func (api *API) queryQuoteHistory(ctx context.Context, listing finance.Listing, 
 	return getTimeSeriesResponseToBars(listing, response)
 }
 
-func (api *API) timeSeriesParams(from, to time.Time) (string, string, twelvedata.IntervalEnum, error) {
-	interval := twelvedata.IntervalEnum("")
+func (api *API) timeSeriesParams(history finance.History) (string, string, twelvedata.IntervalEnum, error) {
+	start := time.Now()
+	end := start
 	timeLayout := ""
-	switch finance.FromToInterval(from, to) {
-	case finance.IntervalHourly:
-		interval = twelvedata.INTERVALENUM__1H
+	interval := twelvedata.IntervalEnum("")
+	switch history {
+	case finance.History24h:
+		start = start.Add(-24 * time.Hour)
 		timeLayout = time.DateTime
-	case finance.IntervalDaily:
-		interval = twelvedata.INTERVALENUM__1DAY
+		interval = twelvedata.INTERVALENUM__1H
+	case finance.History7D:
+		start = start.Add(-7 * 24 * time.Hour)
 		timeLayout = time.DateOnly
+		interval = twelvedata.INTERVALENUM__1DAY
+	case finance.History30D:
+		start = start.Add(-30 * 24 * time.Hour)
+		timeLayout = time.DateOnly
+		interval = twelvedata.INTERVALENUM__1DAY
 	default:
-		return "", "", "", fmt.Errorf("invalid history interval: %s - %s", from.Format(time.DateTime), to.Format(time.DateTime))
+		return "", "", "", fmt.Errorf("%s: unrecognized history type: %q", Name, history)
 	}
-	startDate := from.Format(timeLayout)
-	endDate := to.Format(timeLayout)
+	startDate := start.Format(timeLayout)
+	endDate := end.Format(timeLayout)
 	return startDate, endDate, interval, nil
 }

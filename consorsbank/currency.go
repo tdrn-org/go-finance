@@ -83,10 +83,9 @@ func (api *API) startExchangeRateSubscriptionLocked(ctx context.Context, base, q
 	if err != nil {
 		return nil, err
 	}
-	securityService := session.SecurityService()
 	subscriptionKey := api.exchangeRateSubscriptionKey(base, quote)
 	subscriptionCtx, subscriptionCancel := context.WithCancel(context.Background())
-	client, err := securityService.StreamCurrencyRate(subscriptionCtx, &proto.CurrencyRateRequest{
+	client, err := session.SecurityService.StreamCurrencyRate(subscriptionCtx, &proto.CurrencyRateRequest{
 		AccessToken:  session.AccessToken,
 		CurrencyFrom: string(base),
 		CurrencyTo:   string(quote),

@@ -145,6 +145,10 @@ func (r *quoteResponse) ToQuote(listing finance.Listing) (*finance.Quote, error)
 	if err != nil {
 		return nil, err
 	}
+	price, err := stringToFloat64(r.Price, "price")
+	if err != nil {
+		return nil, err
+	}
 	open, err := stringToFloat64(r.Open, "open")
 	if err != nil {
 		return nil, err
@@ -157,7 +161,7 @@ func (r *quoteResponse) ToQuote(listing finance.Listing) (*finance.Quote, error)
 	if err != nil {
 		return nil, err
 	}
-	price, err := stringToFloat64(r.Price, "price")
+	volume, err := stringToInt64(r.Volume, "volume")
 	if err != nil {
 		return nil, err
 	}
@@ -165,19 +169,15 @@ func (r *quoteResponse) ToQuote(listing finance.Listing) (*finance.Quote, error)
 	if err != nil {
 		return nil, err
 	}
-	volume, err := stringToInt64(r.Volume, "volume")
-	if err != nil {
-		return nil, err
-	}
 	quote := &finance.Quote{
 		Listing:         listing,
 		Timestamp:       timestamp,
+		Price:           price,
 		Open:            open,
 		High:            high,
 		Low:             low,
-		PreviousClose:   previousClose,
-		Price:           price,
 		Volume:          volume,
+		PreviousClose:   previousClose,
 		Currency:        *currency,
 		Source:          Name,
 		SourceTimestamp: time.Now().UTC(),
@@ -188,4 +188,73 @@ func (r *quoteResponse) ToQuote(listing finance.Listing) (*finance.Quote, error)
 type globalQuoteResponse struct {
 	statusResponse
 	GlobalQuote quoteResponse `json:"Global Quote"`
+}
+
+type timeSeriesDailyResponse struct {
+	statusResponse
+	MetaData struct {
+		Information   string `json:"1. Information"`
+		Symbol        string `json:"2. Symbol"`
+		LastRefreshed string `json:"3. Last Refreshed"`
+		OutputSize    string `json:"4. Output Size"`
+		TimeZone      string `json:"5. Time Zone"`
+	} `json:"Meta Data"`
+	TimeSeries timeSeriesDaily `json:"Time Series (Daily)"`
+}
+
+type dailyData struct {
+	Open   string `json:"1. open"`
+	High   string `json:"2. high"`
+	Low    string `json:"3. low"`
+	Close  string `json:"4. close"`
+	Volume string `json:"5. volume"`
+}
+
+type timeSeriesDaily map[string]dailyData
+
+func (ts timeSeriesDaily) ToBars(listing finance.Listing) (finance.Bars, error) {
+	currency := listing.Currency()
+	if currency == nil {
+		return nil, fmt.Errorf("%s: no currency for listing %s", Name, listing.ID())
+	}
+	bars := make(finance.Bars, 0, len(ts))
+	for date, entry := range ts {
+		timestamp, err := stringToTimestamp(date, "date")
+		if err != nil {
+			return nil, err
+		}
+		price, err := stringToFloat64(entry.Close, "close")
+		if err != nil {
+			return nil, err
+		}
+		open, err := stringToFloat64(entry.Open, "open")
+		if err != nil {
+			return nil, err
+		}
+		high, err := stringToFloat64(entry.High, "high")
+		if err != nil {
+			return nil, err
+		}
+		low, err := stringToFloat64(entry.Low, "low")
+		if err != nil {
+			return nil, err
+		}
+		volume, err := stringToInt64(entry.Volume, "volume")
+		if err != nil {
+			return nil, err
+		}
+		bars = append(bars, finance.Bar{
+			Listing:         listing,
+			Timestamp:       timestamp,
+			Price:           price,
+			Open:            open,
+			High:            high,
+			Low:             low,
+			Volume:          volume,
+			Currency:        *currency,
+			Source:          Name,
+			SourceTimestamp: time.Now().UTC(),
+		})
+	}
+	return bars, nil
 }

@@ -84,6 +84,22 @@ func (c *CacheConfig) NewQuoteCache(ttl time.Duration) (composite.QuoteCache, er
 	}
 }
 
+func (c *CacheConfig) NewQuoteHistoryCache(ttl time.Duration) (composite.QuoteHistoryCache, error) {
+	switch c.Type {
+	case CacheTypeMemory:
+		return memory.NewKeyValue(0, -ttl, cache.NotFound[string, finance.Bars]())
+	case CacheTypeRedis:
+		options := &redis.Options{
+			Addr:     c.Redis.Address,
+			Password: c.Redis.Password,
+			DB:       c.Redis.DB,
+		}
+		return redis.NewKeyValue(options, -ttl, redis.StringKey, cache.JSONSerializer[finance.Bars]())
+	default:
+		return nil, fmt.Errorf(unrecognizedCacheTypeErrMessage, c.Type)
+	}
+}
+
 type MemoryCacheConfig struct{}
 
 type RedisCacheConfig struct {
