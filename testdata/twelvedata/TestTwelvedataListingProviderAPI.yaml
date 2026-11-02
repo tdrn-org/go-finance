@@ -244,13 +244,13 @@ interactions:
         host: api.twelvedata.com
         form:
             end_date:
-                - "2026-10-31"
+                - "2026-11-02"
             interval:
                 - 1day
             mic_code:
                 - XNGS
             start_date:
-                - "2026-10-01"
+                - "2026-10-03"
             symbol:
                 - AAPL
         headers:
@@ -262,7 +262,7 @@ interactions:
                 - OpenAPI-Generator/1.0.14/go
             X-Api-Version:
                 - last
-        url: https://api.twelvedata.com/time_series?end_date=2026-10-31&interval=1day&mic_code=XNGS&start_date=2026-10-01&symbol=AAPL
+        url: https://api.twelvedata.com/time_series?end_date=2026-11-02&interval=1day&mic_code=XNGS&start_date=2026-10-03&symbol=AAPL
         method: GET
       response:
         proto: HTTP/2.0
