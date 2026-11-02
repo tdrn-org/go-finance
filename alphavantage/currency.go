@@ -23,14 +23,14 @@ import (
 	"net/http"
 
 	"github.com/tdrn-org/go-finance"
-	tracehelper "github.com/tdrn-org/go-finance/internal/trace"
+	tracehelper "github.com/tdrn-org/go-trace"
 )
 
 // See [finance.FX.QueryExchangeRate]
 func (api *API) QueryExchangeRate(ctx context.Context, base, quote finance.Currency) (*finance.ExchangeRate, error) {
 	logger := api.logger.With(slog.String("base", string(base)), slog.String("quote", string(quote)))
 	logger.Info("querying exchange rate...")
-	traceCtx, span := api.tracer.StartConsuming(ctx)
+	traceCtx, span := api.tracer.StartConsumer(ctx)
 	defer span.End()
 
 	rate, err := api.queryExchangeRate(traceCtx, base, quote)

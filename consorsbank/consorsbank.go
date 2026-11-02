@@ -29,7 +29,7 @@ import (
 
 	"github.com/tdrn-org/go-finance"
 	"github.com/tdrn-org/go-finance/consorsbank/proto"
-	tracehelper "github.com/tdrn-org/go-finance/internal/trace"
+	tracehelper "github.com/tdrn-org/go-trace"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/trace"
 )
@@ -60,7 +60,7 @@ type API struct {
 	exchangeRateSubscriptions map[string]*streamSubscription[proto.CurrencyRateReply, finance.ExchangeRate]
 	quoteSubscriptions        map[string]*streamSubscription[proto.SecurityMarketDataReply, finance.Quote]
 	logger                    *slog.Logger
-	tracer                    *tracehelper.Tracer
+	tracer                    *tracehelper.TracePoint
 	mutex                     sync.Mutex
 	stoppedWG                 sync.WaitGroup
 }
@@ -104,7 +104,7 @@ func NewAPI(config Config) (*API, error) {
 		exchangeRateSubscriptions: make(map[string]*streamSubscription[proto.CurrencyRateReply, finance.ExchangeRate]),
 		quoteSubscriptions:        make(map[string]*streamSubscription[proto.SecurityMarketDataReply, finance.Quote]),
 		logger:                    defaultLogger.With(slog.String("address", address)),
-		tracer:                    tracehelper.NewTracer[API](trace.WithInstrumentationAttributes(attribute.String("provider", Name))),
+		tracer:                    tracehelper.NewTracePoint[API]("", trace.WithInstrumentationAttributes(attribute.String("provider", Name))),
 	}
 	api.logger.Info("provider enabled")
 	return api, nil

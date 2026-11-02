@@ -26,7 +26,7 @@ import (
 	"net/http"
 
 	"github.com/tdrn-org/go-finance"
-	tracehelper "github.com/tdrn-org/go-finance/internal/trace"
+	tracehelper "github.com/tdrn-org/go-trace"
 	"github.com/twelvedata/twelvedata-go/twelvedata"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/trace"
@@ -54,7 +54,7 @@ type API struct {
 	includeMICs            []string
 	includeInstrumentTypes []string
 	logger                 *slog.Logger
-	tracer                 *tracehelper.Tracer
+	tracer                 *tracehelper.TracePoint
 }
 
 // NewAPI creates a new Twelve Data provider instance using the given [Config].
@@ -87,7 +87,7 @@ func NewAPI(config Config) (*API, error) {
 		includeMICs:            includeMICs,
 		includeInstrumentTypes: includeInstrumentTypes,
 		logger:                 defaultLogger.With(slog.String("url", client.GetConfig().Servers[0].URL)),
-		tracer:                 tracehelper.NewTracer[API](trace.WithInstrumentationAttributes(attribute.String("provider", Name))),
+		tracer:                 tracehelper.NewTracePoint[API]("", trace.WithInstrumentationAttributes(attribute.String("provider", Name))),
 	}
 	api.logger.Info("provider enabled")
 	return api, nil

@@ -22,8 +22,8 @@ import (
 	"log/slog"
 
 	"github.com/tdrn-org/go-finance"
-	tracehelper "github.com/tdrn-org/go-finance/internal/trace"
 	openfigiapi "github.com/tdrn-org/go-finance/openfigi/api"
+	tracehelper "github.com/tdrn-org/go-trace"
 )
 
 // Mapping is an array of OpenFIGI information objects.
@@ -39,7 +39,7 @@ type Mapping []openfigiapi.FigiResult
 // resolved.
 func (api *API) MapListings(ctx context.Context, listings []finance.Listing) ([]Mapping, error) {
 	api.logger.Info("map listings...")
-	traceCtx, span := api.tracer.StartConsuming(ctx)
+	traceCtx, span := api.tracer.StartConsumer(ctx)
 	defer span.End()
 
 	mappings, err := api.mapListings(traceCtx, listings)

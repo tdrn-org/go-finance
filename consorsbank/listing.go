@@ -25,7 +25,7 @@ import (
 
 	"github.com/tdrn-org/go-finance"
 	"github.com/tdrn-org/go-finance/consorsbank/proto"
-	tracehelper "github.com/tdrn-org/go-finance/internal/trace"
+	tracehelper "github.com/tdrn-org/go-trace"
 	"go.opentelemetry.io/otel/attribute"
 )
 
@@ -33,7 +33,7 @@ import (
 func (api *API) SearchListings(ctx context.Context, query string) ([]finance.Listing, error) {
 	logger := api.logger.With(slog.String("query", query))
 	logger.Info("search listings...")
-	traceCtx, span := api.tracer.StartConsuming(ctx, attribute.String("query", query))
+	traceCtx, span := api.tracer.StartConsumer(ctx, attribute.String("query", query))
 	defer span.End()
 
 	listings, err := api.searchListings(traceCtx, query)
@@ -97,7 +97,7 @@ func (api *API) QueryQuote(ctx context.Context, listing finance.Listing) (*finan
 
 	logger := api.logger.With(slog.String("listing", listing.ID()))
 	logger.Info("querying quote...")
-	traceCtx, span := api.tracer.StartConsuming(ctx, attribute.String("listing", listing.ID()))
+	traceCtx, span := api.tracer.StartConsumer(ctx, attribute.String("listing", listing.ID()))
 	defer span.End()
 
 	quote, err := api.queryQuote(traceCtx, listing)
@@ -207,7 +207,7 @@ func (api *API) QueryQuoteHistory(ctx context.Context, listing finance.Listing, 
 
 	logger := api.logger.With(slog.String("listing", listing.ID()), slog.String("history", string(history)))
 	logger.Info("querying quote history...")
-	traceCtx, span := api.tracer.StartConsuming(ctx, attribute.String("listing", listing.ID()), attribute.String("history", string(history)))
+	traceCtx, span := api.tracer.StartConsumer(ctx, attribute.String("listing", listing.ID()), attribute.String("history", string(history)))
 	defer span.End()
 
 	bars, err := api.queryQuoteHistory(traceCtx, listing, history)

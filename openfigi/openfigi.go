@@ -28,8 +28,8 @@ import (
 	"reflect"
 
 	"github.com/tdrn-org/go-finance"
-	tracehelper "github.com/tdrn-org/go-finance/internal/trace"
 	openfigiapi "github.com/tdrn-org/go-finance/openfigi/api"
+	tracehelper "github.com/tdrn-org/go-trace"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/trace"
 )
@@ -47,7 +47,7 @@ type API struct {
 	apiKey    string
 	apiClient openfigiapi.ClientWithResponsesInterface
 	logger    *slog.Logger
-	tracer    *tracehelper.Tracer
+	tracer    *tracehelper.TracePoint
 }
 
 // NewAPI creates a new OpenFIGI provider instance using the given [Config].
@@ -80,7 +80,7 @@ func NewAPI(config Config) (*API, error) {
 		apiKey:    apiKey,
 		apiClient: apiClient,
 		logger:    defaultLogger.With(slog.Any("url", baseURL)),
-		tracer:    tracehelper.NewTracer[API](trace.WithInstrumentationAttributes(attribute.String("provider", Name))),
+		tracer:    tracehelper.NewTracePoint[API]("", trace.WithInstrumentationAttributes(attribute.String("provider", Name))),
 	}
 	api.logger.Info("provider enabled")
 	return api, nil
