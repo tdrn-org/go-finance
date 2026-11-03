@@ -20,12 +20,15 @@ package demo
 import (
 	"context"
 	"log/slog"
+	"sync"
 )
 
 // Name of the Demo Provider.
 const Name string = "demo"
 
-var defaultLogger *slog.Logger = slog.With(slog.String("provider", Name))
+var defaultLogger func() *slog.Logger = sync.OnceValue(func() *slog.Logger {
+	return slog.With(slog.String("provider", Name))
+})
 
 // API provides a Demo provider implementing
 //   - [finance.FX]
@@ -39,7 +42,7 @@ type API struct {
 func NewAPI(config Config) (*API, error) {
 	api := &API{
 		enabled: config.GetEnabled(),
-		logger:  defaultLogger,
+		logger:  defaultLogger(),
 	}
 	return api, nil
 }

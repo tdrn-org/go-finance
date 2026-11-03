@@ -24,6 +24,7 @@ import (
 	"fmt"
 	"log/slog"
 	"net/http"
+	"sync"
 
 	"github.com/tdrn-org/go-finance"
 	tracehelper "github.com/tdrn-org/go-trace"
@@ -40,7 +41,9 @@ var idKeys []finance.ListingAttributeKey = []finance.ListingAttributeKey{
 	finance.ListingAttributeKeyMIC,
 }
 
-var defaultLogger *slog.Logger = slog.With(slog.String("provider", Name))
+var defaultLogger func() *slog.Logger = sync.OnceValue(func() *slog.Logger {
+	return slog.With(slog.String("provider", Name))
+})
 
 const apiVersion string = "last"
 
@@ -86,7 +89,7 @@ func NewAPI(config Config) (*API, error) {
 		client:                 client,
 		includeMICs:            includeMICs,
 		includeInstrumentTypes: includeInstrumentTypes,
-		logger:                 defaultLogger.With(slog.String("url", client.GetConfig().Servers[0].URL)),
+		logger:                 defaultLogger().With(slog.String("url", client.GetConfig().Servers[0].URL)),
 		tracer:                 tracehelper.NewTracePoint[API]("", trace.WithInstrumentationAttributes(attribute.String("provider", Name))),
 	}
 	api.logger.Info("provider enabled")

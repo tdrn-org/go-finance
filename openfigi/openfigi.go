@@ -26,6 +26,7 @@ import (
 	"net/http"
 	"net/url"
 	"reflect"
+	"sync"
 
 	"github.com/tdrn-org/go-finance"
 	openfigiapi "github.com/tdrn-org/go-finance/openfigi/api"
@@ -37,7 +38,9 @@ import (
 // Name of OpenFIGI Provider.
 const Name string = "openfigi"
 
-var defaultLogger *slog.Logger = slog.With(slog.String("provider", Name))
+var defaultLogger func() *slog.Logger = sync.OnceValue(func() *slog.Logger {
+	return slog.With(slog.String("provider", Name))
+})
 
 // API provides access to the [OpenFIGI API].
 //
@@ -79,7 +82,7 @@ func NewAPI(config Config) (*API, error) {
 		baseURL:   baseURL,
 		apiKey:    apiKey,
 		apiClient: apiClient,
-		logger:    defaultLogger.With(slog.Any("url", baseURL)),
+		logger:    defaultLogger().With(slog.Any("url", baseURL)),
 		tracer:    tracehelper.NewTracePoint[API]("", trace.WithInstrumentationAttributes(attribute.String("provider", Name))),
 	}
 	api.logger.Info("provider enabled")

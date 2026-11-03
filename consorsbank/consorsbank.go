@@ -42,7 +42,9 @@ var idKeys []finance.ListingAttributeKey = []finance.ListingAttributeKey{
 	finance.ListingAttributeKeyExchange,
 }
 
-var defaultLogger *slog.Logger = slog.With(slog.String("provider", Name))
+var defaultLogger func() *slog.Logger = sync.OnceValue(func() *slog.Logger {
+	return slog.With(slog.String("provider", Name))
+})
 
 // API provides access to the [Consorsbank TAPI] and implements
 //   - [finance.FX]
@@ -103,7 +105,7 @@ func NewAPI(config Config) (*API, error) {
 		subscriptionTimeout:       subscriptionTimeout,
 		exchangeRateSubscriptions: make(map[string]*streamSubscription[proto.CurrencyRateReply, finance.ExchangeRate]),
 		quoteSubscriptions:        make(map[string]*streamSubscription[proto.SecurityMarketDataReply, finance.Quote]),
-		logger:                    defaultLogger.With(slog.String("address", address)),
+		logger:                    defaultLogger().With(slog.String("address", address)),
 		tracer:                    tracehelper.NewTracePoint[API]("", trace.WithInstrumentationAttributes(attribute.String("provider", Name))),
 	}
 	api.logger.Info("provider enabled")

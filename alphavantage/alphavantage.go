@@ -26,6 +26,7 @@ import (
 	"log/slog"
 	"net/http"
 	"net/url"
+	"sync"
 
 	"github.com/tdrn-org/go-finance"
 	_ "github.com/tdrn-org/go-finance" // For godoc
@@ -41,7 +42,9 @@ var idKeys []finance.ListingAttributeKey = []finance.ListingAttributeKey{
 	finance.ListingAttributeKeySymbol,
 }
 
-var defaultLogger *slog.Logger = slog.With(slog.String("provider", Name))
+var defaultLogger func() *slog.Logger = sync.OnceValue(func() *slog.Logger {
+	return slog.With(slog.String("provider", Name))
+})
 
 // API provides access to the [Alpha Vantage API] and implements
 //   - [finance.FX]
@@ -77,7 +80,7 @@ func NewAPI(config Config) (*API, error) {
 		baseURL:    baseURL,
 		apiKey:     apiKey,
 		httpClient: httpClient,
-		logger:     defaultLogger.With(slog.Any("url", baseURL)),
+		logger:     defaultLogger().With(slog.Any("url", baseURL)),
 		tracer:     tracehelper.NewTracePoint[API]("", trace.WithInstrumentationAttributes(attribute.String("provider", Name))),
 	}
 	api.logger.Info("provider enabled")

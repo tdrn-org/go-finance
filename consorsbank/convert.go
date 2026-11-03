@@ -86,7 +86,7 @@ var securityClassMap map[proto.SecurityClass]finance.InstrumentType = func() map
 func securityClassToInstrumentType(securityClass proto.SecurityClass) finance.InstrumentType {
 	mapped, ok := securityClassMap[securityClass]
 	if !ok {
-		defaultLogger.Warn("missing SecurityClass mapping", slog.Any("securityClass", securityClass))
+		defaultLogger().Warn("missing SecurityClass mapping", slog.Any("securityClass", securityClass))
 		return finance.InstrumentTypeUnknown
 	}
 	return mapped

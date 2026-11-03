@@ -60,7 +60,7 @@ var instrumentTypeMap map[string]finance.InstrumentType = func() map[string]fina
 func instrumentTypeToInstrumentType(instrumentType string) finance.InstrumentType {
 	mapped, ok := instrumentTypeMap[instrumentType]
 	if !ok {
-		defaultLogger.Warn("missing InstrumentType mapping", slog.String("instrumentType", instrumentType))
+		defaultLogger().Warn("missing InstrumentType mapping", slog.String("instrumentType", instrumentType))
 		return finance.InstrumentTypeUnknown
 	}
 	return mapped
