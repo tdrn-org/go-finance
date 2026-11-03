@@ -19,6 +19,7 @@ package finance_test
 import (
 	"context"
 	"errors"
+	"net/http"
 	"os"
 	"path/filepath"
 	"strings"
@@ -138,7 +139,18 @@ func newTwelveDataAPI(t *testing.T) *twelvedata.API {
 		i.Request.Headers["Authorization"] = []string{"apikey " + maskedAPIKey}
 		return nil
 	}
-	vcr := newHTTPRecorder(t, "twelvedata", recorder.WithHook(maskAuthorizationHeader, recorder.AfterCaptureHook))
+	ignoreStartEndDateMatcher := func(r *http.Request, i cassette.Request) bool {
+		values := r.URL.Query()
+		if values.Get("start_date") != "" {
+			values.Set("start_date", "2026-10-01")
+		}
+		if values.Get("end_date") != "" {
+			values.Set("end_date", "2026-10-31")
+		}
+		r.URL.RawQuery = values.Encode()
+		return cassette.DefaultMatcher(r, i)
+	}
+	vcr := newHTTPRecorder(t, "twelvedata", recorder.WithHook(maskAuthorizationHeader, recorder.AfterCaptureHook), recorder.WithMatcher(ignoreStartEndDateMatcher))
 
 	// Setup API key
 	apiKey := os.Getenv("TWELVEDATA_API_KEY")
