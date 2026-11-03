@@ -130,7 +130,7 @@ func getQuoteResponseToQuote(listing finance.Listing, response *twelvedata.GetQu
 		Source:          Name,
 		SourceTimestamp: time.Now().UTC(),
 	}
-	return quote, nil
+	return quote.Validate()
 }
 
 func getTimeSeriesResponseToBars(listing finance.Listing, response *twelvedata.GetTimeSeries200Response) (finance.Bars, error) {
@@ -190,7 +190,7 @@ func timeSeriesItemToBar(listing finance.Listing, response *twelvedata.TimeSerie
 		Source:          Name,
 		SourceTimestamp: sourceTimestamp,
 	}
-	return bar, nil
+	return bar.Validate()
 }
 
 func stringToTime(s, name string) (time.Time, error) {

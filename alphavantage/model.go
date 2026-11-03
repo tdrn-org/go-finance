@@ -182,7 +182,7 @@ func (r *quoteResponse) ToQuote(listing finance.Listing) (*finance.Quote, error)
 		Source:          Name,
 		SourceTimestamp: time.Now().UTC(),
 	}
-	return quote, nil
+	return quote.Validate()
 }
 
 type globalQuoteResponse struct {
@@ -243,7 +243,7 @@ func (ts timeSeriesDaily) ToBars(listing finance.Listing) (finance.Bars, error) 
 		if err != nil {
 			return nil, err
 		}
-		bars = append(bars, finance.Bar{
+		bar, err := (&finance.Bar{
 			Listing:         listing,
 			Timestamp:       timestamp,
 			Price:           price,
@@ -254,7 +254,11 @@ func (ts timeSeriesDaily) ToBars(listing finance.Listing) (finance.Bars, error) 
 			Currency:        *currency,
 			Source:          Name,
 			SourceTimestamp: time.Now().UTC(),
-		})
+		}).Validate()
+		if err != nil {
+			return nil, err
+		}
+		bars = append(bars, *bar)
 	}
 	return bars, nil
 }

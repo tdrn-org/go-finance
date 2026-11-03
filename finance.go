@@ -40,6 +40,14 @@ func IsTransientErr(err error) bool {
 	return err == nil || errors.Is(err, ErrRequestPending) || errors.Is(err, ErrListingSearchRestricted)
 }
 
+func unwrapJoined(err error) []error {
+	unwrap, ok := err.(interface{ Unwrap() []error })
+	if !ok {
+		return []error{err}
+	}
+	return unwrap.Unwrap()
+}
+
 // APIProvider is the interface common to all providers.
 type APIProvider interface {
 	// ProviderName gets the name of this provider.

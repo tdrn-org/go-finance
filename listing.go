@@ -22,6 +22,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"math"
 	"strconv"
 	"strings"
 	"time"
@@ -545,6 +546,37 @@ func (t *Tick) String() string {
 	return buffer.String()
 }
 
+func (t *Tick) Validate() (*Tick, error) {
+	if t == nil {
+		return nil, ErrQuoteNotAvailable
+	}
+	errs := make([]error, 0)
+	_, err := t.Listing.Validate()
+	if err != nil {
+		errs = append(errs, unwrapJoined(err)...)
+	}
+	if t.Timestamp.IsZero() {
+		errs = append(errs, errors.New("no timestamp"))
+	}
+	if t.Currency == "" {
+		errs = append(errs, errors.New("no currency"))
+	}
+	if math.IsNaN(t.Price) {
+		errs = append(errs, errors.New("no price"))
+	}
+	if t.Source == "" {
+		errs = append(errs, errors.New("no source"))
+	}
+	if t.SourceTimestamp.IsZero() {
+		errs = append(errs, errors.New("no source timestamp"))
+	}
+	err = errors.Join(errs...)
+	if err != nil {
+		return nil, fmt.Errorf("%w: invalid tick (cause: %w)", ErrQuoteNotAvailable, err)
+	}
+	return t, nil
+}
+
 // Bar represents a single full price data point for a [Listing].
 type Bar struct {
 	Tick
@@ -583,6 +615,31 @@ func (b *Bar) String() string {
 	return buffer.String()
 }
 
+func (b *Bar) Validate() (*Bar, error) {
+	if b == nil {
+		return nil, ErrQuoteNotAvailable
+	}
+	errs := make([]error, 0)
+	_, err := b.Tick.Validate()
+	if err != nil {
+		errs = append(errs, unwrapJoined(err)...)
+	}
+	if math.IsNaN(b.Open) {
+		errs = append(errs, errors.New("no open"))
+	}
+	if math.IsNaN(b.High) {
+		errs = append(errs, errors.New("no high"))
+	}
+	if math.IsNaN(b.Low) {
+		errs = append(errs, errors.New("no low"))
+	}
+	err = errors.Join(errs...)
+	if err != nil {
+		return nil, fmt.Errorf("%w: invalid bar (cause: %w)", ErrQuoteNotAvailable, err)
+	}
+	return b, nil
+}
+
 // Quote represents a single full price data point for a [Listing] including
 // the previous close price.
 type Quote struct {
@@ -616,6 +673,25 @@ func (q *Quote) String() string {
 	buffer.WriteString("|queried:")
 	buffer.WriteString(q.SourceTimestamp.UTC().Format(time.RFC3339Nano))
 	return buffer.String()
+}
+
+func (q *Quote) Validate() (*Quote, error) {
+	if q == nil {
+		return nil, ErrQuoteNotAvailable
+	}
+	errs := make([]error, 0)
+	_, err := q.Bar.Validate()
+	if err != nil {
+		errs = append(errs, unwrapJoined(err)...)
+	}
+	if math.IsNaN(q.PreviousClose) {
+		errs = append(errs, errors.New("no previous close"))
+	}
+	err = errors.Join(errs...)
+	if err != nil {
+		return nil, fmt.Errorf("%w: invalid quote (cause: %w)", ErrQuoteNotAvailable, err)
+	}
+	return q, nil
 }
 
 type ListingProvider interface {

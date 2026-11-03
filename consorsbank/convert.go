@@ -107,14 +107,10 @@ func securityInfoToListing(reply *proto.SecurityInfoReply, stockExchangeInfo *pr
 			newListing.Attribute(finance.ListingAttributeKeyTicker, securityCode.Code)
 		}
 	}
-	listing, err := newListing.Build().Validate()
-	if err != nil {
-		return nil, err
-	}
-	return listing, nil
+	return newListing.Build().Validate()
 }
 
-func securityMarketDataReplyToQuote(listing finance.Listing, last *finance.Quote, reply *proto.SecurityMarketDataReply) *finance.Quote {
+func securityMarketDataReplyToQuote(listing finance.Listing, last *finance.Quote, reply *proto.SecurityMarketDataReply) (*finance.Quote, error) {
 	now := time.Now().UTC()
 	quote := &finance.Quote{
 		Listing:         listing,
@@ -149,14 +145,14 @@ func securityMarketDataReplyToQuote(listing finance.Listing, last *finance.Quote
 			quote.Volume = int64(reply.TodayVolume)
 		}
 	}
-	return quote
+	return quote.Validate()
 }
 
-func securityPriceHistoryReplyToBars(listing finance.Listing, reply *proto.SecurityPriceHistoryReply) finance.Bars {
+func securityPriceHistoryReplyToBars(listing finance.Listing, reply *proto.SecurityPriceHistoryReply) (finance.Bars, error) {
 	now := time.Now()
 	bars := make(finance.Bars, 0, len(reply.PriceEntries))
 	for _, entry := range reply.PriceEntries {
-		bars = append(bars, finance.Bar{
+		bar, err := (&finance.Bar{
 			Listing:         listing,
 			Timestamp:       time.Unix(entry.CloseTime.Seconds, int64(entry.CloseTime.Nanos)).UTC(),
 			Price:           entry.ClosePrice,
@@ -167,7 +163,11 @@ func securityPriceHistoryReplyToBars(listing finance.Listing, reply *proto.Secur
 			Currency:        finance.Currency(reply.Currency),
 			Source:          Name,
 			SourceTimestamp: now,
-		})
+		}).Validate()
+		if err != nil {
+			return nil, err
+		}
+		bars = append(bars, *bar)
 	}
-	return bars
+	return bars, nil
 }

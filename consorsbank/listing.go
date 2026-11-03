@@ -190,7 +190,11 @@ func (api *API) processSecurityMarketDataReply(s *streamSubscription[proto.Secur
 		return
 	}
 	s.MergeReply(reply, func(lastReply *finance.Quote, rawReply *proto.SecurityMarketDataReply) *finance.Quote {
-		return securityMarketDataReplyToQuote(listing, lastReply, reply)
+		quote, err := securityMarketDataReplyToQuote(listing, lastReply, reply)
+		if err != nil {
+			api.logger.Warn("invalid market data reply", slog.Any("err", err))
+		}
+		return quote
 	})
 }
 
@@ -243,5 +247,5 @@ func (api *API) queryQuoteHistory(ctx context.Context, listing finance.Listing, 
 		api.invalidateSessionLocked()
 		return nil, err
 	}
-	return securityPriceHistoryReplyToBars(listing, reply), nil
+	return securityPriceHistoryReplyToBars(listing, reply)
 }
