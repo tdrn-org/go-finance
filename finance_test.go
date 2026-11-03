@@ -20,6 +20,7 @@ import (
 	"context"
 	"errors"
 	"net/http"
+	"net/url"
 	"os"
 	"path/filepath"
 	"strings"
@@ -64,12 +65,46 @@ func TestAlphaVantageProvider(t *testing.T) {
 }
 
 func newAlphaVantageAPI(t *testing.T) *alphavantage.API {
+	// Enable HTTP recording
+	maskedAPIKey := "<masked>"
+	maskAPIKey := func(url *url.URL) *url.URL {
+		values := url.Query()
+		if values.Get("apikey") != "" {
+			values.Set("apikey", maskedAPIKey)
+		}
+		url.RawQuery = values.Encode()
+		return url
+	}
+	maskAPIKeyQuery := func(i *cassette.Interaction) error {
+		url, err := url.Parse(i.Request.URL)
+		if err != nil {
+			return err
+		}
+		url = maskAPIKey(url)
+		i.Request.URL = maskAPIKey(url).String()
+		i.Request.Form = url.Query()
+		return nil
+	}
+	normalizedAPIKeyMatcher := func(r *http.Request, i cassette.Request) bool {
+		r.URL = maskAPIKey(r.URL)
+		return cassette.DefaultMatcher(r, i)
+	}
+	vcr := newHTTPRecorder(t, "alphavantage", recorder.WithHook(maskAPIKeyQuery, recorder.AfterCaptureHook), recorder.WithMatcher(normalizedAPIKeyMatcher))
+
+	// Setup API key
+	apiKey := os.Getenv("ALPHAVANTAGE_API_KEY")
+	if !vcr.IsRecording() {
+		apiKey = maskedAPIKey
+	}
+
+	// Create API
 	config := &alphavantage.StaticConfig{
-		BaseURL: alphavantage.DefaultBaseURL,
-		APIKey:  os.Getenv("ALPHAVANTAGE_API_KEY"),
+		BaseURL:    alphavantage.DefaultBaseURL,
+		APIKey:     apiKey,
+		HttpClient: vcr.GetDefaultClient(),
 	}
 	if config.APIKey == "" {
-		t.Skip("No Alpha Vange API key set; skipping tests")
+		t.Skip("No Alpha Vantage API key set; skipping tests")
 	}
 	api, err := alphavantage.NewAPI(config)
 	require.NoError(t, err)
@@ -117,8 +152,13 @@ func TestFrankfurterProvider(t *testing.T) {
 }
 
 func newFrankfurterAPI(t *testing.T) *frankfurter.API {
+	// Enable HTTP recording
+	vcr := newHTTPRecorder(t, "frankfurter")
+
+	// Create API
 	config := &frankfurter.StaticConfig{
-		BaseURL: frankfurter.DefaultBaseURL,
+		BaseURL:    frankfurter.DefaultBaseURL,
+		HttpClient: vcr.GetDefaultClient(),
 	}
 	api, err := frankfurter.NewAPI(config)
 	require.NoError(t, err)
@@ -139,18 +179,22 @@ func newTwelveDataAPI(t *testing.T) *twelvedata.API {
 		i.Request.Headers["Authorization"] = []string{"apikey " + maskedAPIKey}
 		return nil
 	}
-	ignoreStartEndDateMatcher := func(r *http.Request, i cassette.Request) bool {
-		values := r.URL.Query()
+	normalizeStartEndDate := func(url *url.URL) *url.URL {
+		values := url.Query()
 		if values.Get("start_date") != "" {
 			values.Set("start_date", "2026-10-01")
 		}
 		if values.Get("end_date") != "" {
 			values.Set("end_date", "2026-10-31")
 		}
-		r.URL.RawQuery = values.Encode()
+		url.RawQuery = values.Encode()
+		return url
+	}
+	normalizedStartEndDateMatcher := func(r *http.Request, i cassette.Request) bool {
+		r.URL = normalizeStartEndDate(r.URL)
 		return cassette.DefaultMatcher(r, i)
 	}
-	vcr := newHTTPRecorder(t, "twelvedata", recorder.WithHook(maskAuthorizationHeader, recorder.AfterCaptureHook), recorder.WithMatcher(ignoreStartEndDateMatcher))
+	vcr := newHTTPRecorder(t, "twelvedata", recorder.WithHook(maskAuthorizationHeader, recorder.AfterCaptureHook), recorder.WithMatcher(normalizedStartEndDateMatcher))
 
 	// Setup API key
 	apiKey := os.Getenv("TWELVEDATA_API_KEY")
@@ -163,6 +207,9 @@ func newTwelveDataAPI(t *testing.T) *twelvedata.API {
 		APIKey:      apiKey,
 		HttpClient:  vcr.GetDefaultClient(),
 		IncludeMICs: testMICs,
+	}
+	if config.APIKey == "" {
+		t.Skip("No Twelve Data API key set; skipping tests")
 	}
 	api, err := twelvedata.NewAPI(config)
 	require.NoError(t, err)

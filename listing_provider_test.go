@@ -34,7 +34,7 @@ func TestDemoListingProviderAPI(t *testing.T) {
 func TestAlphaVantageListingProviderAPI(t *testing.T) {
 	api := newAlphaVantageAPI(t)
 
-	testListingProviderAPI(t, api, "AAPL")
+	testListingProviderAPI(t, api, "AAPL", "Apple")
 }
 
 func TestConsorsbankListingProviderAPI(t *testing.T) {
