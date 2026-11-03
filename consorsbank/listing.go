@@ -185,9 +185,15 @@ func (api *API) startSecurityMarketDataSubscriptionLocked(ctx context.Context, l
 
 func (api *API) processSecurityMarketDataReply(s *streamSubscription[proto.SecurityMarketDataReply, finance.Quote], listing finance.Listing, reply *proto.SecurityMarketDataReply) {
 	if reply.Error != nil {
-		api.logger.Warn("errornous market data reply; closing stream", slog.Any("error", reply.Error))
-		s.Close()
-		return
+		switch reply.Error.Code {
+		case "FIRBIDDEN_ERR":
+			api.logger.Warn("market data not accessible", slog.Any("message", reply.Error.Message))
+			return
+		default:
+			api.logger.Warn("errornous market data reply; closing stream", slog.Any("error", reply.Error))
+			s.Close()
+			return
+		}
 	}
 	s.MergeReply(reply, func(lastReply *finance.Quote, rawReply *proto.SecurityMarketDataReply) *finance.Quote {
 		quote, err := securityMarketDataReplyToQuote(listing, lastReply, reply)

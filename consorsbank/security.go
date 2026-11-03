@@ -32,9 +32,9 @@ func (api *API) getSecurityInfoLocked(ctx context.Context, session *apiSession, 
 	if err != nil {
 		return nil, fmt.Errorf("%s: failed to query security info (cause: %w)", Name, err)
 	}
-	if tapiError := reply.GetError(); tapiError != nil {
-		return nil, fmt.Errorf("%s: query security info error (code: %s, message: %s)",
-			Name, tapiError.GetCode(), tapiError.GetMessage())
+	if reply.Error != nil {
+		return nil, fmt.Errorf("%s: query security info error (code: %q, message: %q)",
+			Name, reply.Error.Code, reply.Error.Message)
 	}
 	return reply, nil
 }
@@ -70,9 +70,9 @@ func (api *API) getSecurityPriceHistory(ctx context.Context, session *apiSession
 	if err != nil {
 		return nil, fmt.Errorf("%s: failed to query security price history (cause: %w)", Name, err)
 	}
-	if tapiError := reply.GetError(); tapiError != nil {
-		return nil, fmt.Errorf("%s: query security price history error (code: %s, message: %s)",
-			Name, tapiError.GetCode(), tapiError.GetMessage())
+	if reply.Error != nil {
+		return nil, fmt.Errorf("%s: query security price history error (code: %q, message: %q)",
+			Name, reply.Error.Code, reply.Error.Message)
 	}
 	return reply, nil
 }
