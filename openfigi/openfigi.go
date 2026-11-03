@@ -106,7 +106,7 @@ func (api *API) Close() error {
 
 func (api *API) authenticateRequest(ctx context.Context, request *http.Request) error {
 	if api.apiKey != "" {
-		request.Header.Set("X-OPENFIGI-APIKEY", api.apiKey)
+		request.Header.Set("X-Openfigi-Apikey", api.apiKey)
 	}
 	return nil
 }
