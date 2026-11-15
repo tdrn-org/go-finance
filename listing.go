@@ -42,6 +42,11 @@ var (
 	// provide a quote for a given [Listing]. This is a
 	// permanent error.
 	ErrQuoteNotAvailable error = errors.New("quote not available")
+	// ErrQuoteExchangeClosed indicates the provider is not able to
+	// provide a quote for a given [Listing] as the related exchange
+	// is currently closed. This errors resolves as soon as the
+	// exchange opens again.
+	ErrQuoteExchangeClosed error = errors.New("quote exchange closed")
 	// ErrHistoryNotAvailable indicates a provider is not able to
 	// provide a price history for a given [Listing]. This is a
 	// permanent error.

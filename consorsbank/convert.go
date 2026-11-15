@@ -26,10 +26,10 @@ import (
 	"github.com/tdrn-org/go-finance/consorsbank/proto"
 )
 
-func currencyRateReplyToExchangeRate(_ *finance.ExchangeRate, reply *proto.CurrencyRateReply) *finance.ExchangeRate {
+func currencyRateReplyToExchangeRate(_ *finance.ExchangeRate, reply *proto.CurrencyRateReply) (*finance.ExchangeRate, error) {
 	now := time.Now().UTC()
 	timestamp := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, time.UTC)
-	return &finance.ExchangeRate{
+	rate := &finance.ExchangeRate{
 		Timestamp:       timestamp,
 		Base:            finance.Currency(reply.CurrencyFrom),
 		Quote:           finance.Currency(reply.CurrencyTo),
@@ -37,6 +37,7 @@ func currencyRateReplyToExchangeRate(_ *finance.ExchangeRate, reply *proto.Curre
 		Source:          Name,
 		SourceTimestamp: now,
 	}
+	return rate, nil
 }
 
 func queryToSecurityCodes(query string) []*proto.SecurityCode {

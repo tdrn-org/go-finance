@@ -31,13 +31,27 @@ import (
 
 const initialReplyTimeout time.Duration = 250 * time.Millisecond
 
+type subscriptionReply[T any] struct {
+	reply    *T
+	replyErr error
+}
+
+func (r *subscriptionReply[T]) Empty() bool {
+	return r.reply == nil && r.replyErr == nil
+}
+
+func (r *subscriptionReply[T]) Reset() {
+	r.reply = nil
+	r.replyErr = nil
+}
+
 type streamSubscription[R, T any] struct {
 	Timeout        time.Duration
 	client         grpc.ServerStreamingClient[R]
 	cancel         context.CancelFunc
 	processReply   func(*streamSubscription[R, T], *R)
-	initialReply   chan *T
-	lastReply      *T
+	initialReply   chan subscriptionReply[T]
+	lastReply      subscriptionReply[T]
 	subscribeUntil time.Time
 	closed         bool
 	logger         *slog.Logger
@@ -49,7 +63,7 @@ func newSubscription[R, T any](client grpc.ServerStreamingClient[R], cancel cont
 		client:       client,
 		cancel:       cancel,
 		processReply: processReply,
-		initialReply: make(chan *T, 1),
+		initialReply: make(chan subscriptionReply[T], 1),
 		logger:       logger,
 	}
 }
@@ -73,8 +87,9 @@ func (s *streamSubscription[R, T]) Close() {
 	s.cancel()
 }
 
-func (s *streamSubscription[R, T]) Run() {
-	s.logger.Info("subscription running...")
+func (s *streamSubscription[R, T]) Start() {
+	s.logger.Info("subscription starting...")
+	s.reset()
 	for {
 		reply, err := s.client.Recv()
 		if err != nil {
@@ -92,6 +107,14 @@ func (s *streamSubscription[R, T]) Run() {
 	}
 }
 
+func (s *streamSubscription[R, T]) reset() {
+	s.mutex.Lock()
+	defer s.mutex.Unlock()
+
+	s.lastReply.Reset()
+	s.subscribeUntil = time.Now().Add(s.Timeout)
+}
+
 func (s *streamSubscription[R, T]) waitInitialReply(ctx context.Context, timeout time.Duration) (*T, error) {
 	reply, err := s.LastReply()
 	if err == nil || !errors.Is(err, finance.ErrRequestPending) {
@@ -102,58 +125,54 @@ func (s *streamSubscription[R, T]) waitInitialReply(ctx context.Context, timeout
 	defer cancel()
 	select {
 	case reply := <-s.initialReply:
-		return reply, nil
+		return reply.reply, reply.replyErr
 	case <-timeoutCtx.Done():
 		return s.LastReply()
 	}
 }
 
-func (s *streamSubscription[R, T]) MergeReply(rawReply *R, merge func(lastReply *T, rawReply *R) *T) {
+func (s *streamSubscription[R, T]) MergeReply(rawReply *R, merge func(lastReply *T, rawReply *R) (*T, error)) {
+	reply, replyErr := merge(s.lastReply.reply, rawReply)
+	if reply == nil && replyErr == nil {
+		return
+	}
+
 	s.mutex.Lock()
 	defer s.mutex.Unlock()
 
-	reply := merge(s.lastReply, rawReply)
-	if reply == nil {
-		return
+	initialReply := s.lastReply.Empty()
+	s.lastReply.reply, s.lastReply.replyErr = reply, replyErr
+	if reply != nil {
+		s.subscribeUntil = time.Now().Add(s.Timeout)
 	}
+
 	replyType := reflect.TypeFor[T]()
-	if s.lastReply == nil {
-		s.initialReply <- reply
-		s.logger.Info("recording initial reply", slog.Any("reply", replyType))
+	if initialReply {
+		s.logger.Info("recorded initial reply", slog.Any("reply", replyType))
+		s.initialReply <- s.lastReply
 	} else {
-		s.logger.Debug("recording reply", slog.Any("reply", replyType))
+		s.logger.Debug("recorded reply", slog.Any("reply", replyType))
 	}
-	s.lastReply = reply
-	s.subscribeUntil = time.Now().Add(s.Timeout)
 }
 
 func (s *streamSubscription[R, T]) LastReply() (*T, error) {
-	timedOut, closed := s.timeoutReachedOrClosed()
+	s.mutex.Lock()
+	defer s.mutex.Unlock()
+
+	timedOut, closed := s.timeoutReachedOrClosedLocked()
 	if timedOut && !closed {
 		s.logger.Info("closing subscription; timeout reached")
 		s.Close()
 	}
-
-	s.mutex.Lock()
-	defer s.mutex.Unlock()
-
-	if s.lastReply == nil {
+	if s.lastReply.Empty() {
 		return nil, finance.ErrRequestPending
 	}
-	return s.lastReply, nil
+	return s.lastReply.reply, s.lastReply.replyErr
 }
 
-func (s *streamSubscription[R, T]) timeoutReachedOrClosed() (bool, bool) {
-	s.mutex.Lock()
-	defer s.mutex.Unlock()
-
+func (s *streamSubscription[R, T]) timeoutReachedOrClosedLocked() (bool, bool) {
 	if s.Timeout <= 0 {
 		return false, s.closed
 	}
-	now := time.Now()
-	if s.subscribeUntil.IsZero() {
-		s.subscribeUntil = now.Add(s.Timeout)
-		return false, s.closed
-	}
-	return now.After(s.subscribeUntil), s.closed
+	return time.Now().After(s.subscribeUntil), s.closed
 }

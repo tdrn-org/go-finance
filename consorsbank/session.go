@@ -19,6 +19,7 @@ package consorsbank
 import (
 	"context"
 	"fmt"
+	"time"
 
 	"github.com/tdrn-org/go-finance/consorsbank/proto"
 	"google.golang.org/grpc"
@@ -26,12 +27,21 @@ import (
 )
 
 type apiSession struct {
-	grpcClient      *grpc.ClientConn
-	AccessToken     string
-	SecurityService proto.SecurityServiceClient
+	grpcClient         *grpc.ClientConn
+	canarySubscription *streamSubscription[proto.SecurityMarketDataReply, time.Time]
+	CreatedAt          time.Time
+	AccessToken        string
+	SecurityService    proto.SecurityServiceClient
 }
 
-func (api *API) getSessionLocked(ctx context.Context) (*apiSession, error) {
+func (api *API) getSession() *apiSession {
+	api.mutex.Lock()
+	defer api.mutex.Unlock()
+
+	return api.session
+}
+
+func (api *API) getOrCreateSessionLocked(ctx context.Context) (*apiSession, error) {
 	if api.session != nil {
 		return api.session, nil
 	}
@@ -51,23 +61,39 @@ func (api *API) getSessionLocked(ctx context.Context) (*apiSession, error) {
 	}
 	api.session = &apiSession{
 		grpcClient:      grpcClient,
+		CreatedAt:       time.Now(),
 		AccessToken:     loginReply.GetAccessToken(),
 		SecurityService: proto.NewSecurityServiceClient(grpcClient),
+	}
+	api.session.canarySubscription, err = api.newCanarySubscription(ctx, api.session)
+	if err != nil {
+		grpcClient.Close()
+		return nil, fmt.Errorf("%s: failed to start canary subscription (cause: %w)", Name, err)
 	}
 	return api.session, nil
 }
 
 func (api *API) invalidateSessionLocked() {
-	api.session = nil
+	if api.session != nil {
+		api.session.canarySubscription.cancel()
+		api.session = nil
+	}
 }
 
-func (api *API) shutdownSessionLocked(ctx context.Context) error {
+func (api *API) cancelSubscriptionsLocked() {
+	if api.session != nil {
+		api.session.canarySubscription.cancel()
+	}
 	for _, exchangeRateSubscription := range api.exchangeRateSubscriptions {
 		exchangeRateSubscription.cancel()
 	}
 	for _, quoteSubscription := range api.quoteSubscriptions {
 		quoteSubscription.cancel()
 	}
+}
+
+func (api *API) shutdownSessionLocked(ctx context.Context) error {
+	api.cancelSubscriptionsLocked()
 	api.stoppedWG.Wait()
 	if api.session == nil {
 		return nil
@@ -81,6 +107,7 @@ func (api *API) shutdownSessionLocked(ctx context.Context) error {
 }
 
 func (api *API) closeSessionLocked() error {
+	api.cancelSubscriptionsLocked()
 	if api.session == nil {
 		return nil
 	}

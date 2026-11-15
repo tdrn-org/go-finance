@@ -79,7 +79,7 @@ func (api *API) getExchangeRateSubscriptionLocked(base, quote finance.Currency) 
 }
 
 func (api *API) startExchangeRateSubscriptionLocked(ctx context.Context, base, quote finance.Currency) (*streamSubscription[proto.CurrencyRateReply, finance.ExchangeRate], error) {
-	session, err := api.getSessionLocked(ctx)
+	session, err := api.getOrCreateSessionLocked(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -98,7 +98,7 @@ func (api *API) startExchangeRateSubscriptionLocked(ctx context.Context, base, q
 	subscription := newSubscription(client, subscriptionCancel, api.processCurrencyRateReply, api.logger.With(slog.String("currencyRateSubscription", subscriptionKey)))
 	subscription.Timeout = api.subscriptionTimeout
 	api.exchangeRateSubscriptions[subscriptionKey] = subscription
-	api.stoppedWG.Go(subscription.Run)
+	api.stoppedWG.Go(subscription.Start)
 	return subscription, nil
 }
 
@@ -113,7 +113,13 @@ func (api *API) processCurrencyRateReply(s *streamSubscription[proto.CurrencyRat
 		s.Close()
 		return
 	}
-	s.MergeReply(reply, currencyRateReplyToExchangeRate)
+	s.MergeReply(reply, func(lastReply *finance.ExchangeRate, rawReply *proto.CurrencyRateReply) (*finance.ExchangeRate, error) {
+		err := api.checkCanarySubscription()
+		if err != nil {
+			return nil, err
+		}
+		return currencyRateReplyToExchangeRate(lastReply, rawReply)
+	})
 }
 
 func (api *API) exchangeRateSubscriptionKey(base, quote finance.Currency) string {

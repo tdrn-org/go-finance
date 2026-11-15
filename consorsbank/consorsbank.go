@@ -37,6 +37,10 @@ import (
 // Name of the Consorsbank Provider.
 const Name string = "consorsbank"
 
+var (
+	ErrSessionClosed error = errors.New("session closed")
+)
+
 var idKeys []finance.ListingAttributeKey = []finance.ListingAttributeKey{
 	finance.ListingAttributeKeyISIN,
 	finance.ListingAttributeKeyExchange,

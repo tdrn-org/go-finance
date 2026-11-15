@@ -51,7 +51,7 @@ func (api *API) searchListings(ctx context.Context, query string) ([]finance.Lis
 	api.mutex.Lock()
 	defer api.mutex.Unlock()
 
-	session, err := api.getSessionLocked(ctx)
+	session, err := api.getOrCreateSessionLocked(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -144,7 +144,7 @@ func (api *API) getSecurityMarketDataSubscriptionLocked(listing finance.Listing)
 }
 
 func (api *API) startSecurityMarketDataSubscriptionLocked(ctx context.Context, listing finance.Listing) (*streamSubscription[proto.SecurityMarketDataReply, finance.Quote], error) {
-	session, err := api.getSessionLocked(ctx)
+	session, err := api.getOrCreateSessionLocked(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -161,11 +161,7 @@ func (api *API) startSecurityMarketDataSubscriptionLocked(ctx context.Context, l
 	client, err := session.SecurityService.StreamMarketData(subscriptionCtx, &proto.SecurityMarketDataRequest{
 		AccessToken:               session.AccessToken,
 		SecurityWithStockexchange: securityWithStockExchange,
-		// The TAPI converts into the requested currency, so a US instrument can be
-		// quoted in EUR directly — no exchange rate conversion needed downstream. An
-		// empty value leaves the field unset and the TAPI answers in the instrument's
-		// default currency.
-		Currency: string(api.preferredCurrency),
+		Currency:                  string(api.preferredCurrency),
 	})
 	if err != nil {
 		subscriptionCancel()
@@ -179,28 +175,31 @@ func (api *API) startSecurityMarketDataSubscriptionLocked(ctx context.Context, l
 	subscription := newSubscription(client, subscriptionCancel, processReply, api.logger.With(slog.String("securityMarketDataSubscription", subscriptionKey)))
 	subscription.Timeout = api.subscriptionTimeout
 	api.quoteSubscriptions[subscriptionKey] = subscription
-	api.stoppedWG.Go(subscription.Run)
+	api.stoppedWG.Go(subscription.Start)
 	return subscription, nil
 }
 
 func (api *API) processSecurityMarketDataReply(s *streamSubscription[proto.SecurityMarketDataReply, finance.Quote], listing finance.Listing, reply *proto.SecurityMarketDataReply) {
+	var replyErr error
 	if reply.Error != nil {
 		switch reply.Error.Code {
-		case "FIRBIDDEN_ERR":
-			api.logger.Warn("market data not accessible", slog.Any("message", reply.Error.Message))
-			return
+		case "FORBIDDEN_ERR":
+			replyErr = finance.ErrQuoteExchangeClosed
 		default:
+			replyErr = fmt.Errorf("errornous market data reply (error: %s)", reply.Error.String())
 			api.logger.Warn("errornous market data reply; closing stream", slog.Any("error", reply.Error))
 			s.Close()
-			return
 		}
 	}
-	s.MergeReply(reply, func(lastReply *finance.Quote, rawReply *proto.SecurityMarketDataReply) *finance.Quote {
-		quote, err := securityMarketDataReplyToQuote(listing, lastReply, reply)
-		if err != nil {
-			api.logger.Warn("invalid market data reply", slog.Any("err", err))
+	s.MergeReply(reply, func(lastReply *finance.Quote, rawReply *proto.SecurityMarketDataReply) (*finance.Quote, error) {
+		if replyErr != nil {
+			return nil, replyErr
 		}
-		return quote
+		err := api.checkCanarySubscription()
+		if err != nil {
+			return nil, err
+		}
+		return securityMarketDataReplyToQuote(listing, lastReply, reply)
 	})
 }
 
@@ -235,7 +234,7 @@ func (api *API) queryQuoteHistory(ctx context.Context, listing finance.Listing, 
 	api.mutex.Lock()
 	defer api.mutex.Unlock()
 
-	session, err := api.getSessionLocked(ctx)
+	session, err := api.getOrCreateSessionLocked(ctx)
 	if err != nil {
 		return nil, err
 	}

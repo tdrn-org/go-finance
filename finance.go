@@ -31,13 +31,31 @@ var (
 	// asynchronously and future calls may return the requested
 	// data.
 	ErrRequestPending error = errors.New("request pending")
+	// ErrSubscriptionStalled indicates a subscription for data
+	// updates has is stalled and no longer provides current data.
+	ErrSubscriptionStalled error = errors.New("subscription stalled")
 )
+
+var transientErrs []error = []error{
+	ErrRequestPending,
+	ErrSubscriptionStalled,
+	ErrListingSearchRestricted,
+	ErrQuoteExchangeClosed,
+}
 
 // IsTransientErr determines whether the given error is a
 // transient error, allowing a retry shortly after. A nil
 // error is also considered transient.
 func IsTransientErr(err error) bool {
-	return err == nil || errors.Is(err, ErrRequestPending) || errors.Is(err, ErrListingSearchRestricted)
+	if err == nil {
+		return true
+	}
+	for _, transientErr := range transientErrs {
+		if errors.Is(err, transientErr) {
+			return true
+		}
+	}
+	return false
 }
 
 func unwrapJoined(err error) []error {
