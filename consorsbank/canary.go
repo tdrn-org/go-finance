@@ -32,7 +32,7 @@ const canaryISIN string = "DE0005933931"
 const canaryExchange string = "TRG"
 const canaryTimeout time.Duration = 10 * time.Minute
 
-func (api *API) newCanarySubscription(ctx context.Context, session *apiSession) (*streamSubscription[proto.SecurityMarketDataReply, time.Time], error) {
+func (api *API) newCanarySubscriptionLocked(ctx context.Context, session *apiSession) (*streamSubscription[proto.SecurityMarketDataReply, time.Time], error) {
 	securityCode := &proto.SecurityCode{
 		Code:     canaryISIN,
 		CodeType: proto.SecurityCodeType_ISIN,

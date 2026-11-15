@@ -51,7 +51,7 @@ func (api *API) queryExchangeRate(ctx context.Context, base, quote finance.Curre
 	if err != nil {
 		return nil, err
 	}
-	return subscription.waitInitialReply(ctx, initialReplyTimeout)
+	return subscription.WaitInitialReply(ctx, initialReplyTimeout)
 }
 
 func (api *API) getOrStartExchangeRateSubscription(ctx context.Context, base, quote finance.Currency) (*streamSubscription[proto.CurrencyRateReply, finance.ExchangeRate], error) {

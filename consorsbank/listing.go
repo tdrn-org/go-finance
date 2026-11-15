@@ -116,7 +116,7 @@ func (api *API) queryQuote(ctx context.Context, listing finance.Listing) (*finan
 	if err != nil {
 		return nil, err
 	}
-	return subscription.waitInitialReply(ctx, initialReplyTimeout)
+	return subscription.WaitInitialReply(ctx, initialReplyTimeout)
 }
 
 func (api *API) getOrStartSecurityMarketDataSubscription(ctx context.Context, listing finance.Listing) (*streamSubscription[proto.SecurityMarketDataReply, finance.Quote], error) {

@@ -65,7 +65,7 @@ func (api *API) getOrCreateSessionLocked(ctx context.Context) (*apiSession, erro
 		AccessToken:     loginReply.GetAccessToken(),
 		SecurityService: proto.NewSecurityServiceClient(grpcClient),
 	}
-	api.session.canarySubscription, err = api.newCanarySubscription(ctx, api.session)
+	api.session.canarySubscription, err = api.newCanarySubscriptionLocked(ctx, api.session)
 	if err != nil {
 		grpcClient.Close()
 		return nil, fmt.Errorf("%s: failed to start canary subscription (cause: %w)", Name, err)
