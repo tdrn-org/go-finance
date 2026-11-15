@@ -115,7 +115,7 @@ func (s *streamSubscription[R, T]) reset() {
 	s.subscribeUntil = time.Now().Add(s.Timeout)
 }
 
-func (s *streamSubscription[R, T]) waitInitialReply(ctx context.Context, timeout time.Duration) (*T, error) {
+func (s *streamSubscription[R, T]) WaitInitialReply(ctx context.Context, timeout time.Duration) (*T, error) {
 	reply, err := s.LastReply()
 	if err == nil || !errors.Is(err, finance.ErrRequestPending) {
 		return reply, err
@@ -171,7 +171,7 @@ func (s *streamSubscription[R, T]) LastReply() (*T, error) {
 }
 
 func (s *streamSubscription[R, T]) timeoutReachedOrClosedLocked() (bool, bool) {
-	if s.Timeout <= 0 {
+	if s.Timeout <= 0 || s.subscribeUntil.IsZero() {
 		return false, s.closed
 	}
 	return time.Now().After(s.subscribeUntil), s.closed
