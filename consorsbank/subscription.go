@@ -40,11 +40,6 @@ func (r *subscriptionReply[T]) Empty() bool {
 	return r.reply == nil && r.replyErr == nil
 }
 
-func (r *subscriptionReply[T]) Reset() {
-	r.reply = nil
-	r.replyErr = nil
-}
-
 type streamSubscription[R, T any] struct {
 	Timeout        time.Duration
 	client         grpc.ServerStreamingClient[R]
@@ -83,13 +78,17 @@ func (s *streamSubscription[R, T]) Close() {
 	s.mutex.Lock()
 	defer s.mutex.Unlock()
 
+	s.closeLocked()
+}
+
+func (s *streamSubscription[R, T]) closeLocked() {
 	s.closed = true
 	s.cancel()
 }
 
 func (s *streamSubscription[R, T]) Start() {
 	s.logger.Info("subscription starting...")
-	s.reset()
+	s.resetTimeout()
 	for {
 		reply, err := s.client.Recv()
 		if err != nil {
@@ -107,11 +106,10 @@ func (s *streamSubscription[R, T]) Start() {
 	}
 }
 
-func (s *streamSubscription[R, T]) reset() {
+func (s *streamSubscription[R, T]) resetTimeout() {
 	s.mutex.Lock()
 	defer s.mutex.Unlock()
 
-	s.lastReply.Reset()
 	s.subscribeUntil = time.Now().Add(s.Timeout)
 }
 
@@ -132,14 +130,13 @@ func (s *streamSubscription[R, T]) WaitInitialReply(ctx context.Context, timeout
 }
 
 func (s *streamSubscription[R, T]) MergeReply(rawReply *R, merge func(lastReply *T, rawReply *R) (*T, error)) {
+	s.mutex.Lock()
+	defer s.mutex.Unlock()
+
 	reply, replyErr := merge(s.lastReply.reply, rawReply)
 	if reply == nil && replyErr == nil {
 		return
 	}
-
-	s.mutex.Lock()
-	defer s.mutex.Unlock()
-
 	initialReply := s.lastReply.Empty()
 	s.lastReply.reply, s.lastReply.replyErr = reply, replyErr
 	if reply != nil {
@@ -162,7 +159,7 @@ func (s *streamSubscription[R, T]) LastReply() (*T, error) {
 	timedOut, closed := s.timeoutReachedOrClosedLocked()
 	if timedOut && !closed {
 		s.logger.Info("closing subscription; timeout reached")
-		s.Close()
+		s.closeLocked()
 	}
 	if s.lastReply.Empty() {
 		return nil, finance.ErrRequestPending
