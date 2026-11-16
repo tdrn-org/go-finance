@@ -191,15 +191,21 @@ func (api *API) processSecurityMarketDataReply(s *streamSubscription[proto.Secur
 			s.Close()
 		}
 	}
+	if replyErr == nil {
+		// Check canary in advance to avoid deadlocks
+		replyErr = api.checkCanarySubscription()
+	}
 	s.MergeReply(reply, func(lastReply *finance.Quote, rawReply *proto.SecurityMarketDataReply) (*finance.Quote, error) {
 		if replyErr != nil {
 			return nil, replyErr
 		}
-		err := api.checkCanarySubscription()
-		if err != nil {
-			return nil, err
+		reply, err := securityMarketDataReplyToQuote(listing, lastReply, reply)
+		if err != nil && lastReply == nil {
+			// We did not yet receive a full reply, therefore keep ErrRequestPending state.
+			return nil, finance.ErrRequestPending
+
 		}
-		return securityMarketDataReplyToQuote(listing, lastReply, reply)
+		return reply, err
 	})
 }
 

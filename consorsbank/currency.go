@@ -113,10 +113,11 @@ func (api *API) processCurrencyRateReply(s *streamSubscription[proto.CurrencyRat
 		s.Close()
 		return
 	}
+	// Check canary in advance to avoid deadlocks
+	replyErr := api.checkCanarySubscription()
 	s.MergeReply(reply, func(lastReply *finance.ExchangeRate, rawReply *proto.CurrencyRateReply) (*finance.ExchangeRate, error) {
-		err := api.checkCanarySubscription()
-		if err != nil {
-			return nil, err
+		if replyErr != nil {
+			return nil, replyErr
 		}
 		return currencyRateReplyToExchangeRate(lastReply, rawReply)
 	})
