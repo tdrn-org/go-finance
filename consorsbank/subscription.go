@@ -145,10 +145,10 @@ func (s *streamSubscription[R, T]) MergeReply(rawReply *R, merge func(lastReply 
 
 	replyType := reflect.TypeFor[T]()
 	if initialReply {
-		s.logger.Info("recorded initial reply", slog.Any("reply", replyType))
+		s.logger.Info("recorded initial reply", slog.Any("reply", replyType), slog.Any("err", s.lastReply.replyErr))
 		s.initialReply <- s.lastReply
 	} else {
-		s.logger.Debug("recorded reply", slog.Any("reply", replyType))
+		s.logger.Debug("recorded reply", slog.Any("reply", replyType), slog.Any("err", s.lastReply.replyErr))
 	}
 }
 
