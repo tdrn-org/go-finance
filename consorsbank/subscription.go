@@ -138,10 +138,11 @@ func (s *streamSubscription[R, T]) MergeReply(rawReply *R, merge func(lastReply 
 		return
 	}
 	initialReply := s.lastReply.Empty()
-	s.lastReply.reply, s.lastReply.replyErr = reply, replyErr
 	if reply != nil {
+		s.lastReply.reply = reply
 		s.subscribeUntil = time.Now().Add(s.Timeout)
 	}
+	s.lastReply.replyErr = replyErr
 
 	replyType := reflect.TypeFor[T]()
 	if initialReply {
