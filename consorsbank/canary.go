@@ -28,7 +28,7 @@ import (
 	"github.com/tdrn-org/go-finance/consorsbank/proto"
 )
 
-const canaryISIN string = "DE0005933931"
+const canaryISIN string = "DE0007164600"
 const canaryExchange string = "TRG"
 const canaryTimeout time.Duration = 10 * time.Minute
 
