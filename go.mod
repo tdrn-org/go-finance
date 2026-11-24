@@ -5,7 +5,7 @@ go 1.27.0
 toolchain go1.27.1
 
 require (
-	github.com/oapi-codegen/runtime v1.9.0
+	github.com/oapi-codegen/runtime v1.9.1
 	github.com/stretchr/testify v1.12.1
 	github.com/tdrn-org/go-cache v0.1.9
 	github.com/tdrn-org/go-config-toml v0.1.1
